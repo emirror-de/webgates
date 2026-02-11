@@ -27,10 +27,10 @@ body = """
     ### {{ group }}
     {% for commit in commits %}\
         {% if commit.breaking %}\
-    - **💥 BREAKING CHANGE:** {{ commit.message | upper_first }}{% if commit.scope %} *({{ commit.scope }})* {% endif %} [{{ commit.id | truncate(length=7, end="") }}](https://github.com/emirror-de/axum-gate/commit/{{ commit.id }})
+    - **💥 BREAKING CHANGE:** {{ commit.message | upper_first }}{% if commit.scope %} *({{ commit.scope }})* {% endif %} [{{ commit.id | truncate(length=7, end="") }}](https://github.com/emirror-de/webgates/commit/{{ commit.id }})
 
         {% else %}\
-    - {{ commit.message | upper_first }}{% if commit.scope %} *({{ commit.scope }})* {% endif %} [{{ commit.id | truncate(length=7, end="") }}](https://github.com/emirror-de/axum-gate/commit/{{ commit.id }})
+    - {{ commit.message | upper_first }}{% if commit.scope %} *({{ commit.scope }})* {% endif %} [{{ commit.id | truncate(length=7, end="") }}](https://github.com/emirror-de/webgates/commit/{{ commit.id }})
 
         {% endif %}\
     {% endfor %}
@@ -132,9 +132,9 @@ sort_commits = "newest"
 # Link parsers for issue/PR references
 link_parsers = [
     # GitHub issues
-    { pattern = "#(\\d+)", href = "https://github.com/emirror-de/axum-gate/issues/$1", text = "#$1"},
+    { pattern = "#(\\d+)", href = "https://github.com/emirror-de/webgates/issues/$1", text = "#$1"},
     # GitHub pull requests
-    { pattern = "PR#(\\d+)", href = "https://github.com/emirror-de/axum-gate/pull/$1", text = "PR#$1"},
+    { pattern = "PR#(\\d+)", href = "https://github.com/emirror-de/webgates/pull/$1", text = "PR#$1"},
 ]
 
 # Additional commit preprocessing
