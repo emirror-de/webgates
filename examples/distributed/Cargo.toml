@@ -1,0 +1,26 @@
+[package]
+name = "distributed"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[[bin]]
+name = "auth_node"
+path = "src/bin/auth_node.rs"
+
+[[bin]]
+name = "consumer_node"
+path = "src/bin/consumer_node.rs"
+
+[dependencies]
+axum = { workspace = true }
+axum-gate = { path = "../../" }
+chrono = { workspace = true }
+dotenvy = { workspace = true }
+roaring = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+strum = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

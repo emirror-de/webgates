@@ -7,7 +7,7 @@
 //! # Quick Start
 //!
 //! ```rust
-//! use webgates::cookie_template::CookieTemplate;
+//! use axum_gate::cookie_template::CookieTemplate;
 //! use cookie::time::Duration;
 //!
 //! // Use secure defaults
@@ -30,7 +30,7 @@ use cookie::{Cookie, CookieBuilder, SameSite};
 use std::borrow::Cow;
 
 /// Default cookie name used by the gate when none is specified.
-pub const DEFAULT_COOKIE_NAME: &str = "webgates";
+pub const DEFAULT_COOKIE_NAME: &str = "axum-gate";
 
 /// Builder for secure authentication cookies used by `Gate`.
 ///
@@ -44,7 +44,7 @@ pub const DEFAULT_COOKIE_NAME: &str = "webgates";
 /// customize only what you need:
 ///
 /// ```rust
-/// use webgates::cookie_template::CookieTemplate;
+/// use axum_gate::cookie_template::CookieTemplate;
 /// use cookie::{time::Duration, SameSite};
 ///
 /// // Secure defaults with custom name and expiration

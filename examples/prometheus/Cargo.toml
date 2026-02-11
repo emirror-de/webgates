@@ -1,0 +1,16 @@
+[package]
+name = "prometheus-example"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[dependencies]
+axum = { workspace = true }
+axum-extra = { workspace = true }
+axum-gate = { path = "../../", features = ["prometheus"] }
+chrono = { workspace = true }
+prometheus = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

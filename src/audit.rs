@@ -11,7 +11,7 @@
 //! - Keep spans/events coarse and avoid leaking internal state.
 //!
 //! Enable via Cargo features (in the depending crate):
-//! - `webgates = { version = "1", features = ["audit-logging"] }`
+//! - `axum-gate = { version = "1", features = ["audit-logging"] }`
 //!
 //! Environment and subscriber configuration are left to the application.
 
@@ -21,7 +21,7 @@ use uuid::Uuid;
 #[cfg(feature = "prometheus")]
 use std::time::Instant;
 
-const TARGET: &str = "webgates::audit";
+const TARGET: &str = "axum_gate::audit";
 
 /// Creates a request-scoped span with basic HTTP metadata.
 ///
