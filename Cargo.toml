@@ -1,0 +1,9 @@
+[package]
+name = "webgates"
+version = "0.0.0"
+edition = "2024"
+authors = ["Lewin Probst <info@emirror.de>"]
+description = "Reserved, possible successor/core for axum-gate."
+license = "MIT"
+
+[dependencies]
