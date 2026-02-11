@@ -3,7 +3,47 @@ name = "webgates"
 version = "0.0.0"
 edition = "2024"
 authors = ["Lewin Probst <info@emirror.de>"]
-description = "Reserved, possible successor/core for axum-gate."
+description = "Protect your web apps and enable RBAC"
 license = "MIT"
 
+[package.metadata.docs.rs]
+features = [
+    "audit-logging",
+    "storage-seaorm",
+    "prometheus",
+]
+
+[workspace]
+resolver = "3"
+
+[workspace.dependencies]
+cookie = { version = "0.18" }
+prometheus = "0.14"
+sea-orm = { version = "2.0.0-rc.20" }
+strum = { version = "0.27", features = ["derive"] }
+thiserror = "2"
+tracing = "0.1"
+uuid = { version = "1" }
+
+[features]
+audit-logging = []
+default = ["server"]
+server = [
+    "dep:cookie",
+]
+storage-seaorm = ["sea-orm/uuid"]
+prometheus = ["audit-logging", "dep:prometheus"]
+
 [dependencies]
+cookie = { workspace = true, optional = true }
+prometheus = { workspace = true, optional = true }
+sea-orm = { workspace = true, optional = true }
+strum = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true, features = ["release_max_level_info"], optional = true }
+uuid = { workspace = true, features = ["serde", "v7", "js"] }
+
+[dev-dependencies]
+
+[profile.dev]
+debug = false
