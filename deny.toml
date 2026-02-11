@@ -1,0 +1,18 @@
+[licenses]
+allow = ["MIT", "Apache-2.0", "Unicode-3.0", "ISC", "BSD-3-Clause", "BSD-2-Clause", "Unlicense", "MPL-2.0", "Zlib", "CC0-1.0", "CDLA-Permissive-2.0", "BUSL-1.1", "OpenSSL", "Apache-2.0 WITH LLVM-exception"]
+
+[advisories]
+# Temporarily ignore unmaintained advisory for paste (brought in transitively by surrealdb -> rmp).
+# Upstream (surrealdb) is aware and tracking a fix / replacement.
+# inline ignore removed; using structured [[advisories.ignore]] table below
+
+# Prefer structured ignore entry to document rationale (cargo-deny supports this form too):
+[[advisories.ignore]]
+id = "RUSTSEC-2024-0436"
+reason = "paste is only a transitive dep via surrealdb; awaiting upstream to drop/replace it."
+
+# Ignore RUSTSEC-2023-0071 as it relates to aws-lc-rs but the current version has fixed it.
+# Users preferring to avoid this entirely can use the rust_crypto feature (default).
+[[advisories.ignore]]
+id = "RUSTSEC-2023-0071"
+reason = "This can be removed as soon as rsa crate received a fix."
