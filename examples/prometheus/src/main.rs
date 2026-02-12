@@ -19,8 +19,11 @@ use webgates::{
     authz::AccessPolicy,
     codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims},
     cookie_template::CookieTemplate,
-    prelude::{Account, Credentials, Gate, Group, Role},
+    prelude::{Account, Credentials, Group, Role},
     repositories::memory::{MemoryAccountRepository, MemorySecretRepository},
+};
+use webgates_axum::{
+    gate::Gate,
     route_handlers::{login, logout},
 };
 
@@ -105,7 +108,7 @@ async fn main() {
                 Gate::cookie("prometheus-demo", Arc::clone(&jwt_codec))
                     .allow_anonymous_with_optional_user()
                     .with_prometheus_registry(&app_state.registry) // 🔍 Enable webgates Prometheus metrics
-                    .configure_cookie_template(|tpl| tpl.name("prometheus-demo"))
+                    .configure_cookie_template(|tpl: CookieTemplate| tpl.name("prometheus-demo"))
                     .unwrap(),
             ),
         )
@@ -119,7 +122,7 @@ async fn main() {
                 Gate::cookie("prometheus-demo", Arc::clone(&jwt_codec))
                     .with_policy(AccessPolicy::require_role(Role::Admin))
                     .with_prometheus_registry(&app_state.registry) // 🔍 Enable webgates Prometheus metrics
-                    .configure_cookie_template(|tpl| tpl.name("prometheus-demo"))
+                    .configure_cookie_template(|tpl: CookieTemplate| tpl.name("prometheus-demo"))
                     .unwrap(),
             ),
         )
@@ -130,7 +133,7 @@ async fn main() {
                 Gate::cookie("prometheus-demo", Arc::clone(&jwt_codec))
                     .with_policy(AccessPolicy::require_role_or_supervisor(Role::Admin))
                     .with_prometheus_registry(&app_state.registry) // 🔍 Enable webgates metrics for this route too
-                    .configure_cookie_template(|tpl| tpl.name("prometheus-demo"))
+                    .configure_cookie_template(|tpl: CookieTemplate| tpl.name("prometheus-demo"))
                     .unwrap(),
             ),
         )

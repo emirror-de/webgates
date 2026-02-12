@@ -48,6 +48,7 @@ assert!(policy.is_authorized(&account));
 ```
 */
 
+pub use cookie;
 pub use jsonwebtoken;
 pub use uuid;
 

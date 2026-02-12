@@ -19,8 +19,11 @@
 use webgates::accounts::AccountInsertService;
 use webgates::authz::{AccessHierarchy, AccessPolicy};
 use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
-use webgates::prelude::{Account, Credentials, Gate};
+use webgates::cookie_template::CookieTemplate;
+use webgates::prelude::{Account, Credentials};
 use webgates::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+use webgates_axum::gate::Gate;
+use webgates_axum::route_handlers;
 
 use std::sync::Arc;
 
@@ -307,7 +310,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted User.");
 
-    let cookie_template = webgates::cookie_template::CookieTemplate::recommended(); // secure defaults for the session cookie
+    let cookie_template = CookieTemplate::recommended(); // secure defaults for the session cookie
 
     let app = Router::new()
         .route("/admin", get(admin))
@@ -360,7 +363,7 @@ async fn main() {
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar, Json(credentials): Json<Credentials<String>>| {
-                    webgates::route_handlers::login(
+                    route_handlers::login(
                         cookie_jar,
                         credentials,
                         registered_claims,
@@ -377,7 +380,7 @@ async fn main() {
             get({
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar| async move {
-                    let jar = webgates::route_handlers::logout(cookie_jar, cookie_template).await;
+                    let jar = route_handlers::logout(cookie_jar, cookie_template).await;
                     (jar, axum::response::Redirect::to("/"))
                 }
             }),

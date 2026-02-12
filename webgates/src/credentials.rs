@@ -36,7 +36,7 @@
 //! ```rust
 //! use axum::{Json, extract::State, http::StatusCode};
 //! use webgates::prelude::Credentials;
-//! use webgates::route_handlers::login;
+//! use webgates_axum::route_handlers::login;
 //! use axum_extra::extract::CookieJar;
 //!
 //! async fn login_endpoint(

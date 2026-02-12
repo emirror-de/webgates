@@ -15,8 +15,11 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use webgates::accounts::{Account, AccountRepository};
 use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
 use webgates::cookie;
-use webgates::prelude::{AccessPolicy, Gate, Group, Role};
+use webgates::cookie_template::CookieTemplate;
+use webgates::prelude::{AccessPolicy, Group, Role};
 use webgates::repositories::memory::MemoryAccountRepository;
+use webgates_axum::gate::Gate;
+use webgates_axum::route_handlers;
 
 #[derive(serde::Deserialize)]
 struct GithubUser {
@@ -152,7 +155,7 @@ async fn main() {
     //  - https://api.github.com/user
     //  - https://api.github.com/user/emails (optional)
     // and uses the GitHub username as the Account user_id.
-    let oauth2_gate = webgates::gate::oauth2::OAuth2Gate::<Role, Group>::new()
+    let oauth2_gate = webgates_axum::gate::oauth2::OAuth2Gate::<Role, Group>::new()
         .auth_url("https://github.com/login/oauth/authorize")
         .token_url("https://github.com/login/oauth/access_token")
         .client_id(github_client_id)
@@ -160,12 +163,12 @@ async fn main() {
         .redirect_url(github_redirect)
         .add_scope("read:user")
         .add_scope("user:email")
-        .configure_cookie_template(|tpl| tpl.name(auth_cookie_name.clone()))
+        .configure_cookie_template(|tpl: CookieTemplate| tpl.name(auth_cookie_name.clone()))
         .expect("valid oauth2 cookie template")
         .with_post_login_redirect(post_login_redirect.clone())
         .with_jwt_codec(&jwt_issuer, Arc::clone(&jwt_codec), jwt_ttl_secs)
         .with_account_repository(Arc::clone(&logging_repo))
-        .with_account_mapper(|token_resp| {
+        .with_account_mapper(|token_resp: &oauth2::StandardTokenResponse<oauth2::EmptyExtraTokenFields, oauth2::basic::BasicTokenType>| {
             Box::pin(async move {
                 // Fetch the actual GitHub username using the access token.
                 let access_token = token_resp.access_token().secret().to_string();
@@ -201,7 +204,7 @@ async fn main() {
         .layer(
             Gate::cookie::<_, Role, Group>(&jwt_issuer, Arc::clone(&jwt_codec))
                 .require_login()
-                .configure_cookie_template(|tpl| {
+                .configure_cookie_template(|tpl: CookieTemplate| {
                     tpl.name(auth_cookie_name.clone())
                         .persistent(cookie::time::Duration::hours(24))
                 })
@@ -215,7 +218,7 @@ async fn main() {
             get(homepage).layer(
                 Gate::cookie::<_, Role, Group>(&jwt_issuer, Arc::clone(&jwt_codec))
                     .allow_anonymous_with_optional_user()
-                    .configure_cookie_template(|tpl| {
+                    .configure_cookie_template(|tpl: CookieTemplate| {
                         tpl.name(auth_cookie_name.clone())
                             .persistent(cookie::time::Duration::hours(24))
                     })
@@ -229,7 +232,7 @@ async fn main() {
                 move |cookie_jar| async move {
                     let cookie_template =
                         webgates::cookie_template::CookieTemplate::recommended().name(name);
-                    let jar = webgates::route_handlers::logout(cookie_jar, cookie_template).await;
+                    let jar = route_handlers::logout(cookie_jar, cookie_template).await;
                     (jar, axum::response::Redirect::to("/"))
                 }
             }),

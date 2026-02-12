@@ -6127,6 +6127,7 @@ dependencies = [
  "chrono",
  "cookie",
  "http",
+ "jsonwebtoken 10.3.0",
  "oauth2",
  "prometheus",
  "rand 0.9.2",

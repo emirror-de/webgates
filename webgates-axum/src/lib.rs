@@ -43,7 +43,7 @@ pub use webgates;
 
 /// Re-export common modules from the core so gate code resolves paths unchanged.
 pub use webgates::{
-    accounts, authn, authz, codecs, credentials, errors, groups, hashing, permissions, prelude,
+    accounts, authn, authz, codecs, credentials, errors, groups, hashing, permissions,
     repositories, roles, secrets, verification_result,
 };
 

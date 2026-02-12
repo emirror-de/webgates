@@ -43,7 +43,9 @@ axum-extra = { workspace = true, optional = true }
 chrono = { workspace = true, optional = true }
 cookie = { workspace = true, optional = true }
 http = { workspace = true, optional = true }
+jsonwebtoken = { workspace = true }
 oauth2 = { workspace = true, optional = true }
+reqwest = { workspace = true }
 rand = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

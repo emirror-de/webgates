@@ -2,6 +2,7 @@ use webgates::accounts::AccountInsertService;
 use webgates::codecs::jwt::RegisteredClaims;
 use webgates::prelude::*;
 use webgates::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
+use webgates_axum::route_handlers;
 
 use std::sync::Arc;
 
@@ -89,7 +90,7 @@ async fn main() {
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar, Json(credentials): Json<Credentials<String>>| {
-                    webgates::route_handlers::login(
+                    route_handlers::login(
                         cookie_jar,
                         credentials,
                         registered_claims,
@@ -103,7 +104,7 @@ async fn main() {
         )
         .route(
             "/logout",
-            get(move |cookie_jar| webgates::route_handlers::logout(cookie_jar, cookie_template)),
+            get(move |cookie_jar| route_handlers::logout(cookie_jar, cookie_template)),
         );
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")

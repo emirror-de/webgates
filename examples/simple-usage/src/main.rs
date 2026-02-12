@@ -12,8 +12,9 @@ use webgates::{
     cookie_template::CookieTemplate,
     prelude::*,
     repositories::memory::{MemoryAccountRepository, MemorySecretRepository},
-    route_handlers::{login, logout},
 };
+use webgates_axum::gate::Gate;
+use webgates_axum::route_handlers::{login, logout};
 
 use std::sync::Arc;
 
@@ -67,7 +68,7 @@ async fn main() -> Result<()> {
             get(admin_handler).layer(
                 Gate::cookie("my-app", Arc::clone(&jwt_codec))
                     .with_policy(AccessPolicy::require_role(Role::Admin))
-                    .configure_cookie_template(|tpl| tpl.name("my-app"))?,
+                    .configure_cookie_template(|tpl: CookieTemplate| tpl.name("my-app"))?,
             ),
         )
         // Staff area - multiple roles allowed
@@ -78,7 +79,7 @@ async fn main() -> Result<()> {
                     .with_policy(
                         AccessPolicy::require_role(Role::Admin).or_require_role(Role::Moderator),
                     )
-                    .configure_cookie_template(|tpl| tpl.name("my-app"))?,
+                    .configure_cookie_template(|tpl: CookieTemplate| tpl.name("my-app"))?,
             ),
         )
         // Engineering team area - group-based access
@@ -87,7 +88,7 @@ async fn main() -> Result<()> {
             get(engineering_handler).layer(
                 Gate::cookie("my-app", Arc::clone(&jwt_codec))
                     .with_policy(AccessPolicy::require_group(Group::new("engineering")))
-                    .configure_cookie_template(|tpl| tpl.name("my-app"))?,
+                    .configure_cookie_template(|tpl: CookieTemplate| tpl.name("my-app"))?,
             ),
         )
         // Any logged-in user
@@ -96,7 +97,7 @@ async fn main() -> Result<()> {
             get(profile_handler).layer(
                 Gate::cookie("my-app", Arc::clone(&jwt_codec))
                     .require_login()
-                    .configure_cookie_template(|tpl| tpl.name("my-app"))?,
+                    .configure_cookie_template(|tpl: CookieTemplate| tpl.name("my-app"))?,
             ),
         )
         // Home page - unprotected, shows login form
@@ -107,7 +108,7 @@ async fn main() -> Result<()> {
             get(dashboard_handler).layer(
                 Gate::cookie("my-app", Arc::clone(&jwt_codec))
                     .require_login()
-                    .configure_cookie_template(|tpl| tpl.name("my-app"))?,
+                    .configure_cookie_template(|tpl: CookieTemplate| tpl.name("my-app"))?,
             ),
         )
         // Authentication endpoints
