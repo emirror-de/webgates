@@ -3,12 +3,12 @@
 //! This example shows how the new permission system works seamlessly across
 //! distributed nodes without any coordination or synchronization.
 
-use webgates::permissions::AsPermissionName;
-use webgates::permissions::{PermissionId, Permissions};
-use webgates::validate_permissions;
 use roaring::RoaringTreemap;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
+use webgates::permissions::AsPermissionName;
+use webgates::permissions::{PermissionId, Permissions};
+use webgates::validate_permissions;
 
 /// Application permissions using nested enums for better organization.
 ///

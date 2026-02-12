@@ -9,14 +9,14 @@
 //! system without replacing it, providing human-readable permission names
 //! when needed while maintaining the performance benefits of ID-based storage.
 
+use std::sync::Arc;
+use tracing::{info, warn};
 use webgates::permissions::{
     Permissions,
     mapping::{PermissionMapping, PermissionMappingRepository},
 };
 use webgates::prelude::{Account, Group, PermissionId, Role};
 use webgates::repositories::memory::MemoryPermissionMappingRepository;
-use std::sync::Arc;
-use tracing::{info, warn};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

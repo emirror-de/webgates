@@ -5,11 +5,6 @@ use axum::{
     routing::get,
 };
 
-use webgates::accounts::{Account, AccountRepository};
-use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
-use webgates::cookie;
-use webgates::prelude::{AccessPolicy, Gate, Group, Role};
-use webgates::repositories::memory::MemoryAccountRepository;
 use dotenvy::dotenv;
 use oauth2::TokenResponse;
 use std::env;
@@ -17,6 +12,11 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use webgates::accounts::{Account, AccountRepository};
+use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
+use webgates::cookie;
+use webgates::prelude::{AccessPolicy, Gate, Group, Role};
+use webgates::repositories::memory::MemoryAccountRepository;
 
 #[derive(serde::Deserialize)]
 struct GithubUser {
