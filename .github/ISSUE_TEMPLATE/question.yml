@@ -1,0 +1,245 @@
+name: "❓ Support question"
+description: "Ask for help with usage, configuration, or troubleshooting for the webgates crate"
+title: "question: <short summary>"
+labels: [question]
+
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for opening a support question! For general Q&A or brainstorming, please prefer GitHub Discussions; use this form when you need maintainer help troubleshooting.
+              Do not include secrets, tokens, or PII. Redact with placeholders like "<REDACTED:JWT>" or "<REDACTED:PASSWORD>".
+
+    - type: checkboxes
+      id: prerequisites
+      attributes:
+          label: Prerequisites
+          description: Please confirm before submitting.
+          options:
+              - label: I have searched existing issues and discussions
+                required: true
+              - label: I reviewed the README and examples in this repo
+                required: true
+              - label: I checked the crate-level docs and comments
+                required: true
+
+    - type: dropdown
+      id: category
+      attributes:
+          label: Topic category
+          description: Select the closest category for your question.
+          options:
+              - Usage (general)
+              - Configuration (features, builder options, env vars)
+              - Authentication (credentials, JWT, cookies, bearer)
+              - Authorization (roles, groups, permissions, scopes)
+              - Storage backend (memory, sea-orm, surrealdb)
+              - Axum integration (router/state/middleware/layers)
+              - Errors and diagnostics (error mapping, IntoResponse)
+              - Performance and tuning
+              - Other/unsure
+      validations:
+          required: false
+
+    - type: input
+      id: crate_version
+      attributes:
+          label: webgates version
+          description: Exact version from Cargo.lock (preferred) or Cargo.toml.
+          placeholder: e.g., 0.3.4
+      validations:
+          required: false
+
+    - type: textarea
+      id: environment
+      attributes:
+          label: Environment
+          description: Provide environment details (omit secrets).
+          placeholder: |
+              OS: macOS 14.5 / Ubuntu 22.04 / Windows 11
+              Arch: x86_64 / aarch64
+              Rust toolchain: stable-x.y.z / nightly-yyyy-mm-dd
+              rustc: rustc 1.xx.x (commit yyyy-mm-dd)
+              axum: x.y.z, tokio: x.y.z, hyper: x.y.z, tracing: x.y.z
+              database version (if applicable): PostgreSQL 15 / MySQL 8 / SQLite
+      validations:
+          required: false
+
+    - type: dropdown
+      id: backend
+      attributes:
+          label: Storage/backend in use
+          description: Select the backend involved in your question.
+          options:
+              - memory
+              - sea-orm
+              - surrealdb
+              - other/unsure
+      validations:
+          required: false
+
+    - type: textarea
+      id: goal
+      attributes:
+          label: What are you trying to achieve?
+          description: Describe your intended outcome in plain language.
+          placeholder: |
+              Example: "I want to protect routes with JWTs and map claims to permissions,
+              then return 403 when the user lacks the 'admin:write' permission."
+      validations:
+          required: true
+
+    - type: textarea
+      id: configuration
+      attributes:
+          label: Relevant configuration
+          description: Share relevant excerpts (redacted) from Cargo.toml, feature flags, environment/config, and Axum router/state setup.
+          placeholder: |
+              Cargo.toml (relevant):
+              ```toml
+              [dependencies]
+              axum = "0.8"
+              tokio = { version = "1", features = ["full"] }
+              webgates = { version = "<version>", features = ["serde","sea-orm"] }
+              ```
+              Axum setup (relevant):
+              ```rust
+              // redacted as needed
+              let state = AppState { /* ... */ };
+              let app = Router::new()
+                  .route("/protected", get(handler))
+                  .with_state(state)
+                  // gate-related layers/middleware here
+                  ;
+              ```
+              Env/config (redacted):
+              - WEBGATES_...=<REDACTED>
+          render: markdown
+      validations:
+          required: false
+
+    - type: textarea
+      id: code_attempts
+      attributes:
+          label: Code you tried
+          description: Minimal snippet that illustrates your current approach.
+          placeholder: |
+              ```rust
+              // minimal snippet (redacted)
+              async fn handler(...) -> Result<impl IntoResponse, AppError> {
+                  // ...
+              }
+              ```
+          render: markdown
+      validations:
+          required: false
+
+    - type: textarea
+      id: expected_behavior
+      attributes:
+          label: Expected outcome
+          description: What did you expect to happen?
+          placeholder: e.g., "Requests with a valid JWT should receive 200 OK; invalid tokens should receive 401 with WWW-Authenticate header."
+      validations:
+          required: false
+
+    - type: textarea
+      id: actual_behavior
+      attributes:
+          label: Actual result
+          description: What actually happens?
+          placeholder: e.g., "Receiving 500 with error body ..." or "Middleware not invoked ..."
+      validations:
+          required: false
+
+    - type: textarea
+      id: troubleshooting
+      attributes:
+          label: Troubleshooting steps already taken
+          description: List steps you have tried so far.
+          placeholder: |
+              - Verified feature flags are enabled (list)
+              - Compared setup with examples/...
+              - Enabled tracing logs; observed ...
+              - Tried alternative configuration ...
+              - Updated to latest patch version ...
+      validations:
+          required: false
+
+    - type: textarea
+      id: logs
+      attributes:
+          label: Relevant logs or errors (sanitized)
+          description: Include sanitized logs, error messages, or backtraces (no secrets).
+          placeholder: |
+              ```text
+              2025-01-01T12:34:56Z DEBUG ...
+              2025-01-01T12:34:56Z ERROR ... validation failed: invalid token
+              Caused by: ...
+              ```
+          render: text
+      validations:
+          required: false
+
+    - type: input
+      id: minimal_repro_link
+      attributes:
+          label: Minimal reproducible example (link)
+          description: Link to a minimal repo or gist that demonstrates the issue/question.
+          placeholder: https://github.com/... or https://gist.github.com/...
+      validations:
+          required: false
+
+    - type: textarea
+      id: minimal_repro
+      attributes:
+          label: Minimal reproducible example
+          description: Link to a minimal repo or gist, or paste a minimal snippet showing the issue/question.
+          placeholder: |
+              Repository/gist link: https://...
+              Or paste minimal code here (redacted):
+              ```rust
+              // minimal reproducible example
+              ```
+          render: markdown
+      validations:
+          required: false
+
+    - type: textarea
+      id: related_docs
+      attributes:
+          label: Related docs or references
+          description: Link to any documentation or examples you followed.
+          placeholder: |
+              - README section: <link>
+              - Example file: <link>
+              - Issue/Discussion: #123
+      validations:
+          required: false
+
+    - type: textarea
+      id: additional_context
+      attributes:
+          label: Additional context
+          description: Anything else relevant to the question.
+          placeholder: Constraints, deployment details, or related architectural notes.
+      validations:
+          required: false
+
+    - type: checkboxes
+      id: security_and_privacy
+      attributes:
+          label: Security and privacy
+          description: Confirm you have not included sensitive data.
+          options:
+              - label: I confirm this question does not contain secrets, tokens, or PII; sensitive values are redacted.
+                required: true
+
+    - type: input
+      id: contact
+      attributes:
+          label: Contact (optional)
+          description: Provide a way to reach you for clarification (e.g., GitHub handle or email).
+          placeholder: "@your-handle or user@example.com"
+      validations:
+          required: false

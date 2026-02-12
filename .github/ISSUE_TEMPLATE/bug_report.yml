@@ -1,0 +1,204 @@
+name: "🐞 Bug report"
+description: "Report a bug or unexpected behavior in the webgates crate"
+title: "bug: <short summary>"
+labels: [bug]
+
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for taking the time to file a bug! Please include as much detail as possible.
+              Do not include secrets, tokens, or PII. Redact or replace with placeholders like "<REDACTED:JWT>".
+
+    - type: checkboxes
+      id: prerequisites
+      attributes:
+          label: Prerequisites
+          description: Please confirm the following before submitting.
+          options:
+              - label: I have searched existing issues and discussions
+                required: true
+              - label: I can reproduce this with the latest released version of webgates
+                required: true
+              - label: I have a minimal reproduction demonstrating the issue
+                required: true
+
+    - type: dropdown
+      id: severity
+      attributes:
+          label: Impact/severity
+          description: How severe is this issue for you?
+          options:
+              - "Blocker (cannot proceed)"
+              - "High (major functionality broken)"
+              - "Medium (workable but degraded)"
+              - "Low (minor issue or annoyance)"
+      validations:
+          required: false
+
+    - type: dropdown
+      id: reproducibility
+      attributes:
+          label: Reproducibility
+          description: How often does this occur?
+          options:
+              - "Always"
+              - "Often"
+              - "Rarely"
+              - "Once"
+              - "Cannot reproduce again"
+      validations:
+          required: false
+
+    - type: input
+      id: crate_version
+      attributes:
+          label: webgates version
+          description: Provide the exact crate version from your Cargo.lock (preferred) or Cargo.toml.
+          placeholder: e.g., 0.3.4
+      validations:
+          required: true
+
+    - type: textarea
+      id: environment
+      attributes:
+          label: Environment
+          description: Brief environment details (rustc --version, OS).
+          placeholder: |
+              OS: macOS/Ubuntu/Windows
+              rustc: rustc 1.xx.x (commit yyyy-mm-dd)
+              axum/tokio versions: x.y.z
+      validations:
+          required: false
+
+    - type: dropdown
+      id: backend
+      attributes:
+          label: Storage/backend in use
+          description: Select the backend involved in this issue.
+          options:
+              - "memory"
+              - "sea-orm"
+              - "surrealdb"
+              - "other/unsure"
+      validations:
+          required: false
+
+    - type: checkboxes
+      id: feature_flags
+      attributes:
+          label: webgates feature flags enabled
+          description: Select all that apply.
+          options:
+              - label: serde
+              - label: sea-orm
+              - label: surrealdb
+              - label: tracing
+              - label: tower-http
+              - label: other (describe in Additional context)
+
+    - type: textarea
+      id: reproduction_steps
+      attributes:
+          label: Steps to reproduce
+          description: Clear, minimal steps to reproduce the issue. Include commands and sample requests if relevant.
+          placeholder: |
+              1. Setup project with dependencies (show Cargo.toml relevant parts)
+              2. Run <command> to start
+              3. Send request: curl -i http://localhost:3000/path
+              4. Observe error/behavior
+      validations:
+          required: true
+
+    - type: input
+      id: minimal_repro_link
+      attributes:
+          label: Minimal reproducible example (link)
+          description: Link to a minimal repo or gist that reproduces the issue.
+          placeholder: https://github.com/... or https://gist.github.com/...
+      validations:
+          required: false
+
+    - type: textarea
+      id: minimal_code
+      attributes:
+          label: Minimal reproducible code (optional)
+          description: Paste a short snippet if it helps (link preferred).
+          placeholder: |
+              ```rust
+              // minimal snippet (optional)
+              ```
+          render: markdown
+      validations:
+          required: false
+
+    - type: textarea
+      id: expected_behavior
+      attributes:
+          label: Expected behavior
+          description: What did you expect to happen?
+          placeholder: The request should return HTTP 200 and include header X-Example...
+      validations:
+          required: true
+
+    - type: textarea
+      id: actual_behavior
+      attributes:
+          label: Actual behavior
+          description: What actually happened?
+          placeholder: The handler returns HTTP 500 with message "...", or the service panics with backtrace...
+      validations:
+          required: true
+
+    - type: textarea
+      id: logs
+      attributes:
+          label: Relevant logs, error messages, and backtraces
+          description: Include sanitized logs and errors (consider RUST_BACKTRACE=1 and RUST_LOG=debug; redact sensitive values).
+          placeholder: |
+              ```text
+              2025-01-01T12:34:56Z ERROR webgates::...: validation failed: invalid token
+                 Caused by: ...
+              ```
+          render: text
+      validations:
+          required: false
+
+    - type: dropdown
+      id: regression
+      attributes:
+          label: Is this a regression?
+          description: Did this work in a previous version of webgates (or dependent libraries)?
+          options:
+              - "Yes"
+              - "No"
+              - "Not sure"
+      validations:
+          required: true
+
+    - type: input
+      id: prior_working_version
+      attributes:
+          label: Previously working version (if regression)
+          description: Required when regression = Yes. What version(s) worked previously?
+          placeholder: e.g., webgates 0.3.2, axum 0.8.5
+      validations:
+          required: false
+
+    - type: textarea
+      id: additional_context
+      attributes:
+          label: Additional context
+          description: Any other context, links, or screenshots about the problem.
+          placeholder: Related PRs, hypotheses, edge cases, or notes about feature flags/backends.
+      validations:
+          required: false
+
+    - type: checkboxes
+      id: security_and_privacy
+      attributes:
+          label: Security and privacy
+          description: Confirm you have not included sensitive data.
+          options:
+              - label: I confirm this report does not contain secrets, tokens, or PII and sensitive values are redacted.
+                required: true

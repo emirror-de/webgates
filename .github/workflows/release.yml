@@ -1,0 +1,60 @@
+name: Release verification
+
+on:
+    push:
+        tags:
+            - "**"
+
+permissions:
+    contents: read
+
+env:
+    CARGO_TERM_COLOR: always
+    RUST_BACKTRACE: 1
+    RUSTFLAGS: -D warnings
+
+jobs:
+    release-check:
+        name: Release build & tests
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Cache cargo/target and registry
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+
+            - name: Install Rust (stable)
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Toolchain info
+              run: |
+                  rustc --version
+                  cargo --version
+
+            - name: Build (release)
+              run: cargo build --workspace --release
+
+            - name: Run tests (release)
+              run: cargo test --workspace --release
+
+            - name: Install cargo-audit
+              run: cargo install cargo-audit
+
+            - name: Run cargo audit
+              # Keep the same ignores as main CI to avoid known advisories blocking the release workflow
+              run: cargo audit --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2024-0436
+
+            - name: Install cargo-deny
+              run: cargo install cargo-deny
+
+            - name: Run cargo deny
+              run: cargo deny check

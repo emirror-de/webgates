@@ -1,0 +1,283 @@
+name: "💡 Feature request"
+description: "Propose a new capability or improvement for the webgates crate"
+title: "feat: <short summary>"
+labels: [enhancement]
+
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for proposing an improvement! Please provide as much concrete detail as possible,
+              especially around the API surface, naming, and ergonomics.
+
+              Do not include secrets or PII. Redact values like "<REDACTED:JWT>".
+
+    - type: checkboxes
+      id: prerequisites
+      attributes:
+          label: Prerequisites
+          description: Please confirm before submitting.
+          options:
+              - label: I have searched existing issues and discussions for duplicates
+                required: true
+              - label: I reviewed the README and docs to ensure this isn't already supported
+                required: true
+              - label: I considered alternatives or workarounds and describe them below
+                required: false
+              - label: The scope is minimal and focused on a single feature
+                required: true
+
+    - type: checkboxes
+      id: impacted_areas
+      attributes:
+          label: Impacted areas (select all that apply)
+          options:
+              - label: Public API (traits, structs, functions, modules)
+              - label: Authorization model (roles, groups, permissions)
+              - label: Authentication flows (credentials, JWT, cookies, bearer)
+              - label: Storage backends (memory/sea-orm/surrealdb)
+              - label: Configuration/feature flags
+              - label: Error types and error mapping
+              - label: Performance/throughput/latency
+              - label: Documentation/examples
+
+    - type: textarea
+      id: problem_statement
+      attributes:
+          label: Problem statement
+          description: Describe the problem this feature solves and why it matters.
+          placeholder: |
+              What limitation or pain point are you experiencing?
+              Who is impacted (library users, service operators)?
+              How do you handle this today and what is suboptimal?
+      validations:
+          required: true
+
+    - type: textarea
+      id: proposed_solution
+      attributes:
+          label: Proposed solution (high-level)
+          description: Describe the proposed solution at a high level. Focus on the user-facing behavior.
+          placeholder: |
+              Summarize the feature and how it addresses the problem.
+              Call out user experience, ergonomics, and expected outcomes.
+      validations:
+          required: true
+
+    - type: textarea
+      id: api_design
+      attributes:
+          label: API design details
+          description: Provide proposed signatures, types, traits, modules, and naming. Be specific and idiomatic.
+          placeholder: |
+              Show the public API surface you propose. Include names, visibility, and error types.
+              Prefer concrete, compilable Rust sketches over prose where possible.
+
+              ```rust
+              /// New trait to validate tokens with custom claims.
+              pub trait TokenValidator {
+                  type Error: std::error::Error + Send + Sync + 'static;
+
+                  /// Validates a token and returns the subject and scopes when valid.
+                  async fn validate(&self, token: &str) -> Result<ValidationResult, Self::Error>;
+              }
+
+              /// New constructor on AuthorizationService with builder-style configuration.
+              impl AuthorizationService {
+                  pub fn with_policy<P: AccessPolicy + Send + Sync + 'static>(policy: P) -> Self {
+                      // ...
+                  }
+              }
+              ```
+          render: markdown
+      validations:
+          required: false
+
+    - type: textarea
+      id: use_cases
+      attributes:
+          label: Primary use-cases and examples
+          description: List concrete scenarios and minimal code snippets demonstrating usage.
+          placeholder: |
+              - As a service owner, I want ...
+              - As a library consumer, I need ...
+              Example:
+              ```rust
+              // minimal integration snippet
+              let authz = AuthorizationService::builder()
+                  .with_policy(MyPolicy)
+                  .enable_scope_inheritance(true)
+                  .build();
+              ```
+          render: markdown
+      validations:
+          required: false
+
+    - type: textarea
+      id: alternatives
+      attributes:
+          label: Alternatives considered
+          description: Describe other options, including why they were not chosen.
+          placeholder: |
+              - Alternative A (trait extension) — rejected because ...
+              - Alternative B (feature flag on existing type) — rejected because ...
+              - Status quo — insufficient because ...
+      validations:
+          required: false
+
+    - type: textarea
+      id: prior_art
+      attributes:
+          label: Prior art and references
+          description: Link to related crates, standards, or prior discussions/PRs that informed your proposal.
+          placeholder: |
+              - crate-x: similar API decisions
+              - RFC/standard: <link>
+              - Prior discussion: #123
+      validations:
+          required: false
+
+    - type: input
+      id: related_links
+      attributes:
+          label: Related issues/discussions/PRs
+          description: Link to any related GitHub issues, discussions, or PRs.
+          placeholder: "#123, https://github.com/org/repo/issues/123"
+      validations:
+          required: false
+
+    - type: dropdown
+      id: breaking
+      attributes:
+          label: Breaking changes
+          description: Would this change break existing users?
+          options:
+              - "No"
+              - "Possibly (soft break, deprecations)"
+              - "Yes (hard break)"
+              - "Not sure"
+      validations:
+          required: false
+
+    - type: textarea
+      id: breaking_detail
+      attributes:
+          label: Breaking changes and migration strategy
+          description: If breaking or possibly breaking, explain impact, deprecation plan, and migration path.
+          placeholder: |
+              - Deprecated function(s): ...
+              - New replacement API(s): ...
+              - Feature-gated shims or adapters: ...
+              - Migration steps:
+                1) ...
+                2) ...
+      validations:
+          required: false
+
+    - type: dropdown
+      id: feature_flag
+      attributes:
+          label: Feature flag
+          description: Should this be behind a Cargo feature flag?
+          options:
+              - "No"
+              - "Yes (new feature)"
+              - "Unsure"
+      validations:
+          required: false
+
+    - type: textarea
+      id: configuration
+      attributes:
+          label: Configuration surface
+          description: Env vars, builder options, or type parameters required for this feature.
+          placeholder: |
+              - Builder options:
+                - with_xxx(bool)
+                - timeout(Duration)
+              - Env vars (if any): WEBGATES_..., defaults, validation rules
+      validations:
+          required: false
+
+    - type: textarea
+      id: security_privacy
+      attributes:
+          label: Security and privacy considerations
+          description: Discuss authentication/authorization implications, data exposure, and validation rules.
+          placeholder: |
+              - Input validation at boundaries
+              - Token handling and expiration checks
+              - Avoid logging sensitive fields
+              - Least-privilege defaults
+      validations:
+          required: false
+
+    - type: textarea
+      id: performance
+      attributes:
+          label: Performance implications
+          description: Expected impact on latency, throughput, allocations, and CPU; caching opportunities.
+          placeholder: |
+              - Hot path changes?
+              - Additional allocations or clones?
+              - Async/concurrency considerations
+              - Benchmarks or micro-metrics ideas
+      validations:
+          required: false
+
+    - type: textarea
+      id: observability
+      attributes:
+          label: Observability (logging/metrics/tracing)
+          description: Propose tracing spans, fields, log levels, and metrics for success/error paths.
+          placeholder: |
+              - tracing::span names and fields
+              - error classification and mapping
+              - Prometheus-style counters/gauges/histograms
+      validations:
+          required: false
+
+    - type: textarea
+      id: docs
+      attributes:
+          label: Documentation and examples
+          description: What new docs, examples, or guides are needed?
+          placeholder: |
+              - Rustdoc examples for new types/functions
+              - A minimal end-to-end example in examples/
+              - README section updates
+      validations:
+          required: false
+
+    - type: textarea
+      id: acceptance_criteria
+      attributes:
+          label: Acceptance criteria
+          description: Define concrete, testable outcomes for completion.
+          placeholder: |
+              - [ ] New trait/type is documented with examples
+              - [ ] Unit tests cover success and error paths
+              - [ ] Feature is gated behind "xyz" Cargo feature
+              - [ ] No public API breaking changes without deprecation path
+      validations:
+          required: true
+
+    - type: checkboxes
+      id: contribution_readiness
+      attributes:
+          label: Contribution readiness
+          options:
+              - label: I am willing to help implement this feature
+              - label: I can contribute API review feedback
+              - label: I will include tests and docs updates in a PR
+              - label: I have not included secrets, tokens, or PII in this request
+                required: true
+
+    - type: input
+      id: contact
+      attributes:
+          label: Contact (optional)
+          description: Provide a way to reach you for clarification (e.g., GitHub handle or email).
+          placeholder: "@your-handle or user@example.com"
+      validations:
+          required: false
