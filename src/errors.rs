@@ -27,7 +27,7 @@
 //!
 //! # Basic Example
 //! ```rust
-//! use axum_gate::errors::{Error, PermissionsError, Result, UserFriendlyError};
+//! use webgates::errors::{Error, PermissionsError, Result, UserFriendlyError};
 //!
 //! fn do_permission_check(flag: bool) -> Result<()> {
 //!     if !flag {
@@ -44,7 +44,7 @@
 //!
 //! # Error Handling
 //! ```rust
-//! use axum_gate::errors::{Error, UserFriendlyError};
+//! use webgates::errors::{Error, UserFriendlyError};
 //!
 //! fn handle_error(err: &Error) -> (String, String, String) {
 //!     (
@@ -150,7 +150,7 @@ pub enum ErrorSeverity {
 /// # Examples
 ///
 /// ```rust
-/// use axum_gate::errors::{Result, Error, PermissionsError};
+/// use webgates::errors::{Result, Error, PermissionsError};
 ///
 /// fn validate_account(user_id: &str) -> Result<()> {
 ///     if user_id.is_empty() {
@@ -164,7 +164,7 @@ pub enum ErrorSeverity {
 /// ```
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// Root error type for the axum-gate library.
+/// Root error type for the webgates library.
 ///
 /// This enum represents all possible errors that can occur across different
 /// architectural layers, providing a unified error handling interface while

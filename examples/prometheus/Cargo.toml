@@ -7,7 +7,7 @@ license = "MIT"
 [dependencies]
 axum = { workspace = true }
 axum-extra = { workspace = true }
-axum-gate = { path = "../../", features = ["prometheus"] }
+webgates = { path = "../../", features = ["prometheus"] }
 chrono = { workspace = true }
 prometheus = { workspace = true }
 serde = { workspace = true }

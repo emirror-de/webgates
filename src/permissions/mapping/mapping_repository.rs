@@ -24,10 +24,10 @@ use std::future::Future;
 /// `Permissions` struct. When permission strings need to be recoverable:
 ///
 /// ```rust
-/// # use axum_gate::permissions::mapping::PermissionMapping;
-/// # use axum_gate::permissions::Permissions;
-/// # use axum_gate::permissions::mapping::PermissionMappingRepository;
-/// # use axum_gate::repositories::memory::MemoryPermissionMappingRepository;
+/// # use webgates::permissions::mapping::PermissionMapping;
+/// # use webgates::permissions::Permissions;
+/// # use webgates::permissions::mapping::PermissionMappingRepository;
+/// # use webgates::repositories::memory::MemoryPermissionMappingRepository;
 ///
 /// // In-memory repository
 /// let repo = MemoryPermissionMappingRepository::default();
@@ -70,15 +70,15 @@ use std::future::Future;
 /// # Example Implementation Patterns
 ///
 /// ```rust
-/// use axum_gate::permissions::Permissions;
-/// use axum_gate::permissions::mapping::{PermissionMapping, PermissionMappingRepository};
-/// use axum_gate::repositories::memory::MemoryPermissionMappingRepository;
+/// use webgates::permissions::Permissions;
+/// use webgates::permissions::mapping::{PermissionMapping, PermissionMappingRepository};
+/// use webgates::repositories::memory::MemoryPermissionMappingRepository;
 ///
 /// async fn grant_permission_with_registry(
 ///     permissions: &mut Permissions,
 ///     registry: &MemoryPermissionMappingRepository,
 ///     permission_str: &str,
-/// ) -> axum_gate::errors::Result<()> {
+/// ) -> webgates::errors::Result<()> {
 ///     let mapping = PermissionMapping::from(permission_str);
 ///     // Grant the permission (primary operation)
 ///     permissions.grant(mapping.normalized_string());

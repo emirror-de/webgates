@@ -1,15 +1,15 @@
 [package]
-name = "axum-gate"
-version = "2.0.0-dev"
+name = "webgates"
+version = "0.1.0-dev"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"
 authors = ["Lewin Probst <info@emirror.de>"]
 description = "Flexible authentication and authorization for Axum with JWT cookies or bearer tokens, optional OAuth2, and role/group/permission RBAC. Suitable for single-node and distributed systems."
-homepage = "https://github.com/emirror-de/axum-gate"
-repository = "https://github.com/emirror-de/axum-gate"
+homepage = "https://github.com/emirror-de/webgates"
+repository = "https://github.com/emirror-de/webgates"
 readme = "README.md"
-documentation = "https://docs.rs/axum-gate"
+documentation = "https://docs.rs/webgates"
 keywords = ["axum", "auth", "jwt", "oauth2", "rbac"]
 categories = ["authentication", "web-programming::http-server"]
 

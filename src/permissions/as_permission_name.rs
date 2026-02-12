@@ -7,8 +7,8 @@
 //! # Usage
 //!
 //! ```rust
-//! use axum_gate::permissions::AsPermissionName;
-//! use axum_gate::permissions::Permissions;
+//! use webgates::permissions::AsPermissionName;
+//! use webgates::permissions::Permissions;
 //!
 //! #[derive(Debug, Clone, PartialEq)]
 //! enum ApiPermission {

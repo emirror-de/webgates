@@ -3,9 +3,9 @@
 //! This example shows how the new permission system works seamlessly across
 //! distributed nodes without any coordination or synchronization.
 
-use axum_gate::permissions::AsPermissionName;
-use axum_gate::permissions::{PermissionId, Permissions};
-use axum_gate::validate_permissions;
+use webgates::permissions::AsPermissionName;
+use webgates::permissions::{PermissionId, Permissions};
+use webgates::validate_permissions;
 use roaring::RoaringTreemap;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};

@@ -116,7 +116,7 @@ where
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq + Clone,
 {
-    /// Queries the axum-gate auth cookie from the request.
+    /// Queries the webgates auth cookie from the request.
     pub fn auth_cookie(&self, req: &Request<Body>) -> Option<Cookie<'_>> {
         let cookie_jar = CookieJar::from_headers(req.headers());
         cookie_jar
@@ -170,7 +170,7 @@ where
             let mut opt_reg_claims: Option<RegisteredClaims> = None;
 
             if let Some(auth_cookie) = self.auth_cookie(&req) {
-                trace!("axum-gate (optional) cookie: {auth_cookie:#?}");
+                trace!("webgates (optional) cookie: {auth_cookie:#?}");
                 let cookie_value = auth_cookie.value_trimmed();
                 if let JwtValidationResult::Valid(jwt) =
                     self.jwt_validation_service.validate_token(cookie_value)
@@ -210,7 +210,7 @@ where
             }
             return unauthorized_future;
         };
-        trace!("axum-gate cookie: {auth_cookie:#?}");
+        trace!("webgates cookie: {auth_cookie:#?}");
 
         let cookie_value = auth_cookie.value_trimmed();
         #[cfg(all(feature = "audit-logging", feature = "prometheus"))]

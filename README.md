@@ -1,9 +1,9 @@
-# axum-gate
+# webgates
 
-[![Crates.io](https://img.shields.io/crates/v/axum-gate.svg)](https://crates.io/crates/axum-gate)
-[![Documentation](https://docs.rs/axum-gate/badge.svg)](https://docs.rs/axum-gate)
+[![Crates.io](https://img.shields.io/crates/v/webgates.svg)](https://crates.io/crates/webgates)
+[![Documentation](https://docs.rs/webgates/badge.svg)](https://docs.rs/webgates)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Build Status](https://github.com/emirror-de/axum-gate/workflows/CI/badge.svg)](https://github.com/emirror-de/axum-gate/actions)
+[![Build Status](https://github.com/emirror-de/webgates/workflows/CI/badge.svg)](https://github.com/emirror-de/webgates/actions)
 
 Flexible, type-safe authentication and authorization for Axum using JWTs and optional OAuth2.
 - Cookie and bearer authentication
@@ -16,7 +16,7 @@ Flexible, type-safe authentication and authorization for Axum using JWTs and opt
 
 ## Install
 
-This crate re-exports jsonwebtoken, cookie, uuid, axum_extra (and optionally prometheus) because those types appear in the public API, and it provides a convenience prelude via axum_gate::prelude::*.
+This crate re-exports jsonwebtoken, cookie, uuid, axum_extra (and optionally prometheus) because those types appear in the public API, and it provides a convenience prelude via webgates::prelude::*.
 
 
 ```toml
@@ -24,7 +24,7 @@ This crate re-exports jsonwebtoken, cookie, uuid, axum_extra (and optionally pro
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
-axum-gate = { version = "1" }
+webgates = { version = "1" }
 ```
 
 Optional features:
@@ -71,7 +71,7 @@ This crate uses `rust_crypto` backend for JWT operations.
 ## Examples and docs
 
 Examples and complete usage are available in the crate documentation on docs.rs; the repository also includes curated examples (e.g., examples/oauth2-github for a full GitHub OAuth2 flow):
-https://docs.rs/axum-gate
+https://docs.rs/webgates
 
 For common integration issues and practical debugging tips, see TROUBLESHOOTING.md (covers CookieGate, OAuth2 flows, and Bearer/Static token usage).
 

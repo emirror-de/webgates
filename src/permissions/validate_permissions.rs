@@ -9,7 +9,7 @@
 //! Call the macro once in your application with all permission strings you use:
 //!
 //! ```rust
-//! axum_gate::validate_permissions![
+//! webgates::validate_permissions![
 //!     "read:user",
 //!     "write:user",
 //!     "delete:user",
@@ -36,7 +36,7 @@
 //!
 //! ```rust
 //! // In your main application or tests
-//! axum_gate::validate_permissions![
+//! webgates::validate_permissions![
 //!     "api:read",
 //!     "api:write",
 //!     "api:delete",
@@ -58,7 +58,7 @@
 /// # Examples
 ///
 /// ```rust
-/// # use axum_gate::validate_permissions;
+/// # use webgates::validate_permissions;
 ///
 /// // Using square brackets (recommended style)
 /// validate_permissions![
@@ -94,7 +94,7 @@
 macro_rules! validate_permissions {
     ($($permission:expr),* $(,)?) => {
         #[cfg(test)]
-        mod __axum_gate_permission_validation {
+        mod __webgates_permission_validation {
 
             #[test]
             fn validate_permission_uniqueness() {

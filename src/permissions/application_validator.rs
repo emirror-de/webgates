@@ -36,7 +36,7 @@ use tracing::info;
 /// ## Application startup validation
 ///
 /// ```
-/// use axum_gate::permissions::ApplicationValidator;
+/// use webgates::permissions::ApplicationValidator;
 ///
 /// # fn load_config_permissions() -> Vec<String> { vec!["user:read".to_string()] }
 /// # async fn load_db_permissions() -> Result<Vec<String>, Box<dyn std::error::Error>> { Ok(vec!["admin:write".to_string()]) }
@@ -63,7 +63,7 @@ use tracing::info;
 /// ## Simple validation workflow
 ///
 /// ```
-/// use axum_gate::permissions::ApplicationValidator;
+/// use webgates::permissions::ApplicationValidator;
 ///
 /// // For simple cases where you just need pass/fail validation
 /// let report = ApplicationValidator::new()
@@ -74,13 +74,13 @@ use tracing::info;
 /// if !report.is_valid() {
 ///     panic!("Invalid permissions detected during startup");
 /// }
-/// # Ok::<(), axum_gate::errors::Error>(())
+/// # Ok::<(), webgates::errors::Error>(())
 /// ```
 ///
 /// ## Comparison with PermissionCollisionChecker
 ///
 /// ```
-/// use axum_gate::permissions::{ApplicationValidator, PermissionCollisionChecker};
+/// use webgates::permissions::{ApplicationValidator, PermissionCollisionChecker};
 ///
 /// let permissions = vec!["user:read".to_string(), "user:write".to_string()];
 ///
@@ -99,7 +99,7 @@ use tracing::info;
 ///     let conflicts = checker.get_conflicting_permissions("user:read");
 ///     println!("Conflicts found: {:?}", conflicts);
 /// }
-/// # Ok::<(), axum_gate::errors::Error>(())
+/// # Ok::<(), webgates::errors::Error>(())
 /// ```
 pub struct ApplicationValidator {
     permissions: Vec<String>,
@@ -160,7 +160,7 @@ impl ApplicationValidator {
     /// # Returns
     ///
     /// * `Ok(ValidationReport)` - Complete validation report
-    /// * `Err(axum_gate::errors::Error)` - Validation process failed
+    /// * `Err(webgates::errors::Error)` - Validation process failed
     pub fn validate(self) -> Result<ValidationReport> {
         let mut checker = PermissionCollisionChecker::new(self.permissions);
         let report = checker.validate().map_err(|e| {

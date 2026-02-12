@@ -9,12 +9,12 @@
 //!
 //! ```rust
 //! use axum::{routing::post, Router, Json, extract::State};
-//! use axum_gate::route_handlers::{login, logout};
-//! use axum_gate::prelude::Credentials;
-//! use axum_gate::codecs::jwt::{RegisteredClaims, JsonWebToken, JwtClaims};
-//! use axum_gate::accounts::Account;
-//! use axum_gate::prelude::{Role, Group};
-//! use axum_gate::repositories::memory::{MemorySecretRepository, MemoryAccountRepository};
+//! use webgates::route_handlers::{login, logout};
+//! use webgates::prelude::Credentials;
+//! use webgates::codecs::jwt::{RegisteredClaims, JsonWebToken, JwtClaims};
+//! use webgates::accounts::Account;
+//! use webgates::prelude::{Role, Group};
+//! use webgates::repositories::memory::{MemorySecretRepository, MemoryAccountRepository};
 //! use axum_extra::extract::CookieJar;
 //! use std::sync::Arc;
 //!
@@ -35,7 +35,7 @@
 //!     let claims = RegisteredClaims::new("my-app",
 //!         chrono::Utc::now().timestamp() as u64 + 3600); // 1 hour expiry
 //!
-//!     let cookie_template = axum_gate::cookie_template::CookieTemplate::recommended()
+//!     let cookie_template = webgates::cookie_template::CookieTemplate::recommended()
 //!         .name("auth-token")
 //!         .secure(true)
 //!         .http_only(true);
@@ -52,7 +52,7 @@
 //! }
 //!
 //! async fn logout_handler(cookie_jar: CookieJar) -> CookieJar {
-//!     let cookie_template = axum_gate::cookie_template::CookieTemplate::recommended().name("auth-token");
+//!     let cookie_template = webgates::cookie_template::CookieTemplate::recommended().name("auth-token");
 //!     logout(cookie_jar, cookie_template).await
 //! }
 //!

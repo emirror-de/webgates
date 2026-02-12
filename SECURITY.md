@@ -1,6 +1,6 @@
 # Security Policy
 
-This document outlines the security practices, built-in protections, and deployment guidance for `axum-gate` v2.0.0-dev.
+This document outlines the security practices, built-in protections, and deployment guidance for `webgates` v2.0.0-dev.
 
 ---
 
@@ -83,7 +83,7 @@ let enc_key = jsonwebtoken::EncodingKey::from_secret(secret.as_bytes());
 let dec_key = jsonwebtoken::DecodingKey::from_secret(secret.as_bytes());
 
 // Build options with persistent keys (avoid JsonWebToken::default in production)
-use axum_gate::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
+use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
 let options = JsonWebTokenOptions {
     enc_key,
     dec_key,
@@ -93,7 +93,7 @@ let options = JsonWebTokenOptions {
 
 // Create a codec that survives restarts as long as JWT_SECRET stays the same
 use std::sync::Arc;
-use axum_gate::prelude::*;
+use webgates::prelude::*;
 let jwt_codec = Arc::new(
     JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(options)
 );
@@ -107,7 +107,7 @@ let jwt_codec = Arc::new(
 When using cookie-based authentication, apply these security settings:
 
 ```rust
-use axum_gate::prelude::*;
+use webgates::prelude::*;
 use cookie::SameSite;
 use cookie::time::Duration;
 
@@ -147,7 +147,7 @@ let secure_cookie = template.build_with_value(&token_value);
 
 **Example Permission Validation**:
 ```rust
-use axum_gate::prelude::*;
+use webgates::prelude::*;
 
 // Compile-time validation ensures no collisions
 validate_permissions![
@@ -162,7 +162,7 @@ validate_permissions![
 
 ## 6. Rate Limiting Integration
 
-While `axum-gate` doesn't provide rate limiting directly, it integrates seamlessly with `tower` middleware:
+While `webgates` doesn't provide rate limiting directly, it integrates seamlessly with `tower` middleware:
 
 ```rust
 use tower::{ServiceBuilder, limit::RateLimitLayer, buffer::BufferLayer};
@@ -224,10 +224,10 @@ let protected_routes = Router::new()
 
 ### Logout Security
 ```rust
-// Secure logout using axum-gate's built-in handler
-use axum_gate::route_handlers::logout;
+// Secure logout using webgates's built-in handler
+use webgates::route_handlers::logout;
 use axum_extra::extract::CookieJar;
-use axum_gate::prelude::*;
+use webgates::prelude::*;
 
 async fn logout_handler(cookie_jar: CookieJar) -> CookieJar {
     let cookie_template = CookieTemplate::recommended().name("auth-token");
@@ -250,8 +250,8 @@ Enable with the `prometheus` feature flag:
 
 ```rust
 // Metrics are automatically collected and can be exposed
-use axum_gate::prelude::*;
-use axum_gate::audit::prometheus_metrics;
+use webgates::prelude::*;
+use webgates::audit::prometheus_metrics;
 
 let registry = prometheus::Registry::new();
 prometheus_metrics::install_prometheus_metrics_with_registry(&registry).expect("install metrics");
@@ -266,13 +266,13 @@ let app = Router::new()
 ```
 
 **Available Metrics**:
-- `axum_gate_authz_authorized_total` - Successful authorization decisions
-- `axum_gate_authz_denied_total` - Denied authorization attempts (by reason)
-- `axum_gate_jwt_invalid_total` - Invalid JWT tokens (by failure type)
-- `axum_gate_account_delete_outcome_total` - Account deletion operations
-- `axum_gate_account_insert_outcome_total` - Account creation operations
-- `axum_gate_authz_decision_seconds` - Authorization decision latency (histogram; by outcome)
-- `axum_gate_jwt_validation_seconds` - JWT validation latency (histogram; by outcome)
+- `webgates_authz_authorized_total` - Successful authorization decisions
+- `webgates_authz_denied_total` - Denied authorization attempts (by reason)
+- `webgates_jwt_invalid_total` - Invalid JWT tokens (by failure type)
+- `webgates_account_delete_outcome_total` - Account deletion operations
+- `webgates_account_insert_outcome_total` - Account creation operations
+- `webgates_authz_decision_seconds` - Authorization decision latency (histogram; by outcome)
+- `webgates_jwt_validation_seconds` - JWT validation latency (histogram; by outcome)
 
 **Current Monitoring Setup**:
 ```rust
@@ -392,14 +392,14 @@ match auth_result {
 ```rust
 // Production-safe feature configuration
 [dependencies]
-axum-gate = {
+webgates = {
     version = "2.0.0-dev",
     features = ["storage-surrealdb", "audit-logging", "prometheus"]
 }
 
 // Development configuration (faster hashing automatically enabled in debug builds)
 [dev-dependencies]
-axum-gate = { version = "2.0.0-dev", features = ["storage-surrealdb"] }
+webgates = { version = "2.0.0-dev", features = ["storage-surrealdb"] }
 ```
 
 ---
@@ -423,7 +423,7 @@ axum-gate = { version = "2.0.0-dev", features = ["storage-surrealdb"] }
 - **Public Disclosure**: After fix is released and users have time to update
 
 ### Security Advisory Publication
-- Published on [GitHub Security Advisories](https://github.com/emirror-de/axum-gate/security/advisories)
+- Published on [GitHub Security Advisories](https://github.com/emirror-de/webgates/security/advisories)
 - Cross-posted to [RustSec Advisory Database](https://rustsec.org/)
 - Included in release changelog with CVE reference if applicable
 
@@ -485,6 +485,6 @@ cargo clippy -- -D warnings
 
 ---
 
-**Stay Secure**: `axum-gate` v2.0.0-dev provides a robust security foundation with production-ready features. Defense-in-depth requires combining it with proper infrastructure hardening, monitoring, and operational security practices.
+**Stay Secure**: `webgates` v2.0.0-dev provides a robust security foundation with production-ready features. Defense-in-depth requires combining it with proper infrastructure hardening, monitoring, and operational security practices.
 
-For the latest security updates and best practices, monitor the [GitHub repository](https://github.com/emirror-de/axum-gate) and [security advisories](https://github.com/emirror-de/axum-gate/security/advisories).
+For the latest security updates and best practices, monitor the [GitHub repository](https://github.com/emirror-de/webgates) and [security advisories](https://github.com/emirror-de/webgates/security/advisories).

@@ -14,13 +14,13 @@
 // - GET /logout -> clears the session cookie.
 //
 // Running
-// - Ensure AXUM_GATE_SHARED_SECRET is set (a .env is provided in this example).
+// - Ensure webgates_SHARED_SECRET is set (a .env is provided in this example).
 // - From this example directory, run: cargo run
-use axum_gate::accounts::AccountInsertService;
-use axum_gate::authz::{AccessHierarchy, AccessPolicy};
-use axum_gate::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
-use axum_gate::prelude::{Account, Credentials, Gate};
-use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+use webgates::accounts::AccountInsertService;
+use webgates::authz::{AccessHierarchy, AccessPolicy};
+use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
+use webgates::prelude::{Account, Credentials, Gate};
+use webgates::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
 
 use std::sync::Arc;
 
@@ -252,15 +252,15 @@ async fn main() {
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
-    // Load .env; AXUM_GATE_SHARED_SECRET must be set (and shared between login and verification).
+    // Load .env; webgates_SHARED_SECRET must be set (and shared between login and verification).
     dotenvy::dotenv().expect("Could not read .env file.");
     let shared_secret =
-        dotenvy::var("AXUM_GATE_SHARED_SECRET").expect("AXUM_GATE_SHARED_SECRET env var not set.");
+        dotenvy::var("webgates_SHARED_SECRET").expect("webgates_SHARED_SECRET env var not set.");
     let jwt_options = JsonWebTokenOptions {
-        enc_key: axum_gate::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: axum_gate::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
-        header: Some(axum_gate::jsonwebtoken::Header::default()),
-        validation: Some(axum_gate::jsonwebtoken::Validation::default()),
+        enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        header: Some(webgates::jsonwebtoken::Header::default()),
+        validation: Some(webgates::jsonwebtoken::Validation::default()),
     };
     let jwt_codec = Arc::new(JsonWebToken::<
         JwtClaims<Account<CustomRoleDefinition, CustomGroupDefinition>>,
@@ -307,7 +307,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted User.");
 
-    let cookie_template = axum_gate::cookie_template::CookieTemplate::recommended(); // secure defaults for the session cookie
+    let cookie_template = webgates::cookie_template::CookieTemplate::recommended(); // secure defaults for the session cookie
 
     let app = Router::new()
         .route("/admin", get(admin))
@@ -360,7 +360,7 @@ async fn main() {
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar, Json(credentials): Json<Credentials<String>>| {
-                    axum_gate::route_handlers::login(
+                    webgates::route_handlers::login(
                         cookie_jar,
                         credentials,
                         registered_claims,
@@ -377,7 +377,7 @@ async fn main() {
             get({
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar| async move {
-                    let jar = axum_gate::route_handlers::logout(cookie_jar, cookie_template).await;
+                    let jar = webgates::route_handlers::logout(cookie_jar, cookie_template).await;
                     (jar, axum::response::Redirect::to("/"))
                 }
             }),

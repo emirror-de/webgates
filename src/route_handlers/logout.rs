@@ -17,9 +17,9 @@ use axum_extra::extract::CookieJar;
 ///
 /// # Example
 /// ```rust
-/// use axum_gate::route_handlers::logout;
+/// use webgates::route_handlers::logout;
 /// use axum_extra::extract::CookieJar;
-/// use axum_gate::cookie_template::CookieTemplate;
+/// use webgates::cookie_template::CookieTemplate;
 ///
 /// async fn logout_handler(cookie_jar: CookieJar) -> CookieJar {
 ///     let cookie_template = CookieTemplate::recommended().name("auth-token");

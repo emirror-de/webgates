@@ -31,7 +31,7 @@
 ///
 /// # Example
 /// ```
-/// use axum_gate::verification_result::VerificationResult;
+/// use webgates::verification_result::VerificationResult;
 ///
 /// fn check(match_flag: bool) -> VerificationResult {
 ///     VerificationResult::from(match_flag)

@@ -2,7 +2,7 @@
 //!
 //! This module provides the [`Codec`] trait for pluggable token encoding/decoding and
 //! a complete JWT implementation via the [`jwt`] submodule. The codec system allows
-//! axum-gate to work with different token formats while maintaining type safety.
+//! webgates to work with different token formats while maintaining type safety.
 //!
 //! # JWT Implementation
 //!
@@ -10,9 +10,9 @@
 //! encoding/decoding with customizable keys and validation:
 //!
 //! ```rust
-//! use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims, JsonWebTokenOptions};
-//! use axum_gate::accounts::Account;
-//! use axum_gate::prelude::{Role, Group};
+//! use webgates::codecs::jwt::{JsonWebToken, JwtClaims, JsonWebTokenOptions};
+//! use webgates::accounts::Account;
+//! use webgates::prelude::{Role, Group};
 //! use std::sync::Arc;
 //!
 //! // Use default (random key - development only)
@@ -33,8 +33,8 @@
 //! Implement the [`Codec`] trait for custom token formats:
 //!
 //! ```rust
-//! use axum_gate::codecs::Codec;
-//! use axum_gate::errors::Result;
+//! use webgates::codecs::Codec;
+//! use webgates::errors::Result;
 //! use serde::{Serialize, Deserialize};
 //!
 //! #[derive(Clone)]

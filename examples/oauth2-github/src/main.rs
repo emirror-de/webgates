@@ -5,11 +5,11 @@ use axum::{
     routing::get,
 };
 
-use axum_gate::accounts::{Account, AccountRepository};
-use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
-use axum_gate::cookie;
-use axum_gate::prelude::{AccessPolicy, Gate, Group, Role};
-use axum_gate::repositories::memory::MemoryAccountRepository;
+use webgates::accounts::{Account, AccountRepository};
+use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
+use webgates::cookie;
+use webgates::prelude::{AccessPolicy, Gate, Group, Role};
+use webgates::repositories::memory::MemoryAccountRepository;
 use dotenvy::dotenv;
 use oauth2::TokenResponse;
 use std::env;
@@ -41,14 +41,14 @@ impl<R, G, Inner> LoggingAccountRepository<R, G, Inner> {
 
 impl<R, G, Inner> AccountRepository<R, G> for LoggingAccountRepository<R, G, Inner>
 where
-    R: axum_gate::authz::AccessHierarchy + Eq + std::fmt::Display + Send + Sync + 'static,
+    R: webgates::authz::AccessHierarchy + Eq + std::fmt::Display + Send + Sync + 'static,
     G: Eq + Clone + Send + Sync + 'static,
     Inner: AccountRepository<R, G> + Send + Sync + 'static,
 {
     async fn store_account(
         &self,
         account: Account<R, G>,
-    ) -> axum_gate::errors::Result<Option<Account<R, G>>> {
+    ) -> webgates::errors::Result<Option<Account<R, G>>> {
         let res = self.inner.store_account(account).await?;
         if let Some(ref acc) = res {
             info!(user_id = %acc.user_id, account_id = %acc.account_id, "OAuth2: new account inserted");
@@ -59,21 +59,21 @@ where
     async fn delete_account(
         &self,
         account_id: &uuid::Uuid,
-    ) -> axum_gate::errors::Result<Option<Account<R, G>>> {
+    ) -> webgates::errors::Result<Option<Account<R, G>>> {
         self.inner.delete_account(account_id).await
     }
 
     async fn update_account(
         &self,
         account: Account<R, G>,
-    ) -> axum_gate::errors::Result<Option<Account<R, G>>> {
+    ) -> webgates::errors::Result<Option<Account<R, G>>> {
         self.inner.update_account(account).await
     }
 
     async fn query_account_by_user_id(
         &self,
         user_id: &str,
-    ) -> axum_gate::errors::Result<Option<Account<R, G>>> {
+    ) -> webgates::errors::Result<Option<Account<R, G>>> {
         let res = self.inner.query_account_by_user_id(user_id).await?;
         if let Some(ref acc) = res {
             info!(user_id = %acc.user_id, account_id = %acc.account_id, "OAuth2: existing account queried");
@@ -84,7 +84,7 @@ where
     async fn query_account_by_id(
         &self,
         account_id: &uuid::Uuid,
-    ) -> axum_gate::errors::Result<Option<Account<R, G>>> {
+    ) -> webgates::errors::Result<Option<Account<R, G>>> {
         let res = self.inner.query_account_by_id(account_id).await?;
         if let Some(ref acc) = res {
             info!(user_id = %acc.user_id, account_id = %acc.account_id, "OAuth2: existing account queried by id");
@@ -92,7 +92,7 @@ where
         Ok(res)
     }
 
-    async fn query_all_accounts(&self) -> axum_gate::errors::Result<Vec<Account<R, G>>> {
+    async fn query_all_accounts(&self) -> webgates::errors::Result<Vec<Account<R, G>>> {
         let res = self.inner.query_all_accounts().await?;
         info!(count = res.len(), "OAuth2: queried all accounts");
         Ok(res)
@@ -125,9 +125,9 @@ async fn main() {
     // Build a JWT codec with a persistent symmetric key (from env for demo)
     let jwt_codec = Arc::new(
         JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
-            axum_gate::codecs::jwt::JsonWebTokenOptions {
-                enc_key: axum_gate::jsonwebtoken::EncodingKey::from_secret(jwt_secret.as_bytes()),
-                dec_key: axum_gate::jsonwebtoken::DecodingKey::from_secret(jwt_secret.as_bytes()),
+            webgates::codecs::jwt::JsonWebTokenOptions {
+                enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(jwt_secret.as_bytes()),
+                dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(jwt_secret.as_bytes()),
                 header: None,
                 validation: None,
             },
@@ -152,7 +152,7 @@ async fn main() {
     //  - https://api.github.com/user
     //  - https://api.github.com/user/emails (optional)
     // and uses the GitHub username as the Account user_id.
-    let oauth2_gate = axum_gate::gate::oauth2::OAuth2Gate::<Role, Group>::new()
+    let oauth2_gate = webgates::gate::oauth2::OAuth2Gate::<Role, Group>::new()
         .auth_url("https://github.com/login/oauth/authorize")
         .token_url("https://github.com/login/oauth/access_token")
         .client_id(github_client_id)
@@ -175,7 +175,7 @@ async fn main() {
                     .get("https://api.github.com/user")
                     .header("Authorization", format!("Bearer {}", access_token))
                     .header("Accept", "application/vnd.github+json")
-                    .header("User-Agent", "axum-gate-oauth2-github-example")
+                    .header("User-Agent", "webgates-oauth2-github-example")
                     .send()
                     .await
                 {
@@ -228,8 +228,8 @@ async fn main() {
                 let name = auth_cookie_name.clone();
                 move |cookie_jar| async move {
                     let cookie_template =
-                        axum_gate::cookie_template::CookieTemplate::recommended().name(name);
-                    let jar = axum_gate::route_handlers::logout(cookie_jar, cookie_template).await;
+                        webgates::cookie_template::CookieTemplate::recommended().name(name);
+                    let jar = webgates::route_handlers::logout(cookie_jar, cookie_template).await;
                     (jar, axum::response::Redirect::to("/"))
                 }
             }),
@@ -263,7 +263,7 @@ async fn homepage(Extension(opt_user): Extension<Option<Account<Role, Group>>>) 
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>axum-gate: GitHub OAuth2 Example</title>
+  <title>webgates: GitHub OAuth2 Example</title>
   <style>
     body { font-family: system-ui, Arial, sans-serif; margin: 2rem; }
     .btn { display: inline-block; padding: 0.6rem 1rem; background: #24292f; color: #fff; border-radius: 6px; text-decoration: none; }
@@ -273,7 +273,7 @@ async fn homepage(Extension(opt_user): Extension<Option<Account<Role, Group>>>) 
   </style>
 </head>
 <body>
-  <h1>axum-gate: GitHub OAuth2 Example</h1>
+  <h1>webgates: GitHub OAuth2 Example</h1>
   <p>This example demonstrates using GitHub as an OAuth2 provider to mint a first‑party JWT cookie.</p>
   <p><a class="btn" href="/auth/login">Login with GitHub</a></p>
 "#;

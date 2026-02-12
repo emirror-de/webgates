@@ -12,12 +12,12 @@
 //!
 //! Detect a permission hash collision:
 //! ```rust
-//! use axum_gate::authz::AuthzError;
-//! use axum_gate::errors::UserFriendlyError;
+//! use webgates::authz::AuthzError;
+//! use webgates::errors::UserFriendlyError;
 //!
 //! let err = AuthzError::collision(42, vec!["read:alpha".into(), "read:beta".into()]);
 //! assert!(err.support_code().starts_with("AUTHZ-PERM-COLLISION-"));
-//! assert_eq!(err.severity(), axum_gate::errors::ErrorSeverity::Critical);
+//! assert_eq!(err.severity(), webgates::errors::ErrorSeverity::Critical);
 //! ```
 
 use crate::errors::{ErrorSeverity, UserFriendlyError};

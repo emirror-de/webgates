@@ -11,7 +11,7 @@
 //! - Keep spans/events coarse and avoid leaking internal state.
 //!
 //! Enable via Cargo features (in the depending crate):
-//! - `axum-gate = { version = "1", features = ["audit-logging"] }`
+//! - `webgates = { version = "1", features = ["audit-logging"] }`
 //!
 //! Environment and subscriber configuration are left to the application.
 
@@ -21,7 +21,7 @@ use uuid::Uuid;
 #[cfg(feature = "prometheus")]
 use std::time::Instant;
 
-const TARGET: &str = "axum_gate::audit";
+const TARGET: &str = "webgates::audit";
 
 /// Creates a request-scoped span with basic HTTP metadata.
 ///
@@ -295,7 +295,7 @@ pub fn observe_authz_latency(start: Instant, outcome: AuthzOutcome) {
 }
 
 #[cfg(feature = "prometheus")]
-/// Prometheus metrics integration for axum-gate authentication events.
+/// Prometheus metrics integration for webgates authentication events.
 ///
 /// This module provides Prometheus metrics collection for monitoring authentication
 /// and authorization events. Metrics include authorization decisions, JWT validation
@@ -308,7 +308,7 @@ pub fn observe_authz_latency(start: Instant, outcome: AuthzOutcome) {
 /// # Usage
 ///
 /// ```rust
-/// use axum_gate::audit::prometheus_metrics;
+/// use webgates::audit::prometheus_metrics;
 /// # fn main() -> Result<(), prometheus::Error> {
 /// // Install metrics into the default registry
 /// prometheus_metrics::install_prometheus_metrics()?;
@@ -378,7 +378,7 @@ pub mod prometheus_metrics {
     }
 
     impl JwtValidationOutcome {
-        #[doc = "Returns the stable label value used in `axum_gate_jwt_validation_seconds`."]
+        #[doc = "Returns the stable label value used in `webgates_jwt_validation_seconds`."]
         pub fn as_label(&self) -> &'static str {
             match self {
                 JwtValidationOutcome::Valid => "valid",
@@ -388,7 +388,7 @@ pub mod prometheus_metrics {
         }
     }
 
-    /// Collection of Prometheus metrics for axum-gate operations.
+    /// Collection of Prometheus metrics for webgates operations.
     pub struct Metrics {
         /// Counter for successful authorization decisions.
         pub authz_authorized: Counter,
@@ -434,13 +434,13 @@ pub mod prometheus_metrics {
         }
 
         let authz_authorized = Counter::new(
-            "axum_gate_authz_authorized_total",
+            "webgates_authz_authorized_total",
             "Total number of successful authorization decisions",
         )?;
 
         let authz_denied = CounterVec::new(
             prometheus::Opts::new(
-                "axum_gate_authz_denied_total",
+                "webgates_authz_denied_total",
                 "Total number of denied authorization attempts",
             ),
             &["reason"],
@@ -448,7 +448,7 @@ pub mod prometheus_metrics {
 
         let jwt_invalid = CounterVec::new(
             prometheus::Opts::new(
-                "axum_gate_jwt_invalid_total",
+                "webgates_jwt_invalid_total",
                 "Total number of invalid JWT tokens",
             ),
             &["kind"],
@@ -456,7 +456,7 @@ pub mod prometheus_metrics {
 
         let account_delete_outcome = CounterVec::new(
             prometheus::Opts::new(
-                "axum_gate_account_delete_outcome_total",
+                "webgates_account_delete_outcome_total",
                 "Total number of account deletion operations",
             ),
             &["outcome", "secret_restored"],
@@ -464,7 +464,7 @@ pub mod prometheus_metrics {
 
         let account_insert_outcome = CounterVec::new(
             prometheus::Opts::new(
-                "axum_gate_account_insert_outcome_total",
+                "webgates_account_insert_outcome_total",
                 "Total number of account insertion operations",
             ),
             &["outcome", "reason"],
@@ -472,7 +472,7 @@ pub mod prometheus_metrics {
 
         let authz_decision_latency = HistogramVec::new(
             HistogramOpts::new(
-                "axum_gate_authz_decision_seconds",
+                "webgates_authz_decision_seconds",
                 "Authorization decision latency in seconds",
             )
             .buckets(vec![
@@ -483,7 +483,7 @@ pub mod prometheus_metrics {
 
         let jwt_validation_latency = HistogramVec::new(
             HistogramOpts::new(
-                "axum_gate_jwt_validation_seconds",
+                "webgates_jwt_validation_seconds",
                 "JWT validation latency in seconds",
             )
             .buckets(vec![

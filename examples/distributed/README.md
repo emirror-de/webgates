@@ -1,6 +1,6 @@
-# `axum-gate` Distributed System Example with Nested Enum Permissions
+# `webgates` Distributed System Example with Nested Enum Permissions
 
-This example demonstrates how to use `axum-gate` within a distributed system where all nodes share the same secret for encryption, featuring a type-safe nested enum permission system with strum serialization.
+This example demonstrates how to use `webgates` within a distributed system where all nodes share the same secret for encryption, featuring a type-safe nested enum permission system with strum serialization.
 
 ## Features
 
@@ -26,7 +26,7 @@ This example is intended to be exercised using an external HTTP client such as I
 - Create an `.env` file in this directory with a strong shared secret:
 
 ```env
-AXUM_GATE_SHARED_SECRET=your-super-secret-key-here-make-it-long-and-random
+webgates_SHARED_SECRET=your-super-secret-key-here-make-it-long-and-random
 ```
 
 2) Start the Auth Node

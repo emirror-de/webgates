@@ -62,7 +62,7 @@ impl RegisteredClaims {
     }
 }
 
-/// Combination of claims used within `axum-gate` and encoded with [JsonWebToken] codec.
+/// Combination of claims used within `webgates` and encoded with [JsonWebToken] codec.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct JwtClaims<CustomClaims> {
     /// The registered claims of a JWT.
@@ -171,9 +171,9 @@ impl JsonWebTokenOptions {
 /// ## Providing a Persistent Symmetric Key
 /// ```rust
 /// use std::sync::Arc;
-/// use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims, JsonWebTokenOptions};
-/// use axum_gate::accounts::Account;
-/// use axum_gate::prelude::{Role, Group};
+/// use webgates::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims, JsonWebTokenOptions};
+/// use webgates::accounts::Account;
+/// use webgates::prelude::{Role, Group};
 /// use jsonwebtoken::{EncodingKey, DecodingKey};
 ///
 /// // For the example we define a stable secret. In real code, load from env or secret manager.

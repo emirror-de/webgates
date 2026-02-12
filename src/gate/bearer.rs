@@ -30,7 +30,7 @@
 //! ```rust
 //! use std::sync::Arc;
 //! use axum::Router;
-//! use axum_gate::prelude::*;
+//! use webgates::prelude::*;
 //! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
 //! let router = Router::<()>::new();
@@ -42,7 +42,7 @@
 //! Example (JWT optional):
 //! ```rust
 //! use std::sync::Arc;
-//! use axum_gate::prelude::*;
+//! use webgates::prelude::*;
 //! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
 //! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("my-app", codec)
@@ -52,7 +52,7 @@
 //! Transition to static token mode (compile-time change of available methods):
 //! ```rust
 //! use std::sync::Arc;
-//! use axum_gate::prelude::*;
+//! use webgates::prelude::*;
 //! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
 //! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("svc-a", codec)
@@ -62,7 +62,7 @@
 //! Static token optional:
 //! ```rust
 //! use std::sync::Arc;
-//! use axum_gate::prelude::*;
+//! use webgates::prelude::*;
 //! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
 //! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("svc-a", codec)
@@ -72,7 +72,7 @@
 //!
 //! Handler extraction (static token optional):
 //! ```rust
-//! use axum_gate::gate::bearer::StaticTokenAuthorized;
+//! use webgates::gate::bearer::StaticTokenAuthorized;
 //!
 //! async fn handler(
 //!     axum::Extension(token_auth): axum::Extension<StaticTokenAuthorized>

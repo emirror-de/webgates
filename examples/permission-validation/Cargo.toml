@@ -5,7 +5,7 @@ edition = "2024"
 license = "MIT"
 
 [dependencies]
-axum-gate = { path = "../../" }
+webgates = { path = "../../" }
 serde = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }

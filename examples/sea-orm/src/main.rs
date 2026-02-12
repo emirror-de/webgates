@@ -1,10 +1,10 @@
-use axum_gate::accounts::AccountInsertService;
-use axum_gate::accounts::AccountRepository;
-use axum_gate::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
-use axum_gate::hashing::argon2::Argon2Hasher;
-use axum_gate::prelude::*;
-use axum_gate::repositories::sea_orm::SeaOrmRepository;
-use axum_gate::secrets::{Secret, SecretRepository};
+use webgates::accounts::AccountInsertService;
+use webgates::accounts::AccountRepository;
+use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
+use webgates::hashing::argon2::Argon2Hasher;
+use webgates::prelude::*;
+use webgates::repositories::sea_orm::SeaOrmRepository;
+use webgates::secrets::{Secret, SecretRepository};
 
 use std::sync::Arc;
 
@@ -23,14 +23,14 @@ const DATABASE_URL: &str = "sqlite::memory:";
 async fn setup_database_schema(db: &DatabaseConnection) {
     let schema = Schema::new(DbBackend::Sqlite);
     let stmt = schema
-        .create_table_from_entity(axum_gate::repositories::sea_orm::models::credentials::Entity);
+        .create_table_from_entity(webgates::repositories::sea_orm::models::credentials::Entity);
     // execute the statement using the connection's execute method
     db.execute(&stmt)
         .await
         .expect("Could not create credentials table");
 
     let stmt =
-        schema.create_table_from_entity(axum_gate::repositories::sea_orm::models::account::Entity);
+        schema.create_table_from_entity(webgates::repositories::sea_orm::models::account::Entity);
     db.execute(&stmt)
         .await
         .expect("Could not create account table");
@@ -57,12 +57,12 @@ async fn main() {
 
     dotenvy::dotenv().expect("Could not read .env file.");
     let shared_secret =
-        dotenvy::var("AXUM_GATE_SHARED_SECRET").expect("AXUM_GATE_SHARED_SECRET env var not set.");
+        dotenvy::var("webgates_SHARED_SECRET").expect("webgates_SHARED_SECRET env var not set.");
     let jwt_options = JsonWebTokenOptions {
-        enc_key: axum_gate::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: axum_gate::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
-        header: Some(axum_gate::jsonwebtoken::Header::default()),
-        validation: Some(axum_gate::jsonwebtoken::Validation::default()),
+        enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        header: Some(webgates::jsonwebtoken::Header::default()),
+        validation: Some(webgates::jsonwebtoken::Validation::default()),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
@@ -112,7 +112,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted User.");
 
-    let cookie_template = axum_gate::cookie_template::CookieTemplate::recommended();
+    let cookie_template = webgates::cookie_template::CookieTemplate::recommended();
 
     let app = Router::new()
         .route(
@@ -128,7 +128,7 @@ async fn main() {
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar, Json(credentials): Json<Credentials<String>>| {
-                    axum_gate::route_handlers::login(
+                    webgates::route_handlers::login(
                         cookie_jar,
                         credentials,
                         registered_claims,
@@ -142,7 +142,7 @@ async fn main() {
         )
         .route(
             "/logout",
-            get(move |cookie_jar| axum_gate::route_handlers::logout(cookie_jar, cookie_template)),
+            get(move |cookie_jar| webgates::route_handlers::logout(cookie_jar, cookie_template)),
         )
         .route(
             "/password",
@@ -151,7 +151,7 @@ async fn main() {
                 let secrets_repository = Arc::clone(&secrets_repository);
                 move |Json(body): Json<PasswordUpdate>| async move {
                     let Some(account): std::option::Option<
-                        axum_gate::accounts::Account<Role, Group>,
+                        webgates::accounts::Account<Role, Group>,
                     > = account_repository
                         .query_account_by_user_id(&body.user_id)
                         .await

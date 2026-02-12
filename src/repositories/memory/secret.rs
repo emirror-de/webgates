@@ -28,9 +28,9 @@ use uuid::Uuid;
 ///
 /// # Example Usage
 /// ```rust
-/// use axum_gate::prelude::Credentials;
-/// use axum_gate::secrets::Secret; use axum_gate::verification_result::VerificationResult; use axum_gate::hashing::argon2::Argon2Hasher; use axum_gate::secrets::SecretRepository; use axum_gate::credentials::CredentialsVerifier;
-/// use axum_gate::repositories::memory::MemorySecretRepository;
+/// use webgates::prelude::Credentials;
+/// use webgates::secrets::Secret; use webgates::verification_result::VerificationResult; use webgates::hashing::argon2::Argon2Hasher; use webgates::secrets::SecretRepository; use webgates::credentials::CredentialsVerifier;
+/// use webgates::repositories::memory::MemorySecretRepository;
 /// use uuid::Uuid;
 ///
 /// # tokio_test::block_on(async {
@@ -55,8 +55,8 @@ use uuid::Uuid;
 ///
 /// # Creating from Existing Data
 /// ```rust
-/// use axum_gate::secrets::Secret; use axum_gate::hashing::argon2::Argon2Hasher;
-/// use axum_gate::repositories::memory::MemorySecretRepository;
+/// use webgates::secrets::Secret; use webgates::hashing::argon2::Argon2Hasher;
+/// use webgates::repositories::memory::MemorySecretRepository;
 /// use uuid::Uuid;
 ///
 /// let secrets = vec![

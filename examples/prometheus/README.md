@@ -1,10 +1,10 @@
 # Prometheus Integration Example
 
-This example demonstrates how to integrate `axum-gate` with Prometheus metrics to monitor authentication and authorization events.
+This example demonstrates how to integrate `webgates` with Prometheus metrics to monitor authentication and authorization events.
 
 ## Features
 
-- **Built-in Metrics**: Enables axum-gate's built-in Prometheus metrics for audit logging
+- **Built-in Metrics**: Enables webgates's built-in Prometheus metrics for audit logging
 - **Custom Metrics**: Shows how to add your own application-specific metrics
 - **Metrics Endpoint**: Exposes a `/metrics` endpoint for Prometheus scraping
 - **Authorization Tracking**: Monitors successful and failed authorization attempts
@@ -13,13 +13,13 @@ This example demonstrates how to integrate `axum-gate` with Prometheus metrics t
 
 ## Built-in Metrics
 
-When the `prometheus` feature is enabled, axum-gate automatically tracks:
+When the `prometheus` feature is enabled, webgates automatically tracks:
 
-- `axum_gate_authz_authorized_total` - Successful authorization decisions
-- `axum_gate_authz_denied_total{reason}` - Failed authorizations with reason codes
-- `axum_gate_jwt_invalid_total{kind}` - JWT validation failures (issuer/token)
-- `axum_gate_account_delete_outcome_total{outcome,secret_restored}` - Account deletion events
-- `axum_gate_account_insert_outcome_total{outcome,reason}` - Account creation events
+- `webgates_authz_authorized_total` - Successful authorization decisions
+- `webgates_authz_denied_total{reason}` - Failed authorizations with reason codes
+- `webgates_jwt_invalid_total{kind}` - JWT validation failures (issuer/token)
+- `webgates_account_delete_outcome_total{outcome,secret_restored}` - Account deletion events
+- `webgates_account_insert_outcome_total{outcome,reason}` - Account creation events
 
 ## Running the Example
 
@@ -54,14 +54,14 @@ Gate::cookie("my-app", jwt_codec)
 
 ### Custom Metrics
 
-The example also shows how to add your own metrics alongside axum-gate's built-in ones:
+The example also shows how to add your own metrics alongside webgates's built-in ones:
 
 ```rust
 let login_attempts = Counter::with_opts(
     Opts::new("myapp_login_attempts_total", "Total login attempts")
 ).unwrap();
 
-// Register with the same registry used by axum-gate
+// Register with the same registry used by webgates
 registry.register(Box::new(login_attempts.clone())).unwrap();
 ```
 
@@ -94,7 +94,7 @@ Add this scrape config to your `prometheus.yml`:
 
 ```yaml
 scrape_configs:
-  - job_name: 'axum-gate-example'
+  - job_name: 'webgates-example'
     static_configs:
       - targets: ['localhost:3000']
     metrics_path: '/metrics'
@@ -125,6 +125,6 @@ In production:
 This example requires the `prometheus` feature:
 
 ```toml
-axum-gate = { version = "2.0.0-dev", features = ["prometheus"] }
+webgates = { version = "2.0.0-dev", features = ["prometheus"] }
 prometheus = "0.13"
 ```

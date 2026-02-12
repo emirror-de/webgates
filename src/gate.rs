@@ -8,7 +8,7 @@
 //!
 //! ```rust
 //! use axum::{routing::get, Router};
-//! use axum_gate::prelude::*;
+//! use webgates::prelude::*;
 //! use std::sync::Arc;
 //!
 //! # async fn protected_handler() -> &'static str { "Protected!" }
@@ -30,7 +30,7 @@
 //!
 //! ## Role-Based Access
 //! ```rust
-//! # use axum_gate::prelude::*;
+//! # use webgates::prelude::*;
 //! # use std::sync::Arc;
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! // Allow only Admin role
@@ -47,7 +47,7 @@
 //!
 //! ## Hierarchical Access
 //! ```rust
-//! # use axum_gate::prelude::*;
+//! # use webgates::prelude::*;
 //! # use std::sync::Arc;
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! // Allow User role and all supervisor roles (Reporter, Moderator, Admin)
@@ -57,7 +57,7 @@
 //!
 //! ## Permission-Based Access
 //! ```rust
-//! # use axum_gate::prelude::*;
+//! # use webgates::prelude::*;
 //! # use std::sync::Arc;
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::cookie("my-app", jwt_codec)
@@ -69,7 +69,7 @@
 //! Strict bearer (JWT) example:
 //! ```rust
 //! # use axum::{routing::get, Router};
-//! # use axum_gate::prelude::*;
+//! # use webgates::prelude::*;
 //! # use std::sync::Arc;
 //! # async fn handler() {}
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
@@ -83,7 +83,7 @@
 //!
 //! Optional user context (never blocks; handlers must enforce access):
 //! ```rust
-//! # use axum_gate::prelude::*;
+//! # use webgates::prelude::*;
 //! # use std::sync::Arc;
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::bearer::<JsonWebToken<JwtClaims<Account<Role, Group>>>, Role, Group>("my-app", jwt).allow_anonymous_with_optional_user();
@@ -129,7 +129,7 @@ impl Gate {
     ///
     /// # Example
     /// ```rust
-    /// # use axum_gate::prelude::*;
+    /// # use webgates::prelude::*;
     /// # use std::sync::Arc;
     /// let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     /// let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin);

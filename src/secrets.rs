@@ -31,8 +31,8 @@ mod secret_repository;
 /// Secrets are typically created during user registration and verified during login:
 ///
 /// ```rust
-/// use axum_gate::secrets::Secret; use axum_gate::hashing::argon2::Argon2Hasher; use axum_gate::verification_result::VerificationResult;
-/// use axum_gate::accounts::AccountInsertService;
+/// use webgates::secrets::Secret; use webgates::hashing::argon2::Argon2Hasher; use webgates::verification_result::VerificationResult;
+/// use webgates::accounts::AccountInsertService;
 /// use uuid::Uuid;
 ///
 /// # tokio_test::block_on(async {
@@ -116,7 +116,7 @@ impl Secret {
     /// # Example
     ///
     /// ```rust
-    /// use axum_gate::secrets::Secret; use axum_gate::hashing::argon2::Argon2Hasher;
+    /// use webgates::secrets::Secret; use webgates::hashing::argon2::Argon2Hasher;
     /// use uuid::Uuid;
     ///
     /// # tokio_test::block_on(async {
@@ -177,7 +177,7 @@ impl Secret {
     /// # Example
     ///
     /// ```rust
-    /// use axum_gate::secrets::Secret; use axum_gate::hashing::argon2::Argon2Hasher; use axum_gate::hashing::HashedValue;
+    /// use webgates::secrets::Secret; use webgates::hashing::argon2::Argon2Hasher; use webgates::hashing::HashedValue;
     /// use uuid::Uuid;
     ///
     /// # tokio_test::block_on(async {
@@ -237,7 +237,7 @@ impl Secret {
     /// # Example
     ///
     /// ```rust
-    /// use axum_gate::secrets::Secret; use axum_gate::hashing::argon2::Argon2Hasher; use axum_gate::verification_result::VerificationResult;
+    /// use webgates::secrets::Secret; use webgates::hashing::argon2::Argon2Hasher; use webgates::verification_result::VerificationResult;
     /// use uuid::Uuid;
     ///
     /// # tokio_test::block_on(async {

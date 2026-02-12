@@ -16,8 +16,8 @@
 //! ## 1. Validating Permissions at Compile Time
 //!
 //! ```rust
-//! use axum_gate::permissions::PermissionId;
-//! axum_gate::validate_permissions![
+//! use webgates::permissions::PermissionId;
+//! webgates::validate_permissions![
 //!     "read:resource1",
 //!     "write:resource1",
 //!     "admin:system",
@@ -27,9 +27,9 @@
 //! ## 2. Working with Account Permissions
 //!
 //! ```rust
-//! use axum_gate::permissions::{PermissionId, Permissions};
-//! use axum_gate::accounts::Account;
-//! use axum_gate::prelude::{Role, Group};
+//! use webgates::permissions::{PermissionId, Permissions};
+//! use webgates::accounts::Account;
+//! use webgates::prelude::{Role, Group};
 //!
 //! let mut account = Account::<Role, Group>::new("user123", &[Role::User], &[Group::new("staff")]);
 //!
@@ -49,11 +49,11 @@
 //! ## 3. Using Permissions with Access Policies
 //!
 //! ```rust
-//! use axum_gate::authz::AccessPolicy;
-//! use axum_gate::permissions::PermissionId;
-//! use axum_gate::prelude::{Gate, Role, Group};
-//! use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
-//! use axum_gate::accounts::Account;
+//! use webgates::authz::AccessPolicy;
+//! use webgates::permissions::PermissionId;
+//! use webgates::prelude::{Gate, Role, Group};
+//! use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
+//! use webgates::accounts::Account;
 //! use std::sync::Arc;
 //! use axum::{routing::get, Router};
 //!
@@ -75,7 +75,7 @@
 //! ## 4. Working with Permission Collections
 //!
 //! ```rust
-//! use axum_gate::permissions::Permissions;
+//! use webgates::permissions::Permissions;
 //!
 //! // Create permissions from an iterator
 //! let permissions: Permissions = ["read:api", "write:api", "admin:system"].into_iter().collect();
@@ -95,9 +95,9 @@
 //! Define your permissions as enums, implement `AsPermissionName` to map them to stable, readable names, and use them anywhere a permission is accepted.
 //!
 //! ```rust
-//! use axum_gate::authz::AccessPolicy;
-//! use axum_gate::permissions::{AsPermissionName, Permissions};
-//! use axum_gate::prelude::{Role, Group};
+//! use webgates::authz::AccessPolicy;
+//! use webgates::permissions::{AsPermissionName, Permissions};
+//! use webgates::prelude::{Role, Group};
 //!
 //! #[derive(Debug)]
 //! enum Api {
@@ -174,7 +174,7 @@ mod validation_report;
 /// # Examples
 ///
 /// ```rust
-/// use axum_gate::permissions::Permissions;
+/// use webgates::permissions::Permissions;
 ///
 /// // Create and populate permissions
 /// let mut permissions = Permissions::new();
@@ -195,7 +195,7 @@ mod validation_report;
 /// # Builder Pattern
 ///
 /// ```rust
-/// use axum_gate::permissions::Permissions;
+/// use webgates::permissions::Permissions;
 ///
 /// let permissions = Permissions::new()
 ///     .with("read:api")
@@ -213,7 +213,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::Permissions;
+    /// use webgates::permissions::Permissions;
     ///
     /// let permissions = Permissions::new();
     /// assert!(permissions.is_empty());
@@ -231,7 +231,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::{Permissions, PermissionId};
+    /// use webgates::permissions::{Permissions, PermissionId};
     ///
     /// let mut permissions = Permissions::new();
     /// permissions
@@ -257,7 +257,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::{Permissions, PermissionId};
+    /// use webgates::permissions::{Permissions, PermissionId};
     ///
     /// let mut permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// permissions.revoke(PermissionId::from("write:profile"));
@@ -279,7 +279,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::{Permissions, PermissionId};
+    /// use webgates::permissions::{Permissions, PermissionId};
     ///
     /// let permissions: Permissions = ["read:profile"].into_iter().collect();
     ///
@@ -300,7 +300,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::{Permissions, PermissionId};
+    /// use webgates::permissions::{Permissions, PermissionId};
     ///
     /// let permissions: Permissions = [
     ///     "read:profile",
@@ -325,7 +325,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::{Permissions, PermissionId};
+    /// use webgates::permissions::{Permissions, PermissionId};
     ///
     /// let permissions: Permissions = ["read:profile"].into_iter().collect();
     ///
@@ -346,7 +346,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::Permissions;
+    /// use webgates::permissions::Permissions;
     ///
     /// let permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// assert_eq!(permissions.len(), 2);
@@ -360,7 +360,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::Permissions;
+    /// use webgates::permissions::Permissions;
     ///
     /// let permissions = Permissions::new();
     /// assert!(permissions.is_empty());
@@ -378,7 +378,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::Permissions;
+    /// use webgates::permissions::Permissions;
     ///
     /// let mut permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// assert!(!permissions.is_empty());
@@ -397,7 +397,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::Permissions;
+    /// use webgates::permissions::Permissions;
     ///
     /// let mut permissions1: Permissions = ["read:profile"].into_iter().collect();
     /// let permissions2: Permissions = ["write:profile"].into_iter().collect();
@@ -419,7 +419,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::Permissions;
+    /// use webgates::permissions::Permissions;
     ///
     /// let mut permissions1: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// let permissions2: Permissions = ["read:profile", "admin:users"].into_iter().collect();
@@ -442,7 +442,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::Permissions;
+    /// use webgates::permissions::Permissions;
     ///
     /// let mut permissions1: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// let permissions2: Permissions = ["write:profile"].into_iter().collect();
@@ -466,7 +466,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::{Permissions, PermissionId};
+    /// use webgates::permissions::{Permissions, PermissionId};
     ///
     /// let permissions = Permissions::new()
     ///     .with("read:profile")
@@ -493,7 +493,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::Permissions;
+    /// use webgates::permissions::Permissions;
     ///
     /// let permissions = Permissions::new()
     ///     .with("read:profile")
@@ -512,7 +512,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::Permissions;
+    /// use webgates::permissions::Permissions;
     ///
     /// let permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// let ids: Vec<u64> = permissions.iter().collect();
@@ -568,7 +568,7 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::permissions::Permissions;
+    /// use webgates::permissions::Permissions;
     ///
     /// let permissions: Permissions = ["read:profile", "write:profile", "read:posts"]
     ///     .into_iter()

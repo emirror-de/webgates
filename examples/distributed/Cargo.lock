@@ -134,7 +134,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "axum-gate"
+name = "webgates"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -361,7 +361,7 @@ name = "distributed"
 version = "0.1.0"
 dependencies = [
  "axum",
- "axum-gate",
+ "webgates",
  "chrono",
  "dotenv",
  "num_enum",

@@ -37,15 +37,15 @@ use uuid::Uuid;
 ///
 /// # Example (rotate secret)
 /// ```rust
-/// use axum_gate::secrets::{Secret, SecretRepository};
-/// use axum_gate::hashing::argon2::Argon2Hasher;
-/// use axum_gate::repositories::memory::MemorySecretRepository;
+/// use webgates::secrets::{Secret, SecretRepository};
+/// use webgates::hashing::argon2::Argon2Hasher;
+/// use webgates::repositories::memory::MemorySecretRepository;
 /// use uuid::Uuid;
 ///
 /// fn rotate_secret(
 ///     repo: &MemorySecretRepository,
 ///     new_secret: Secret
-/// ) -> axum_gate::errors::Result<()> {
+/// ) -> webgates::errors::Result<()> {
 ///     tokio_test::block_on(repo.update_secret(new_secret))
 /// }
 ///

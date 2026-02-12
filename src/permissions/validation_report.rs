@@ -37,7 +37,7 @@ use tracing::{info, warn};
 ///
 /// # Example
 /// ```rust
-/// use axum_gate::permissions::{PermissionCollisionChecker, ApplicationValidator};
+/// use webgates::permissions::{PermissionCollisionChecker, ApplicationValidator};
 ///
 /// // Direct checker
 /// let mut checker = PermissionCollisionChecker::new(vec![

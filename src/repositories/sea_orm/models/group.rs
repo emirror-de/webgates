@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 /// - `payload` contains the JSON serialized representation of the domain group
 ///   type T (T must implement `Serialize` and `GroupEntity`).
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "axum_gate_groups")]
+#[sea_orm(table_name = "webgates_groups")]
 pub struct Model {
     /// Surrogate primary key (auto‑increment).
     #[sea_orm(primary_key)]

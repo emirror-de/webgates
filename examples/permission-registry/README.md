@@ -1,10 +1,10 @@
 # Permission Mapping Registry Example
 
-This example demonstrates the optional permission mapping registry pattern in axum-gate, which enables reverse lookup from permission IDs back to their normalized string representations.
+This example demonstrates the optional permission mapping registry pattern in webgates, which enables reverse lookup from permission IDs back to their normalized string representations.
 
 ## Overview
 
-The axum-gate permission system uses a high-performance bitmap-based storage approach where permission strings are normalized and hashed to 64-bit IDs. While this provides excellent performance for permission checking, it means the original permission strings cannot be recovered from the stored IDs.
+The webgates permission system uses a high-performance bitmap-based storage approach where permission strings are normalized and hashed to 64-bit IDs. While this provides excellent performance for permission checking, it means the original permission strings cannot be recovered from the stored IDs.
 
 The permission mapping registry provides an optional solution that allows you to:
 
@@ -26,7 +26,7 @@ Note: The mapping stores the normalized string and the computed ID. If you need 
 ## Running the Example
 
 ```bash
-# From the axum-gate root directory
+# From the webgates root directory
 cargo run -p permission-registry-example
 ```
 
@@ -62,7 +62,7 @@ cargo run -p permission-registry-example
 Represents the mapping between a normalized permission string and its computed 64-bit ID.
 
 ```rust
-use axum_gate::permissions::mapping::PermissionMapping;
+use webgates::permissions::mapping::PermissionMapping;
 
 // Create from string (normalizes by trim + lowercase)
 let mapping = PermissionMapping::from("read:api");
@@ -77,11 +77,11 @@ println!("ID: {}", mapping.id_as_u64());                 // e.g., 44328698904532
 Repository trait for storing and retrieving mappings.
 
 ```rust
-use axum_gate::permissions::mapping::{PermissionMapping, PermissionMappingRepository};
-use axum_gate::repositories::memory::MemoryPermissionMappingRepository;
-use axum_gate::prelude::PermissionId;
+use webgates::permissions::mapping::{PermissionMapping, PermissionMappingRepository};
+use webgates::repositories::memory::MemoryPermissionMappingRepository;
+use webgates::prelude::PermissionId;
 
-# async fn demo() -> axum_gate::errors::Result<()> {
+# async fn demo() -> webgates::errors::Result<()> {
 let repo = MemoryPermissionMappingRepository::default();
 
 // Store a mapping
@@ -105,14 +105,14 @@ let has_str = repo.has_mapping_for_string("write:file").await?;
 ### Service Layer Integration
 
 ```rust
-use axum_gate::permissions::Permissions;
-use axum_gate::permissions::mapping::{PermissionMapping, PermissionMappingRepository};
+use webgates::permissions::Permissions;
+use webgates::permissions::mapping::{PermissionMapping, PermissionMappingRepository};
 
 async fn grant_permission_with_registry<Repo>(
     permissions: &mut Permissions,
     registry: &Repo,
     permission_str: &str,
-) -> axum_gate::errors::Result<()>
+) -> webgates::errors::Result<()>
 where
     Repo: PermissionMappingRepository,
 {
@@ -132,15 +132,15 @@ where
 ### Debugging and Logging
 
 ```rust
-use axum_gate::permissions::mapping::PermissionMappingRepository;
-use axum_gate::prelude::PermissionId;
+use webgates::permissions::mapping::PermissionMappingRepository;
+use webgates::prelude::PermissionId;
 use tracing::{info, warn, error};
 
 // Log granted permissions with human-readable names
 async fn log_permissions<R: PermissionMappingRepository>(
     registry: &R,
     granted_ids: impl Iterator<Item = u64>,
-) -> axum_gate::errors::Result<()> {
+) -> webgates::errors::Result<()> {
     for permission_id in granted_ids {
         let id = PermissionId::from_u64(permission_id);
         match registry.query_mapping_by_id(id).await {
@@ -156,7 +156,7 @@ async fn log_permissions<R: PermissionMappingRepository>(
 ## Available Implementations
 
 - In-Memory (`MemoryPermissionMappingRepository`)
-  - Path: `axum_gate::repositories::memory::MemoryPermissionMappingRepository`
+  - Path: `webgates::repositories::memory::MemoryPermissionMappingRepository`
   - Intended for development and small deployments
   - Lookups are O(n) (linear scan) in the in-memory implementation
 

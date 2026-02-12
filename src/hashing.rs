@@ -14,8 +14,8 @@
 //! # Quick Start
 //!
 //! ```rust
-//! use axum_gate::hashing::{HashingService, argon2::Argon2Hasher};
-//! use axum_gate::verification_result::VerificationResult;
+//! use webgates::hashing::{HashingService, argon2::Argon2Hasher};
+//! use webgates::verification_result::VerificationResult;
 //!
 //! let hasher = Argon2Hasher::new_recommended().unwrap();
 //!
@@ -81,7 +81,7 @@ pub use errors::{HashingError, HashingOperation};
 /// ## Usage
 ///
 /// ```rust
-/// use axum_gate::hashing::{argon2::Argon2Hasher, HashingService, HashedValue};
+/// use webgates::hashing::{argon2::Argon2Hasher, HashingService, HashedValue};
 ///
 /// let hasher = Argon2Hasher::new_recommended().unwrap();
 /// let hashed: HashedValue = hasher.hash_value("my_password").unwrap();
@@ -90,7 +90,7 @@ pub use errors::{HashingError, HashingOperation};
 /// println!("Hashed password: {}", hashed);
 ///
 /// // Later, verify against the stored hash
-/// use axum_gate::verification_result::VerificationResult;
+/// use webgates::verification_result::VerificationResult;
 /// let result = hasher.verify_value("my_password", &hashed).unwrap();
 /// assert_eq!(result, VerificationResult::Ok);
 /// ```

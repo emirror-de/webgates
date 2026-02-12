@@ -1,4 +1,4 @@
-# GitLab CI configuration for axum-gate
+# GitLab CI configuration for webgates
 # Runs comprehensive tests for all features and combinations
 
 variables:

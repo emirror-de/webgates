@@ -7,8 +7,8 @@
 //! - Runtime validation during application lifecycle
 //! - Error handling and reporting
 
-use axum_gate::errors::Result;
-use axum_gate::permissions::{ApplicationValidator, PermissionCollisionChecker};
+use webgates::errors::Result;
+use webgates::permissions::{ApplicationValidator, PermissionCollisionChecker};
 
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, warn};
@@ -76,8 +76,8 @@ fn example_static_validation() -> Result<()> {
                 info!("  ✅ Static validation passed");
             } else {
                 error!("  ❌ Static validation failed: {}", report.summary());
-                return Err(axum_gate::errors::Error::Permissions(
-                    axum_gate::errors::PermissionsError::collision(
+                return Err(webgates::errors::Error::Permissions(
+                    webgates::errors::PermissionsError::collision(
                         12345,
                         vec!["static_validation_failed".to_string()],
                     ),
@@ -105,8 +105,8 @@ fn example_static_validation() -> Result<()> {
                     "  ❌ ApplicationValidator validation failed: {}",
                     report.summary()
                 );
-                return Err(axum_gate::errors::Error::Permissions(
-                    axum_gate::errors::PermissionsError::collision(
+                return Err(webgates::errors::Error::Permissions(
+                    webgates::errors::PermissionsError::collision(
                         54321,
                         vec!["app_validation_failed".to_string()],
                     ),
@@ -414,8 +414,8 @@ async fn handle_validation_with_recovery(permissions: Vec<String>) -> Result<()>
             if !duplicates.is_empty() {
                 info!("    Applying automatic deduplication...");
                 // In a real application, you might implement deduplication logic here
-                return Err(axum_gate::errors::Error::Authn(
-                    axum_gate::errors::AuthnError::invalid_credentials(Some(
+                return Err(webgates::errors::Error::Authn(
+                    webgates::errors::AuthnError::invalid_credentials(Some(
                         "Duplicates found but recovery not implemented in example".to_string(),
                     )),
                 ));
@@ -423,8 +423,8 @@ async fn handle_validation_with_recovery(permissions: Vec<String>) -> Result<()>
 
             if !report.collisions.is_empty() {
                 error!("    Hash collisions detected - manual intervention required");
-                return Err(axum_gate::errors::Error::Permissions(
-                    axum_gate::errors::PermissionsError::collision(
+                return Err(webgates::errors::Error::Permissions(
+                    webgates::errors::PermissionsError::collision(
                         99999,
                         vec!["collision_detected".to_string()],
                     ),

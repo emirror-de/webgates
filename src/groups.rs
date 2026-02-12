@@ -14,9 +14,9 @@
 //! # Creating and Using Groups
 //!
 //! ```rust
-//! use axum_gate::prelude::Group;
-//! use axum_gate::authz::AccessPolicy;
-//! use axum_gate::prelude::Role;
+//! use webgates::prelude::Group;
+//! use webgates::authz::AccessPolicy;
+//! use webgates::prelude::Role;
 //!
 //! // Create groups for different organizational units
 //! let engineering = Group::new("engineering");
@@ -32,10 +32,10 @@
 //! # Group-Based Access Control
 //!
 //! ```rust
-//! use axum_gate::accounts::Account;
-//! use axum_gate::authz::AccessPolicy;
-//! use axum_gate::prelude::{Gate, Role, Group};
-//! use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
+//! use webgates::accounts::Account;
+//! use webgates::authz::AccessPolicy;
+//! use webgates::prelude::{Gate, Role, Group};
+//! use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
 //! use std::sync::Arc;
 //!
 //! // Create an account with multiple group memberships
@@ -67,7 +67,7 @@
 //! # Common Group Patterns
 //!
 //! ```rust
-//! use axum_gate::prelude::Group;
+//! use webgates::prelude::Group;
 //!
 //! // Department-based groups
 //! let groups = vec![
@@ -110,7 +110,7 @@ mod group_repository;
 ///
 /// # Example Usage
 /// ```rust
-/// use axum_gate::prelude::Group;
+/// use webgates::prelude::Group;
 ///
 /// let engineering = Group::new("engineering");
 /// let backend_team = Group::new("backend-team");
@@ -130,7 +130,7 @@ impl Group {
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::prelude::Group;
+    /// use webgates::prelude::Group;
     ///
     /// let engineering = Group::new("engineering");
     /// let marketing = Group::new("marketing");
@@ -144,7 +144,7 @@ impl Group {
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::prelude::Group;
+    /// use webgates::prelude::Group;
     ///
     /// let group = Group::new("engineering");
     /// assert_eq!(group.name(), "engineering");

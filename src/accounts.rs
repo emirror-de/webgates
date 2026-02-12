@@ -6,10 +6,10 @@
 //! # Quick Start
 //!
 //! ```rust
-//! use axum_gate::accounts::{Account, AccountInsertService};
-//! use axum_gate::prelude::{Role, Group};
-//! use axum_gate::permissions::Permissions;
-//! use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+//! use webgates::accounts::{Account, AccountInsertService};
+//! use webgates::prelude::{Role, Group};
+//! use webgates::permissions::Permissions;
+//! use webgates::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
 //! use std::sync::Arc;
 //!
 //! # tokio_test::block_on(async {
@@ -57,14 +57,14 @@ pub mod errors;
 /// An account contains authorization information about a user.
 ///
 /// Accounts store user identification, roles, groups, and permissions. They are the
-/// core entity for authorization decisions in axum-gate.
+/// core entity for authorization decisions in webgates.
 ///
 /// # Creating Accounts
 ///
 /// ```rust
-/// use axum_gate::accounts::Account;
-/// use axum_gate::prelude::{Role, Group};
-/// use axum_gate::permissions::Permissions;
+/// use webgates::accounts::Account;
+/// use webgates::prelude::{Role, Group};
+/// use webgates::permissions::Permissions;
 ///
 /// // Create a basic account
 /// let account = Account::new("user123", &[Role::User], &[Group::new("staff")]);
@@ -78,9 +78,9 @@ pub mod errors;
 /// # Working with Permissions
 ///
 /// ```rust
-/// # use axum_gate::accounts::Account;
-/// # use axum_gate::prelude::{Role, Group};
-/// # use axum_gate::permissions::PermissionId;
+/// # use webgates::accounts::Account;
+/// # use webgates::prelude::{Role, Group};
+/// # use webgates::permissions::PermissionId;
 /// # let mut account = Account::<Role, Group>::new("user", &[], &[]);
 /// // Grant permissions
 /// account.grant_permission("read:api");
@@ -147,8 +147,8 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::accounts::Account;
-    /// use axum_gate::prelude::{Role, Group};
+    /// use webgates::accounts::Account;
+    /// use webgates::prelude::{Role, Group};
     ///
     /// let account = Account::new(
     ///     "user@example.com",
@@ -202,9 +202,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::accounts::Account;
-    /// use axum_gate::prelude::{Role, Group};
-    /// use axum_gate::permissions::Permissions;
+    /// use webgates::accounts::Account;
+    /// use webgates::prelude::{Role, Group};
+    /// use webgates::permissions::Permissions;
     ///
     /// // Create permissions
     /// let permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
@@ -222,9 +222,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::accounts::Account;
-    /// use axum_gate::prelude::{Role, Group};
-    /// use axum_gate::permissions::PermissionId;
+    /// use webgates::accounts::Account;
+    /// use webgates::prelude::{Role, Group};
+    /// use webgates::permissions::PermissionId;
     ///
     /// let mut account = Account::<Role, Group>::new("user", &[], &[]);
     /// account.grant_permission("read:profile");
@@ -241,9 +241,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::accounts::Account;
-    /// use axum_gate::prelude::{Role, Group};
-    /// use axum_gate::permissions::PermissionId;
+    /// use webgates::accounts::Account;
+    /// use webgates::prelude::{Role, Group};
+    /// use webgates::permissions::PermissionId;
     ///
     /// let mut account = Account::<Role, Group>::new("user", &[], &[]);
     /// account.grant_permission("write:profile");
@@ -261,8 +261,8 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use axum_gate::accounts::Account;
-    /// use axum_gate::prelude::{Role, Group};
+    /// use webgates::accounts::Account;
+    /// use webgates::prelude::{Role, Group};
     ///
     /// let account = Account::<Role, Group>::new(
     ///     "user@example.com",
@@ -282,8 +282,8 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use axum_gate::accounts::Account;
-    /// use axum_gate::prelude::{Role, Group};
+    /// use webgates::accounts::Account;
+    /// use webgates::prelude::{Role, Group};
     ///
     /// let account = Account::<Role, Group>::new(
     ///     "user@example.com",
@@ -305,9 +305,9 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use axum_gate::accounts::Account;
-    /// use axum_gate::prelude::{Role, Group};
-    /// use axum_gate::permissions::PermissionId;
+    /// use webgates::accounts::Account;
+    /// use webgates::prelude::{Role, Group};
+    /// use webgates::permissions::PermissionId;
     ///
     /// let mut account = Account::<Role, Group>::new("user@example.com", &[], &[]);
     /// account.grant_permission("read:api");

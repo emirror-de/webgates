@@ -35,7 +35,7 @@ use std::collections::HashMap;
 /// ## Basic validation with post-analysis
 ///
 /// ```
-/// use axum_gate::permissions::PermissionCollisionChecker;
+/// use webgates::permissions::PermissionCollisionChecker;
 ///
 /// let permissions = vec![
 ///     "user:read".to_string(),
@@ -59,13 +59,13 @@ use std::collections::HashMap;
 ///         println!("Conflicts with user:read: {:?}", conflicts);
 ///     }
 /// }
-/// # Ok::<(), axum_gate::errors::Error>(())
+/// # Ok::<(), webgates::errors::Error>(())
 /// ```
 ///
 /// ## Runtime permission updates
 ///
 /// ```
-/// use axum_gate::permissions::PermissionCollisionChecker;
+/// use webgates::permissions::PermissionCollisionChecker;
 ///
 /// fn update_permissions(new_permissions: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
 ///     let mut checker = PermissionCollisionChecker::new(new_permissions);
@@ -113,12 +113,12 @@ impl PermissionCollisionChecker {
     /// # Returns
     ///
     /// * `Ok(ValidationReport)` - Detailed report of validation results
-    /// * `Err(axum_gate::errors::Error)` - If validation process itself fails
+    /// * `Err(webgates::errors::Error)` - If validation process itself fails
     ///
     /// # Examples
     ///
     /// ```
-    /// use axum_gate::permissions::PermissionCollisionChecker;
+    /// use webgates::permissions::PermissionCollisionChecker;
     ///
     /// let permissions = vec!["read:file".to_string(), "write:file".to_string()];
     /// let mut checker = PermissionCollisionChecker::new(permissions);

@@ -3,8 +3,8 @@
 //! Example: insert account before JWT using a repository (ensures stable `account_id` in cookie)
 //!
 //! ```rust
-//! use axum_gate::prelude::*;
-//! use axum_gate::repositories::memory::MemoryAccountRepository;
+//! use webgates::prelude::*;
+//! use webgates::repositories::memory::MemoryAccountRepository;
 //! use std::sync::Arc;
 //!
 //! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
@@ -52,7 +52,7 @@
 //!
 //! ```rust
 //! use axum::{Router, routing::get};
-//! use axum_gate::prelude::*;
+//! use webgates::prelude::*;
 //! use std::sync::Arc;
 //!
 //! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
@@ -90,7 +90,7 @@
 //!
 //! Example: customize state/PKCE cookies
 //! ```rust
-//! use axum_gate::prelude::*;
+//! use webgates::prelude::*;
 //! use cookie::{SameSite, time::Duration};
 //!
 //! let gate = Gate::oauth2::<Role, Group>()

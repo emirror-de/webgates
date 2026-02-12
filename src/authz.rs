@@ -1,6 +1,6 @@
 //! Authorization system for role-based, group-based, and permission-based access control.
 //!
-//! This module provides the core authorization framework for axum-gate, including:
+//! This module provides the core authorization framework for webgates, including:
 //! - [`AccessPolicy`] - Define who can access protected resources
 //! - [`AccessHierarchy`] - Support for hierarchical role systems
 //! - [`AuthorizationService`] - Evaluate access policies against user accounts
@@ -8,10 +8,10 @@
 //! # Quick Start
 //!
 //! ```rust
-//! use axum_gate::authz::{AccessPolicy, AuthorizationService};
-//! use axum_gate::accounts::Account;
-//! use axum_gate::prelude::{Role, Group};
-//! use axum_gate::permissions::PermissionId;
+//! use webgates::authz::{AccessPolicy, AuthorizationService};
+//! use webgates::accounts::Account;
+//! use webgates::prelude::{Role, Group};
+//! use webgates::permissions::PermissionId;
 //!
 //! // Create access policies
 //! let admin_policy = AccessPolicy::<Role, Group>::require_role(Role::Admin);
@@ -35,9 +35,9 @@
 //! Access policies can be combined using `or_*` methods to create flexible access rules:
 //!
 //! ```rust
-//! use axum_gate::authz::AccessPolicy;
-//! use axum_gate::prelude::{Role, Group};
-//! use axum_gate::permissions::PermissionId;
+//! use webgates::authz::AccessPolicy;
+//! use webgates::prelude::{Role, Group};
+//! use webgates::permissions::PermissionId;
 //!
 //! let complex_policy = AccessPolicy::<Role, Group>::require_role(Role::Admin)
 //!     .or_require_group(Group::new("security-team"))
@@ -50,8 +50,8 @@
 //! inherit access from lower roles:
 //!
 //! ```rust
-//! use axum_gate::authz::AccessPolicy;
-//! use axum_gate::prelude::{Role, Group};
+//! use webgates::authz::AccessPolicy;
+//! use webgates::prelude::{Role, Group};
 //!
 //! // Allows User role and all supervisor roles (Reporter, Moderator, Admin)
 //! let hierarchical_policy = AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::User);

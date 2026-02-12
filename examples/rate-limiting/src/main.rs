@@ -1,12 +1,12 @@
-//! Rate Limiting Example with axum-gate
+//! Rate Limiting Example with webgates
 //!
-//! This example demonstrates how to use axum-gate with tower's rate limiting
+//! This example demonstrates how to use webgates with tower's rate limiting
 //! middleware to protect authentication endpoints and authenticated routes.
 //!
 //! Features demonstrated:
 //! - Rate limiting on login endpoints to prevent brute force attacks
 //! - Different rate limits for authenticated vs unauthenticated users
-//! - Integration with axum-gate's authentication system
+//! - Integration with webgates's authentication system
 //! - Proper error handling for rate limit exceeded
 
 use axum::{
@@ -18,7 +18,7 @@ use axum::{
 };
 
 use axum_extra::extract::CookieJar;
-use axum_gate::prelude::*;
+use webgates::prelude::*;
 
 use serde::{Deserialize, Serialize};
 use std::{sync::Arc, time::Duration};
@@ -45,10 +45,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create JWT codec with proper shared secret
     let shared_secret = "my-super-secret-key-for-demo"; // In production, use a proper secret from env
     let jwt_options = JsonWebTokenOptions {
-        enc_key: axum_gate::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: axum_gate::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
         header: Some(Default::default()),
-        validation: Some(axum_gate::jsonwebtoken::Validation::default()),
+        validation: Some(webgates::jsonwebtoken::Validation::default()),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
@@ -147,7 +147,7 @@ async fn home_handler() -> Html<&'static str> {
         </head>
         <body>
             <div class="container">
-                <h1>🛡️ Rate Limiting Example with axum-gate</h1>
+                <h1>🛡️ Rate Limiting Example with webgates</h1>
 
                 <div class="box">
                     <h2>Features Demonstrated</h2>
@@ -156,7 +156,7 @@ async fn home_handler() -> Html<&'static str> {
                         <li><strong>Dashboard rate limiting:</strong> 30 requests per minute for authenticated users</li>
                         <li><strong>Admin rate limiting:</strong> 10 requests per minute for admin endpoints</li>
                         <li><strong>Global rate limiting:</strong> 100 requests per minute across all endpoints</li>
-                        <li>Integration with axum-gate authentication and authorization</li>
+                        <li>Integration with webgates authentication and authorization</li>
                     </ul>
                 </div>
 
@@ -269,7 +269,7 @@ async fn login_handler(
         info!("Successful login for user: {}", form.username);
 
         // Create a simple JWT cookie for demonstration
-        let cookie = axum_gate::cookie::Cookie::build(("my-app", "demo-token"))
+        let cookie = webgates::cookie::Cookie::build(("my-app", "demo-token"))
             .path("/")
             .http_only(true)
             .build();
@@ -301,7 +301,7 @@ async fn login_handler(
 
 async fn logout_handler(jar: CookieJar) -> Result<Response, StatusCode> {
     // Remove the authentication cookie
-    let cookie = axum_gate::cookie::Cookie::build(("my-app", ""))
+    let cookie = webgates::cookie::Cookie::build(("my-app", ""))
         .path("/")
         .http_only(true)
         .removal()

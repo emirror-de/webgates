@@ -4,9 +4,9 @@
 //! on the home page and logout buttons on protected pages.
 
 use axum_extra::extract::CookieJar;
-use axum_gate::cookie;
-use axum_gate::errors::Result;
-use axum_gate::{
+use webgates::cookie;
+use webgates::errors::Result;
+use webgates::{
     accounts::AccountInsertService,
     codecs::jwt::RegisteredClaims,
     cookie_template::CookieTemplate,
@@ -51,10 +51,10 @@ async fn main() -> Result<()> {
     // Create JWT codec with proper shared secret
     let shared_secret = "my-super-secret-key-for-demo"; // In production, use a proper secret from env
     let jwt_options = JsonWebTokenOptions {
-        enc_key: axum_gate::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: axum_gate::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
         header: Some(Default::default()),
-        validation: Some(axum_gate::jsonwebtoken::Validation::default()),
+        validation: Some(webgates::jsonwebtoken::Validation::default()),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));

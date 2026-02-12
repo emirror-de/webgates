@@ -1,6 +1,6 @@
 //! Prometheus metrics integration example.
 //!
-//! This example demonstrates how to integrate axum-gate with Prometheus metrics
+//! This example demonstrates how to integrate webgates with Prometheus metrics
 //! to monitor authentication events, authorization decisions, and other security-related metrics.
 //!
 //! Run with:
@@ -14,7 +14,7 @@
 //! - http://localhost:3000/metrics - Prometheus metrics endpoint
 
 use axum_extra::extract::CookieJar;
-use axum_gate::{
+use webgates::{
     accounts::AccountInsertService,
     authz::AccessPolicy,
     codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims},
@@ -49,10 +49,10 @@ async fn main() {
     // Create Prometheus registry for collecting metrics
     let registry = Registry::new();
 
-    // Create custom application metrics (in addition to axum-gate's built-in metrics)
+    // Create custom application metrics (in addition to webgates's built-in metrics)
     let login_attempts = Counter::with_opts(
         Opts::new(
-            "axum_gate_example_login_attempts_total",
+            "webgates_example_login_attempts_total",
             "Total number of login attempts",
         )
         .const_label("component", "auth"),
@@ -60,7 +60,7 @@ async fn main() {
     .unwrap();
 
     let request_duration = Histogram::with_opts(prometheus::HistogramOpts::new(
-        "axum_gate_example_request_duration_seconds",
+        "webgates_example_request_duration_seconds",
         "Request duration in seconds",
     ))
     .unwrap();
@@ -80,10 +80,10 @@ async fn main() {
     // Create JWT codec with proper shared secret
     let shared_secret = "my-super-secret-key-for-demo"; // In production, use a proper secret from env
     let jwt_options = JsonWebTokenOptions {
-        enc_key: axum_gate::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: axum_gate::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
         header: Some(Default::default()),
-        validation: Some(axum_gate::jsonwebtoken::Validation::default()),
+        validation: Some(webgates::jsonwebtoken::Validation::default()),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
@@ -104,7 +104,7 @@ async fn main() {
             get(home_handler).layer(
                 Gate::cookie("prometheus-demo", Arc::clone(&jwt_codec))
                     .allow_anonymous_with_optional_user()
-                    .with_prometheus_registry(&app_state.registry) // 🔍 Enable axum-gate Prometheus metrics
+                    .with_prometheus_registry(&app_state.registry) // 🔍 Enable webgates Prometheus metrics
                     .configure_cookie_template(|tpl| tpl.name("prometheus-demo"))
                     .unwrap(),
             ),
@@ -118,7 +118,7 @@ async fn main() {
             get(admin_handler).layer(
                 Gate::cookie("prometheus-demo", Arc::clone(&jwt_codec))
                     .with_policy(AccessPolicy::require_role(Role::Admin))
-                    .with_prometheus_registry(&app_state.registry) // 🔍 Enable axum-gate Prometheus metrics
+                    .with_prometheus_registry(&app_state.registry) // 🔍 Enable webgates Prometheus metrics
                     .configure_cookie_template(|tpl| tpl.name("prometheus-demo"))
                     .unwrap(),
             ),
@@ -129,7 +129,7 @@ async fn main() {
             get(dashboard_handler).layer(
                 Gate::cookie("prometheus-demo", Arc::clone(&jwt_codec))
                     .with_policy(AccessPolicy::require_role_or_supervisor(Role::Admin))
-                    .with_prometheus_registry(&app_state.registry) // 🔍 Enable axum-gate metrics for this route too
+                    .with_prometheus_registry(&app_state.registry) // 🔍 Enable webgates metrics for this route too
                     .configure_cookie_template(|tpl| tpl.name("prometheus-demo"))
                     .unwrap(),
             ),
@@ -181,7 +181,7 @@ async fn home_handler(account: Option<Extension<Account<Role, Group>>>) -> Html<
         <head><title>Prometheus Demo - Login</title></head>
         <body>
             <h1>Prometheus Integration Demo</h1>
-            <p>This example shows how to integrate axum-gate with Prometheus metrics.</p>
+            <p>This example shows how to integrate webgates with Prometheus metrics.</p>
 
             <h2>Login</h2>
             <form action="/login" method="post">

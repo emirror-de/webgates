@@ -16,11 +16,11 @@
 //! but can be used directly for custom authentication flows:
 //!
 //! ```rust
-//! use axum_gate::authn::{LoginService, LoginResult};
-//! use axum_gate::accounts::Account;
-//! use axum_gate::prelude::{Role, Group, Credentials};
-//! use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
-//! use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+//! use webgates::authn::{LoginService, LoginResult};
+//! use webgates::accounts::Account;
+//! use webgates::prelude::{Role, Group, Credentials};
+//! use webgates::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
+//! use webgates::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
 //! use std::sync::Arc;
 //!
 //! # tokio_test::block_on(async {

@@ -1,10 +1,10 @@
 #![cfg(feature = "storage-surrealdb")]
 
-use axum_gate::permissions::{
+use webgates::permissions::{
     PermissionId,
     mapping::{PermissionMapping, PermissionMappingRepository},
 };
-use axum_gate::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
+use webgates::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 
 use surrealdb::Surreal;
 use surrealdb::engine::local::Mem;

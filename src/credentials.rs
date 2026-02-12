@@ -7,7 +7,7 @@
 //! # Quick Start
 //!
 //! ```rust
-//! use axum_gate::prelude::Credentials;
+//! use webgates::prelude::Credentials;
 //!
 //! // Create credentials from user input
 //! let credentials = Credentials::new(&"user@example.com".to_string(), "password123");
@@ -27,16 +27,16 @@
 //! - **Never log credentials** - They contain sensitive password data
 //! - **Minimize lifetime** - Process and discard credentials quickly
 //! - **Use HTTPS/TLS** - Always encrypt credentials during transmission
-//! - **Timing attack protection** - Built-in when using axum-gate login services
+//! - **Timing attack protection** - Built-in when using webgates login services
 //!
 //! # Integration with Authentication
 //!
-//! Credentials integrate seamlessly with axum-gate's authentication system:
+//! Credentials integrate seamlessly with webgates's authentication system:
 //!
 //! ```rust
 //! use axum::{Json, extract::State, http::StatusCode};
-//! use axum_gate::prelude::Credentials;
-//! use axum_gate::route_handlers::login;
+//! use webgates::prelude::Credentials;
+//! use webgates::route_handlers::login;
 //! use axum_extra::extract::CookieJar;
 //!
 //! async fn login_endpoint(
@@ -83,7 +83,7 @@ mod credentials_verifier;
 /// Credentials are typically used as input to authentication services:
 ///
 /// ```rust
-/// use axum_gate::prelude::Credentials;
+/// use webgates::prelude::Credentials;
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// // 1. Receive credentials from client (e.g., JSON payload)
@@ -114,7 +114,7 @@ mod credentials_verifier;
 /// Credentials support JSON serialization for API integration:
 ///
 /// ```rust
-/// use axum_gate::prelude::Credentials;
+/// use webgates::prelude::Credentials;
 /// use serde_json;
 ///
 /// // Deserialize from JSON (typical in REST APIs)
@@ -129,7 +129,7 @@ mod credentials_verifier;
 /// # Different Identifier Types
 ///
 /// ```rust
-/// use axum_gate::prelude::Credentials;
+/// use webgates::prelude::Credentials;
 /// use uuid::Uuid;
 ///
 /// // String-based identifiers (email, username)
@@ -152,7 +152,7 @@ mod credentials_verifier;
 ///
 /// ```rust
 /// use axum::{Json, extract::State, http::StatusCode};
-/// use axum_gate::prelude::Credentials;
+/// use webgates::prelude::Credentials;
 ///
 /// // Extract credentials from JSON request body
 /// async fn login_endpoint(
@@ -204,7 +204,7 @@ impl<Id> Credentials<Id> {
     /// ## String-based Authentication
     ///
     /// ```rust
-    /// use axum_gate::prelude::Credentials;
+    /// use webgates::prelude::Credentials;
     ///
     /// let credentials = Credentials::new(&"user@example.com".to_string(), "secure_password");
     /// assert_eq!(credentials.id, "user@example.com");
@@ -214,7 +214,7 @@ impl<Id> Credentials<Id> {
     /// ## UUID-based Authentication
     ///
     /// ```rust
-    /// use axum_gate::prelude::Credentials;
+    /// use webgates::prelude::Credentials;
     /// use uuid::Uuid;
     ///
     /// let user_id = Uuid::now_v7();
@@ -226,7 +226,7 @@ impl<Id> Credentials<Id> {
     /// ## Usage in Authentication Flow
     ///
     /// ```rust
-    /// use axum_gate::prelude::Credentials;
+    /// use webgates::prelude::Credentials;
     ///
     /// // Typically created from user input
     /// let user_input_email = "admin@company.com";

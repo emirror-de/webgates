@@ -3,7 +3,7 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 
-//! # axum-gate
+//! # webgates
 //!
 //! Flexible, type-safe authentication and authorization for axum using JWTs and optional OAuth2.
 //! Supports cookie and bearer authentication, plus an OAuth2 Authorization Code + PKCE login flow
@@ -28,23 +28,23 @@
 //! This crate re-exports selected external crates (e.g., `jsonwebtoken`, `cookie`, `uuid`, `axum_extra`, and, behind a feature flag, `prometheus`) because types from these crates are part of this crate’s public API. Keeping these re-exports is intentional so users can import the exposed types from a single namespace.
 //!
 //! ### Prelude
-//! A convenience prelude is available via `axum_gate::prelude::*` that re-exports the most commonly used types.
+//! A convenience prelude is available via `webgates::prelude::*` that re-exports the most commonly used types.
 //!
 //! ### Feature Flags
-//! - `storage-surrealdb` — SurrealDB repositories (see [BUSL-1.1 license note](https://github.com/emirror-de/axum-gate?tab=readme-ov-file#msrv-and-license))!
+//! - `storage-surrealdb` — SurrealDB repositories (see [BUSL-1.1 license note](https://github.com/emirror-de/webgates?tab=readme-ov-file#msrv-and-license))!
 //! - `storage-seaorm` — SeaORM repositories
 //! - `audit-logging` — emit structured audit events
 //! - `prometheus` — export metrics for audit logging (implies `audit-logging`)
 //! - `insecure-fast-hash` — faster Argon2 preset for development only (opt-in for release, not recommended)
 //!
-//! For common integration issues and debugging tips, [see the Troubleshooting guide](https://github.com/emirror-de/axum-gate/blob/nightly/TROUBLESHOOTING.md).
+//! For common integration issues and debugging tips, [see the Troubleshooting guide](https://github.com/emirror-de/webgates/blob/nightly/TROUBLESHOOTING.md).
 //!
 //! ## Quick Start
 //!
 //! ```rust
 //! use axum::{routing::get, Router};
-//! use axum_gate::prelude::*;
-//! use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+//! use webgates::prelude::*;
+//! use webgates::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
 //! use std::sync::Arc;
 //!
 //! #[tokio::main]
@@ -81,7 +81,7 @@
 //!
 //! ### Role-Based Access
 //! ```rust
-//! use axum_gate::prelude::{Role, Group, AccessPolicy};
+//! use webgates::prelude::{Role, Group, AccessPolicy};
 //!
 //! // Single role requirement
 //! let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin);
@@ -96,7 +96,7 @@
 //!
 //! ### Group-Based Access
 //! ```rust
-//! use axum_gate::prelude::{Role, Group, AccessPolicy};
+//! use webgates::prelude::{Role, Group, AccessPolicy};
 //!
 //! let policy = AccessPolicy::<Role, Group>::require_group(Group::new("engineering"))
 //!     .or_require_group(Group::new("management"));
@@ -104,10 +104,10 @@
 //!
 //! ### Permission-Based Access
 //! ```rust
-//! use axum_gate::prelude::{Role, Group, AccessPolicy, PermissionId};
+//! use webgates::prelude::{Role, Group, AccessPolicy, PermissionId};
 //!
 //! // Validate permissions at compile-time (checks for hash collisions)
-//! axum_gate::validate_permissions!["read:api", "write:api", "admin:system"];
+//! webgates::validate_permissions!["read:api", "write:api", "admin:system"];
 //!
 //! // Use in access policies
 //! let policy = AccessPolicy::<Role, Group>::require_permission(PermissionId::from("read:api"));
@@ -115,7 +115,7 @@
 //!
 //! ### Convenient Login Check
 //! ```rust
-//! use axum_gate::prelude::*;
+//! use webgates::prelude::*;
 //! use std::sync::Arc;
 //!
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
@@ -133,8 +133,8 @@
 //!
 //! ```rust
 //! use axum::{routing::get, Router, extract::Extension};
-//! use axum_gate::prelude::*;
-//! use axum_gate::codecs::jwt::RegisteredClaims;
+//! use webgates::prelude::*;
+//! use webgates::codecs::jwt::RegisteredClaims;
 //! use std::sync::Arc;
 //!
 //! async fn homepage(
@@ -161,7 +161,7 @@
 //! Strict bearer (JWT) example:
 //! ```rust
 //! # use axum::{routing::get, Router};
-//! # use axum_gate::prelude::*;
+//! # use webgates::prelude::*;
 //! # use std::sync::Arc;
 //! # async fn handler() {}
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
@@ -175,7 +175,7 @@
 //!
 //! Optional mode (never blocks; installs `Option<Account>` and `Option<RegisteredClaims>`):
 //! ```rust
-//! # use axum_gate::prelude::*;
+//! # use webgates::prelude::*;
 //! # use std::sync::Arc;
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::bearer::<_, Role, Group>("my-app", jwt).allow_anonymous_with_optional_user();
@@ -183,7 +183,7 @@
 //!
 //! Static token mode (shared secret; useful for internal services):
 //! ```rust
-//! # use axum_gate::prelude::*;
+//! # use webgates::prelude::*;
 //! # use std::sync::Arc;
 //! # async fn handler() {}
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
@@ -196,7 +196,7 @@
 //! Minimal setup for mounting "/auth/login" and "/auth/callback":
 //! ```rust
 //! use axum::{Router, routing::get};
-//! use axum_gate::prelude::*;
+//! use webgates::prelude::*;
 //! use std::sync::Arc;
 //!
 //! // Provide a JWT codec to mint the session cookie after successful callback.
@@ -227,10 +227,10 @@
 //! ## Account Management
 //!
 //! ```rust
-//! use axum_gate::accounts::AccountInsertService;
-//! use axum_gate::permissions::Permissions;
-//! use axum_gate::prelude::{Role, Group, Account};
-//! use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+//! use webgates::accounts::AccountInsertService;
+//! use webgates::permissions::Permissions;
+//! use webgates::prelude::{Role, Group, Account};
+//! use webgates::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
 //! use std::sync::Arc;
 //!
 //! # tokio_test::block_on(async {
@@ -250,8 +250,8 @@
 //!
 //! ### In-Memory (Development)
 //! ```rust
-//! use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
-//! use axum_gate::prelude::{Role, Group};
+//! use webgates::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+//! use webgates::prelude::{Role, Group};
 //! use std::sync::Arc;
 //!
 //! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
@@ -262,7 +262,7 @@
 //! ```rust
 //! # #[cfg(feature="storage-surrealdb")]
 //! # {
-//! use axum_gate::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
+//! use webgates::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 //! use std::sync::Arc;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -278,7 +278,7 @@
 //! ```rust
 //! # #[cfg(feature="storage-seaorm")]
 //! # {
-//! use axum_gate::repositories::sea_orm::{SeaOrmRepository, models};
+//! use webgates::repositories::sea_orm::{SeaOrmRepository, models};
 //! use std::sync::Arc;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -304,8 +304,8 @@
 //!
 //! ```rust
 //! use axum::extract::Extension;
-//! use axum_gate::codecs::jwt::RegisteredClaims;
-//! use axum_gate::prelude::{Account, Role, Group};
+//! use webgates::codecs::jwt::RegisteredClaims;
+//! use webgates::prelude::{Account, Role, Group};
 //!
 //! async fn profile_handler(
 //!     Extension(user): Extension<Account<Role, Group>>,
@@ -353,7 +353,7 @@
 //! Note for client and WASM usage:
 //! If you're building client-side or WebAssembly (wasm) applications and only need the crate's data models (types) without server-only dependencies, you can depend on this crate with default features disabled. For example:
 //!
-//! axum-gate = { version = "1", default-features = false }
+//! webgates = { version = "1", default-features = false }
 //!
 //! This allows using the models and core types in constrained runtimes (like wasm) while avoiding optional server features that require a full server environment.
 

@@ -14,13 +14,13 @@
 //! # Quick Start
 //!
 //! ```rust
-//! use axum_gate::accounts::Account;
-//! use axum_gate::prelude::{Role, Group};
-//! use axum_gate::hashing::argon2::Argon2Hasher;
-//! use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository, MemoryPermissionMappingRepository};
-//! use axum_gate::secrets::Secret;
-//! use axum_gate::accounts::AccountRepository;
-//! use axum_gate::secrets::SecretRepository;
+//! use webgates::accounts::Account;
+//! use webgates::prelude::{Role, Group};
+//! use webgates::hashing::argon2::Argon2Hasher;
+//! use webgates::repositories::memory::{MemoryAccountRepository, MemorySecretRepository, MemoryPermissionMappingRepository};
+//! use webgates::secrets::Secret;
+//! use webgates::accounts::AccountRepository;
+//! use webgates::secrets::SecretRepository;
 //! use std::sync::Arc;
 //!
 //! # tokio_test::block_on(async {
@@ -46,10 +46,10 @@
 //! # Creating from Existing Data
 //!
 //! ```rust
-//! use axum_gate::accounts::Account;
-//! use axum_gate::prelude::{Role, Group};
-//! use axum_gate::secrets::Secret;
-//! use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+//! use webgates::accounts::Account;
+//! use webgates::prelude::{Role, Group};
+//! use webgates::secrets::Secret;
+//! use webgates::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
 //!
 //! // Create repositories with pre-populated data
 //! let accounts = vec![

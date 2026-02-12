@@ -11,9 +11,9 @@
 //! inherit access from lower roles:
 //!
 //! ```rust
-//! use axum_gate::prelude::Role;
-//! use axum_gate::authz::AccessPolicy;
-//! use axum_gate::prelude::Group;
+//! use webgates::prelude::Role;
+//! use webgates::authz::AccessPolicy;
+//! use webgates::prelude::Group;
 //!
 //! // Allow User role and all supervisor roles (Reporter, Moderator, Admin)
 //! let policy = AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::User);
@@ -28,10 +28,10 @@
 //! # Using Roles with Gates
 //!
 //! ```rust
-//! use axum_gate::prelude::*;
-//! use axum_gate::authz::AccessPolicy;
-//! use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
-//! use axum_gate::accounts::Account;
+//! use webgates::prelude::*;
+//! use webgates::authz::AccessPolicy;
+//! use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
+//! use webgates::accounts::Account;
 //! use std::sync::Arc;
 //!
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
@@ -57,7 +57,7 @@
 //!
 //! ```rust
 //! use serde::{Deserialize, Serialize};
-//! use axum_gate::authz::AccessHierarchy;
+//! use webgates::authz::AccessHierarchy;
 //!
 //! #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 //! enum CompanyRole {
@@ -103,8 +103,8 @@ use std::str::FromStr;
 /** Updated example imports to reflect current public modules */
 /// # Example Usage
 /// ```rust
-/// use axum_gate::prelude::{Role, Group};
-/// use axum_gate::authz::AccessPolicy;
+/// use webgates::prelude::{Role, Group};
+/// use webgates::authz::AccessPolicy;
 ///
 /// // Grant access to Moderators and all supervisor roles (Admin)
 /// let policy = AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::Moderator);

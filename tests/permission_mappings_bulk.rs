@@ -12,13 +12,13 @@ These tests validate:
 - `remove_mappings_by_ids` deletes requested mappings and returns removed domain objects
 */
 
-use axum_gate::permissions::mapping::{
+use webgates::permissions::mapping::{
     PermissionMapping, PermissionMappingRepository, PermissionMappingRepositoryBulk,
 };
 
 #[tokio::test]
 async fn memory_permission_mapping_bulk_ops() {
-    use axum_gate::repositories::memory::MemoryPermissionMappingRepository;
+    use webgates::repositories::memory::MemoryPermissionMappingRepository;
 
     let repo = MemoryPermissionMappingRepository::default();
 
@@ -78,7 +78,7 @@ async fn memory_permission_mapping_bulk_ops() {
 #[cfg(feature = "storage-seaorm")]
 #[tokio::test]
 async fn seaorm_permission_mapping_bulk_ops() {
-    use axum_gate::repositories::sea_orm::SeaOrmRepository;
+    use webgates::repositories::sea_orm::SeaOrmRepository;
 
     use sea_orm::Database;
 
@@ -92,7 +92,7 @@ async fn seaorm_permission_mapping_bulk_ops() {
     // normalized_string: TEXT UNIQUE
     // permission_id: TEXT UNIQUE
     let create_sql = r#"
-    CREATE TABLE IF NOT EXISTS axum_gate_permission_mappings (
+    CREATE TABLE IF NOT EXISTS webgates_permission_mappings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         normalized_string TEXT NOT NULL UNIQUE,
         permission_id TEXT NOT NULL UNIQUE
@@ -153,7 +153,7 @@ async fn seaorm_permission_mapping_bulk_ops() {
 #[cfg(feature = "storage-surrealdb")]
 #[tokio::test]
 async fn surrealdb_permission_mapping_bulk_ops() {
-    use axum_gate::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
+    use webgates::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
     use surrealdb::Surreal;
     use surrealdb::engine::local::Mem;
 

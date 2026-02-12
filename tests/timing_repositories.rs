@@ -25,12 +25,12 @@
 //! wrong-password paths.
 //!
 //! Run with: `cargo test -- --nocapture` to see raw timing output.
-use axum_gate::accounts::{Account, AccountRepository};
-use axum_gate::credentials::{Credentials, CredentialsVerifier};
-use axum_gate::hashing::argon2::Argon2Hasher;
-use axum_gate::prelude::{Group, Role};
-use axum_gate::secrets::{Secret, SecretRepository};
-use axum_gate::verification_result::VerificationResult;
+use webgates::accounts::{Account, AccountRepository};
+use webgates::credentials::{Credentials, CredentialsVerifier};
+use webgates::hashing::argon2::Argon2Hasher;
+use webgates::prelude::{Group, Role};
+use webgates::secrets::{Secret, SecretRepository};
+use webgates::verification_result::VerificationResult;
 use std::time::{Duration, Instant};
 
 /// Returns a fresh random (UUID v7 backed) email identifier to avoid collisions in shared DBs.
@@ -50,7 +50,7 @@ fn median(mut v: Vec<Duration>) -> Duration {
 #[tokio::test]
 #[cfg(feature = "storage-surrealdb")]
 async fn surrealdb_timing_symmetry() {
-    use axum_gate::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
+    use webgates::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
     use surrealdb::Surreal;
     use surrealdb::engine::local::Mem;
 
@@ -172,7 +172,7 @@ async fn surrealdb_timing_symmetry() {
 #[allow(clippy::unwrap_used)]
 #[cfg(feature = "storage-seaorm")]
 async fn seaorm_timing_symmetry() {
-    use axum_gate::repositories::sea_orm::SeaOrmRepository;
+    use webgates::repositories::sea_orm::SeaOrmRepository;
     #[cfg(feature = "storage-seaorm")]
     use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Schema};
 
@@ -188,7 +188,7 @@ async fn seaorm_timing_symmetry() {
     };
 
     // Create tables using SeaORM entity definitions (no migrations needed)
-    use axum_gate::repositories::sea_orm::models::{
+    use webgates::repositories::sea_orm::models::{
         account as seaorm_account, credentials as seaorm_credentials,
     };
     let builder = Schema::new(DatabaseBackend::Sqlite);

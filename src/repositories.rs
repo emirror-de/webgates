@@ -13,8 +13,8 @@
 //!
 //! ## In-Memory (Development)
 //! ```rust
-//! use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
-//! use axum_gate::prelude::{Role, Group};
+//! use webgates::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+//! use webgates::prelude::{Role, Group};
 //! use std::sync::Arc;
 //!
 //! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
@@ -25,7 +25,7 @@
 //! ```rust
 //! # #[cfg(feature = "storage-surrealdb")]
 //! # {
-//! use axum_gate::repositories::surrealdb::{SurrealDbRepository, DatabaseScope};
+//! use webgates::repositories::surrealdb::{SurrealDbRepository, DatabaseScope};
 //! use std::sync::Arc;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -41,7 +41,7 @@
 //! ```rust
 //! # #[cfg(feature = "storage-seaorm")]
 //! # {
-//! use axum_gate::repositories::sea_orm::SeaOrmRepository;
+//! use webgates::repositories::sea_orm::SeaOrmRepository;
 //! use std::sync::Arc;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {

@@ -1,6 +1,6 @@
 # OAuth2 with GitHub example
 
-This example shows how to plug GitHub as an OAuth2 provider into `axum-gate` using the built-in `Gate::oauth2()` flow. After a successful Authorization Code + PKCE round-trip with GitHub, the example mints a first‑party JWT and sets it as a secure HTTP‑only cookie to authenticate against your app (so you can continue to use the familiar `CookieGate` for protected routes).
+This example shows how to plug GitHub as an OAuth2 provider into `webgates` using the built-in `Gate::oauth2()` flow. After a successful Authorization Code + PKCE round-trip with GitHub, the example mints a first‑party JWT and sets it as a secure HTTP‑only cookie to authenticate against your app (so you can continue to use the familiar `CookieGate` for protected routes).
 
 Important: This example is for local development. Always review the Security notes at the bottom before deploying to production.
 

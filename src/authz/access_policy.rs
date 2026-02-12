@@ -47,8 +47,8 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::authz::AccessPolicy;
-    /// use axum_gate::prelude::{Role, Group};
+    /// use webgates::authz::AccessPolicy;
+    /// use webgates::prelude::{Role, Group};
     ///
     /// let policy: AccessPolicy<Role, Group> = AccessPolicy::require_role(Role::Admin);
     /// ```
@@ -70,8 +70,8 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::authz::AccessPolicy;
-    /// use axum_gate::prelude::{Role, Group};
+    /// use webgates::authz::AccessPolicy;
+    /// use webgates::prelude::{Role, Group};
     ///
     /// // Allows Moderator role and Admin role (if Admin supervises Moderator)
     /// let policy: AccessPolicy<Role, Group> = AccessPolicy::require_role_or_supervisor(Role::Moderator);
@@ -92,8 +92,8 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::authz::AccessPolicy;
-    /// use axum_gate::prelude::{Role, Group};
+    /// use webgates::authz::AccessPolicy;
+    /// use webgates::prelude::{Role, Group};
     ///
     /// let policy = AccessPolicy::<Role, Group>::require_group(Group::new("engineering"));
     /// ```
@@ -109,9 +109,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::authz::AccessPolicy;
-    /// use axum_gate::permissions::PermissionId;
-    /// use axum_gate::prelude::{Role, Group};
+    /// use webgates::authz::AccessPolicy;
+    /// use webgates::permissions::PermissionId;
+    /// use webgates::prelude::{Role, Group};
     ///
     /// // Using a permission name (hashed deterministically to 64-bit ID)
     /// let policy: AccessPolicy<Role, Group> =

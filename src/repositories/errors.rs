@@ -15,8 +15,8 @@
 //! # Examples
 //!
 //! ```rust
-//! use axum_gate::repositories::{RepositoriesError, RepositoryType, RepositoryOperation};
-//! use axum_gate::errors::UserFriendlyError;
+//! use webgates::repositories::{RepositoriesError, RepositoryType, RepositoryOperation};
+//! use webgates::errors::UserFriendlyError;
 //!
 //! let err = RepositoriesError::operation_failed(
 //!     RepositoryType::Account,
@@ -31,8 +31,8 @@
 //! ```
 //!
 //! ```rust
-//! use axum_gate::repositories::{DatabaseError, DatabaseOperation};
-//! use axum_gate::errors::UserFriendlyError;
+//! use webgates::repositories::{DatabaseError, DatabaseOperation};
+//! use webgates::errors::UserFriendlyError;
 //!
 //! let err = DatabaseError::with_context(
 //!     DatabaseOperation::Query,
@@ -40,7 +40,7 @@
 //!     Some("accounts".into()),
 //!     None
 //! );
-//! assert!(matches!(err.severity(), axum_gate::errors::ErrorSeverity::Error));
+//! assert!(matches!(err.severity(), webgates::errors::ErrorSeverity::Error));
 //! assert!(err.user_message().contains("data services"));
 //! ```
 

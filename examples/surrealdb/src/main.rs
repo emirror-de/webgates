@@ -1,7 +1,7 @@
-use axum_gate::accounts::AccountInsertService;
-use axum_gate::codecs::jwt::RegisteredClaims;
-use axum_gate::prelude::*;
-use axum_gate::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
+use webgates::accounts::AccountInsertService;
+use webgates::codecs::jwt::RegisteredClaims;
+use webgates::prelude::*;
+use webgates::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 
 use std::sync::Arc;
 
@@ -19,12 +19,12 @@ async fn main() {
 
     dotenvy::dotenv().expect("Could not read .env file.");
     let shared_secret =
-        dotenvy::var("AXUM_GATE_SHARED_SECRET").expect("AXUM_GATE_SHARED_SECRET env var not set.");
+        dotenvy::var("webgates_SHARED_SECRET").expect("webgates_SHARED_SECRET env var not set.");
     let jwt_options = JsonWebTokenOptions {
-        enc_key: axum_gate::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: axum_gate::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
-        header: Some(axum_gate::jsonwebtoken::Header::default()),
-        validation: Some(axum_gate::jsonwebtoken::Validation::default()),
+        enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        header: Some(webgates::jsonwebtoken::Header::default()),
+        validation: Some(webgates::jsonwebtoken::Validation::default()),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
@@ -73,7 +73,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted User.");
 
-    let cookie_template = axum_gate::cookie_template::CookieTemplate::recommended();
+    let cookie_template = webgates::cookie_template::CookieTemplate::recommended();
 
     let app = Router::new()
         .route(
@@ -89,7 +89,7 @@ async fn main() {
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar, Json(credentials): Json<Credentials<String>>| {
-                    axum_gate::route_handlers::login(
+                    webgates::route_handlers::login(
                         cookie_jar,
                         credentials,
                         registered_claims,
@@ -103,7 +103,7 @@ async fn main() {
         )
         .route(
             "/logout",
-            get(move |cookie_jar| axum_gate::route_handlers::logout(cookie_jar, cookie_template)),
+            get(move |cookie_jar| webgates::route_handlers::logout(cookie_jar, cookie_template)),
         );
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")

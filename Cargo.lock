@@ -454,7 +454,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "axum-gate"
+name = "webgates"
 version = "2.0.0-dev"
 dependencies = [
  "argon2",
@@ -1075,7 +1075,7 @@ name = "custom-roles-example"
 version = "0.1.0"
 dependencies = [
  "axum",
- "axum-gate",
+ "webgates",
  "chrono",
  "dotenvy",
  "serde",
@@ -1305,7 +1305,7 @@ name = "distributed"
 version = "0.1.0"
 dependencies = [
  "axum",
- "axum-gate",
+ "webgates",
  "chrono",
  "dotenvy",
  "roaring 0.11.3",
@@ -2936,7 +2936,7 @@ name = "oauth2-github"
 version = "0.1.0"
 dependencies = [
  "axum",
- "axum-gate",
+ "webgates",
  "dotenvy",
  "oauth2",
  "reqwest 0.13.1",
@@ -3143,7 +3143,7 @@ name = "permission-registry-example"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "axum-gate",
+ "webgates",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -3153,7 +3153,7 @@ dependencies = [
 name = "permission-validation-example"
 version = "0.1.0"
 dependencies = [
- "axum-gate",
+ "webgates",
  "serde",
  "tokio",
  "tracing",
@@ -3421,7 +3421,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "axum-extra",
- "axum-gate",
+ "webgates",
  "chrono",
  "prometheus",
  "serde",
@@ -3663,7 +3663,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "axum-extra",
- "axum-gate",
+ "webgates",
  "serde",
  "tokio",
  "tower",
@@ -4377,7 +4377,7 @@ name = "sea-orm-example"
 version = "0.1.0"
 dependencies = [
  "axum",
- "axum-gate",
+ "webgates",
  "chrono",
  "dotenvy",
  "sea-orm",
@@ -4734,7 +4734,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "axum-extra",
- "axum-gate",
+ "webgates",
  "chrono",
  "serde",
  "tokio",
@@ -5285,7 +5285,7 @@ name = "surrealdb-example"
 version = "0.1.0"
 dependencies = [
  "axum",
- "axum-gate",
+ "webgates",
  "chrono",
  "dotenvy",
  "surrealdb",

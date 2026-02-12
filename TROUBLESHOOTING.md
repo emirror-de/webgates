@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This guide consolidates the most common issues seen when integrating axum-gate with:
+This guide consolidates the most common issues seen when integrating webgates with:
 - CookieGate (JWT via HTTP-only cookies)
 - OAuth2 (Authorization Code + PKCE → first‑party JWT cookie)
 - Bearer (JWT via Authorization header, plus static token mode)
