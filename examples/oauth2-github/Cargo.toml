@@ -6,7 +6,8 @@ publish = false
 
 [dependencies]
 axum = { workspace = true }
-webgates = { path = "../../" }
+webgates = { path = "../../webgates" }
+webgates-axum = { path = "../../webgates-axum" }
 dotenvy = "0.15"
 oauth2 = { workspace = true }
 reqwest = { workspace = true }

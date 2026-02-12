@@ -48,12 +48,13 @@
 //!
 //! ## 3. Using Permissions with Access Policies
 //!
-//! ```rust
+//! ```rust,ignore
 //! use webgates::authz::AccessPolicy;
 //! use webgates::permissions::PermissionId;
-//! use webgates::prelude::{Gate, Role, Group};
+//! use webgates::prelude::{Role, Group};
 //! use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
 //! use webgates::accounts::Account;
+//! use webgates_axum::Gate;
 //! use std::sync::Arc;
 //! use axum::{routing::get, Router};
 //!

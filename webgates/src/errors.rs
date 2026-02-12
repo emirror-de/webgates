@@ -70,8 +70,7 @@ pub use crate::repositories::errors::{
 };
 pub use crate::secrets::errors::SecretError;
 
-/// Re-export of OAuth2Error for ergonomic imports.
-pub use crate::gate::oauth2::errors::OAuth2Error;
+
 /// Trait providing user-friendly error messaging at multiple levels.
 ///
 /// This trait ensures all errors provide appropriate messages for different
@@ -214,9 +213,7 @@ pub enum Error {
     #[error(transparent)]
     Secrets(#[from] SecretError),
 
-    /// OAuth2 flow errors
-    #[error(transparent)]
-    OAuth2(#[from] crate::gate::oauth2::errors::OAuth2Error),
+
 }
 
 impl UserFriendlyError for Error {
@@ -232,7 +229,6 @@ impl UserFriendlyError for Error {
             Error::Database(err) => err.user_message(),
             Error::Hashing(err) => err.user_message(),
             Error::Secrets(err) => err.user_message(),
-            Error::OAuth2(err) => err.user_message(),
         }
     }
 
@@ -248,7 +244,6 @@ impl UserFriendlyError for Error {
             Error::Database(err) => err.developer_message(),
             Error::Hashing(err) => err.developer_message(),
             Error::Secrets(err) => err.developer_message(),
-            Error::OAuth2(err) => err.developer_message(),
         }
     }
 
@@ -264,7 +259,6 @@ impl UserFriendlyError for Error {
             Error::Database(err) => err.support_code(),
             Error::Hashing(err) => err.support_code(),
             Error::Secrets(err) => err.support_code(),
-            Error::OAuth2(err) => err.support_code(),
         }
     }
 
@@ -280,7 +274,6 @@ impl UserFriendlyError for Error {
             Error::Database(err) => err.severity(),
             Error::Hashing(err) => err.severity(),
             Error::Secrets(err) => err.severity(),
-            Error::OAuth2(err) => err.severity(),
         }
     }
 
@@ -296,7 +289,6 @@ impl UserFriendlyError for Error {
             Error::Database(err) => err.suggested_actions(),
             Error::Hashing(err) => err.suggested_actions(),
             Error::Secrets(err) => err.suggested_actions(),
-            Error::OAuth2(err) => err.suggested_actions(),
         }
     }
 
@@ -312,7 +304,6 @@ impl UserFriendlyError for Error {
             Error::Database(err) => err.is_retryable(),
             Error::Hashing(err) => err.is_retryable(),
             Error::Secrets(err) => err.is_retryable(),
-            Error::OAuth2(err) => err.is_retryable(),
         }
     }
 }

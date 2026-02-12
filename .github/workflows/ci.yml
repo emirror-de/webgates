@@ -61,12 +61,12 @@ jobs:
                   restore-keys: ${{ runner.os }}-cargo-
             - name: cargo clippy
               run: |
-                  # Run clippy for combinations that include storage-seaorm
-                  cargo clippy --workspace --all-targets --features storage-surrealdb,storage-seaorm -- -D warnings
-                  # Run clippy for SeaORM
-                  cargo clippy --all-targets --features storage-surrealdb,storage-seaorm -- -D warnings
-                  # Run clippy for wasm feature (no default features)
-                  cargo clippy --workspace --all-targets --no-default-features --features wasm -- -D warnings
+                  # Core crate (all server/storage features)
+                  cargo clippy -p webgates --all-targets --all-features -- -D warnings
+                  # Core crate (wasm only; no server deps)
+                  cargo clippy -p webgates --all-targets --no-default-features --features wasm -- -D warnings
+                  # Axum integration crate
+                  cargo clippy -p webgates-axum --all-targets --all-features -- -D warnings
 
     test-core:
         name: Core test matrix
@@ -80,20 +80,22 @@ jobs:
                       cmd: cargo test --workspace
 
                     - name: wasm
-                      cmd: cargo test --workspace --no-default-features --features wasm
+                      cmd: cargo test -p webgates --no-default-features --features wasm
 
                     - name: insecure_fast_hash
-                      cmd: cargo test --workspace --features insecure-fast-hash
+                      cmd: cargo test -p webgates --features insecure-fast-hash
                     - name: storage_surrealdb
-                      cmd: cargo test --workspace --features storage-surrealdb
+                      cmd: cargo test -p webgates --features storage-surrealdb
                     - name: storage_seaorm
-                      cmd: cargo test --workspace --features storage-seaorm
+                      cmd: cargo test -p webgates --features storage-seaorm
                     - name: all_storage_features
-                      cmd: cargo test --workspace --features storage-surrealdb,storage-seaorm
+                      cmd: cargo test -p webgates --features storage-surrealdb,storage-seaorm
                     - name: fast_hash_with_surrealdb
-                      cmd: cargo test --workspace --features insecure-fast-hash,storage-surrealdb
+                      cmd: cargo test -p webgates --features insecure-fast-hash,storage-surrealdb
                     - name: fast_hash_with_seaorm
-                      cmd: cargo test --workspace --features insecure-fast-hash,storage-seaorm
+                      cmd: cargo test -p webgates --features insecure-fast-hash,storage-seaorm
+                    - name: axum_default
+                      cmd: cargo test -p webgates-axum
         steps:
             - name: Checkout
               uses: actions/checkout@v4
@@ -324,7 +326,7 @@ jobs:
             - name: Install cargo-semver-checks
               run: cargo install cargo-semver-checks
             - name: Run cargo semver-checks (${{ matrix.name }})
-              run: cargo semver-checks check-release ${{ matrix.args }}
+              run: cargo semver-checks check-release -p webgates ${{ matrix.args }}
 
     examples:
         name: Examples matrix

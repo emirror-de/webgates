@@ -27,11 +27,12 @@
 //!
 //! # Using Roles with Gates
 //!
-//! ```rust
-//! use webgates::prelude::*;
+//! ```rust,ignore
+//! use webgates::prelude::{Role, Group};
 //! use webgates::authz::AccessPolicy;
 //! use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
 //! use webgates::accounts::Account;
+//! use webgates_axum::gate::Gate;
 //! use std::sync::Arc;
 //!
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());

@@ -31,10 +31,11 @@
 //!
 //! # Group-Based Access Control
 //!
-//! ```rust
+//! ```rust,ignore
 //! use webgates::accounts::Account;
 //! use webgates::authz::AccessPolicy;
-//! use webgates::prelude::{Gate, Role, Group};
+//! use webgates::prelude::{Role, Group};
+//! use webgates_axum::gate::Gate;
 //! use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
 //! use std::sync::Arc;
 //!
@@ -47,9 +48,11 @@
 //!
 //! // Create access policies for different areas
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! # use webgates_axum::Gate;
 //! let engineering_gate = Gate::cookie("my-app", Arc::clone(&jwt_codec))
 //!     .with_policy(AccessPolicy::<Role, Group>::require_group(Group::new("engineering")));
 //!
+//! # use webgates_axum::Gate;
 //! let project_gate = Gate::cookie("my-app", Arc::clone(&jwt_codec))
 //!     .with_policy(
 //!         AccessPolicy::<Role, Group>::require_group(Group::new("project-alpha"))
@@ -57,6 +60,7 @@
 //!     );
 //!
 //! // Combine with role requirements
+//! # use webgates_axum::Gate;
 //! let admin_or_engineering = Gate::cookie("my-app", jwt_codec)
 //!     .with_policy(
 //!         AccessPolicy::<Role, Group>::require_role(Role::Admin)

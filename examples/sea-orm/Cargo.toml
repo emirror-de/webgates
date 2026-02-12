@@ -6,7 +6,8 @@ license = "MIT"
 
 [dependencies]
 axum = { workspace = true }
-webgates = { path = "../../", features = ["storage-seaorm"] }
+webgates = { path = "../../webgates", features = ["storage-seaorm"] }
+webgates-axum = { path = "../../webgates-axum", features = ["storage-seaorm"] }
 chrono = { workspace = true }
 dotenvy = { workspace = true }
 sea-orm = { workspace = true }

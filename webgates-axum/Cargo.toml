@@ -1,0 +1,62 @@
+[package]
+name = "webgates-axum"
+version = "0.1.0-dev"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+authors = ["Lewin Probst <info@emirror.de>"]
+description = "Axum integration layer for the webgates authentication and authorization core."
+homepage = "https://github.com/emirror-de/webgates"
+repository = "https://github.com/emirror-de/webgates"
+readme = "README.md"
+documentation = "https://docs.rs/webgates-axum"
+keywords = ["axum", "auth", "jwt", "oauth2", "rbac"]
+categories = ["authentication", "web-programming::http-server"]
+
+[features]
+default = ["server"]
+server = [
+    "dep:axum",
+    "dep:axum-extra",
+    "dep:chrono",
+    "dep:cookie",
+    "dep:http",
+    "dep:oauth2",
+    "dep:rand",
+    "dep:tokio",
+    "tokio/rt-multi-thread",
+    "tokio/macros",
+    "dep:tower",
+    "dep:tower-http",
+    "dep:tracing",
+    "dep:uuid",
+]
+audit-logging = ["webgates/audit-logging"]
+prometheus = ["audit-logging", "webgates/prometheus", "dep:prometheus"]
+storage-surrealdb = ["webgates/storage-surrealdb"]
+storage-seaorm = ["webgates/storage-seaorm"]
+
+[dependencies]
+webgates = { path = "../webgates", default-features = true }
+axum = { workspace = true, optional = true }
+axum-extra = { workspace = true, optional = true }
+chrono = { workspace = true, optional = true }
+cookie = { workspace = true, optional = true }
+http = { workspace = true, optional = true }
+oauth2 = { workspace = true, optional = true }
+rand = { workspace = true, optional = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, optional = true }
+tower = { workspace = true, optional = true }
+tower-http = { workspace = true, optional = true }
+tracing = { workspace = true, optional = true }
+prometheus = { workspace = true, optional = true }
+uuid = { workspace = true, features = ["serde", "v7"], optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio-test = "0.4.4"
+tower = { workspace = true }
+axum = { workspace = true }

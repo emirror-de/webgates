@@ -6,7 +6,8 @@ description = "Example demonstrating the optional permission mapping registry pa
 
 [dependencies]
 anyhow = { workspace = true }
-webgates = { path = "../../" }
+webgates = { path = "../../webgates" }
+webgates-axum = { path = "../../webgates-axum" }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

@@ -1,29 +1,8 @@
-[package]
-name = "webgates"
-version = "0.1.0-dev"
-edition = "2024"
-rust-version = "1.88"
-license = "MIT"
-authors = ["Lewin Probst <info@emirror.de>"]
-description = "Flexible authentication and authorization for Axum with JWT cookies or bearer tokens, optional OAuth2, and role/group/permission RBAC. Suitable for single-node and distributed systems."
-homepage = "https://github.com/emirror-de/webgates"
-repository = "https://github.com/emirror-de/webgates"
-readme = "README.md"
-documentation = "https://docs.rs/webgates"
-keywords = ["axum", "auth", "jwt", "oauth2", "rbac"]
-categories = ["authentication", "web-programming::http-server"]
-
-[package.metadata.docs.rs]
-features = [
-    "insecure-fast-hash",
-    "storage-surrealdb",
-    "storage-seaorm",
-    "audit-logging",
-    "prometheus",
-]
-
 [workspace]
+resolver = "3"
 members = [
+    "webgates",
+    "webgates-axum",
     "examples/custom-roles",
     "examples/distributed",
     "examples/oauth2-github",
@@ -35,7 +14,6 @@ members = [
     "examples/simple-usage",
     "examples/surrealdb",
 ]
-resolver = "3"
 
 [workspace.dependencies]
 anyhow = "1"
@@ -68,65 +46,3 @@ tower-http = { version = "0.6", features = ["trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["std", "env-filter"] }
 uuid = { version = "1" }
-
-[features]
-default = ["server"]
-wasm = ["uuid/js"]
-server = [
-    "dep:argon2",
-    "dep:axum",
-    "dep:axum-extra",
-    "dep:chrono",
-    "dep:cookie",
-    "dep:http",
-    "dep:rand",
-    "dep:serde_json",
-    "dep:serde_with",
-    "dep:subtle",
-    "tokio/rt-multi-thread",
-    "dep:tower",
-    "dep:tracing",
-    "dep:oauth2",
-    "dep:reqwest",
-]
-insecure-fast-hash = []
-storage-surrealdb = ["surrealdb"]
-storage-seaorm = ["sea-orm/uuid"]
-audit-logging = []
-prometheus = ["audit-logging", "dep:prometheus"]
-
-[dependencies]
-argon2 = { workspace = true, features = ["std"], optional = true }
-axum = { workspace = true, optional = true }
-axum-extra = { workspace = true, optional = true }
-chrono = { workspace = true, optional = true }
-const-crypto = { workspace = true }
-cookie = { workspace = true, optional = true }
-http = { workspace = true, optional = true }
-jsonwebtoken = { workspace = true }
-oauth2 = { workspace = true, optional = true }
-prometheus = { workspace = true, optional = true }
-rand = { workspace = true, optional = true }
-reqwest = { workspace = true, optional = true }
-roaring = { workspace = true, features = ["serde"] }
-sea-orm = { workspace = true, optional = true }
-serde = { workspace = true }
-serde_json = { workspace = true, optional = true }
-serde_with = { workspace = true, optional = true }
-strum = { workspace = true }
-subtle = { workspace = true, optional = true }
-surrealdb = { workspace = true, optional = true }
-thiserror = { workspace = true }
-tokio = { workspace = true, optional = true }
-tower = { workspace = true, optional = true }
-tracing = { workspace = true, features = ["release_max_level_info"], optional = true }
-uuid = { workspace = true, features = ["serde", "v7", "js"] }
-
-[dev-dependencies]
-sea-orm = { workspace = true, features = ["sqlx-sqlite", "runtime-tokio"] }
-surrealdb = { workspace = true }
-tokio-test = "0.4.4"
-uuid = "1"
-
-[profile.dev]
-debug = false
