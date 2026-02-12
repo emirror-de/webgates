@@ -25,13 +25,13 @@
 //! wrong-password paths.
 //!
 //! Run with: `cargo test -- --nocapture` to see raw timing output.
+use std::time::{Duration, Instant};
 use webgates::accounts::{Account, AccountRepository};
 use webgates::credentials::{Credentials, CredentialsVerifier};
 use webgates::hashing::argon2::Argon2Hasher;
 use webgates::prelude::{Group, Role};
 use webgates::secrets::{Secret, SecretRepository};
 use webgates::verification_result::VerificationResult;
-use std::time::{Duration, Instant};
 
 /// Returns a fresh random (UUID v7 backed) email identifier to avoid collisions in shared DBs.
 fn random_user_id() -> String {
@@ -50,9 +50,9 @@ fn median(mut v: Vec<Duration>) -> Duration {
 #[tokio::test]
 #[cfg(feature = "storage-surrealdb")]
 async fn surrealdb_timing_symmetry() {
-    use webgates::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
     use surrealdb::Surreal;
     use surrealdb::engine::local::Mem;
+    use webgates::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 
     const ITERATIONS: usize = 5;
 
@@ -172,9 +172,9 @@ async fn surrealdb_timing_symmetry() {
 #[allow(clippy::unwrap_used)]
 #[cfg(feature = "storage-seaorm")]
 async fn seaorm_timing_symmetry() {
-    use webgates::repositories::sea_orm::SeaOrmRepository;
     #[cfg(feature = "storage-seaorm")]
     use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Schema};
+    use webgates::repositories::sea_orm::SeaOrmRepository;
 
     const ITERATIONS: usize = 5;
 

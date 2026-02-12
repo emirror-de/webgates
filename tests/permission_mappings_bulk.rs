@@ -153,9 +153,9 @@ async fn seaorm_permission_mapping_bulk_ops() {
 #[cfg(feature = "storage-surrealdb")]
 #[tokio::test]
 async fn surrealdb_permission_mapping_bulk_ops() {
-    use webgates::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
     use surrealdb::Surreal;
     use surrealdb::engine::local::Mem;
+    use webgates::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 
     // Create in-memory SurrealDB
     let db = Surreal::new::<Mem>(())
