@@ -192,7 +192,7 @@
 
               # Nix tools
               nil
-              nixfmt-rfc-style
+              nixfmt
 
               # TOML formatting
               taplo
