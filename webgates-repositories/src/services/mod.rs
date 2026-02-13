@@ -56,13 +56,15 @@
 
 use std::sync::Arc;
 
+use crate::errors::{
+    Error as RepoError, RepositoriesError, RepositoryOperation, RepositoryType,
+    Result as RepoResult,
+};
 use tracing::{debug, error, info, warn};
 use webgates::accounts::{Account, AccountRepository};
-use webgates::accounts::{AccountOperation, AccountsError};
 #[cfg(feature = "audit-logging")]
 use webgates::audit;
 use webgates::authz::AccessHierarchy;
-use webgates::errors::{Error as CoreError, Result as CoreResult};
 use webgates::hashing::argon2::Argon2Hasher;
 use webgates::permissions::Permissions;
 use webgates::secrets::{Secret, SecretRepository};
@@ -128,10 +130,10 @@ where
         self,
         account_repository: Arc<AccRepo>,
         secret_repository: Arc<SecRepo>,
-    ) -> CoreResult<Option<Account<R, G>>>
+    ) -> RepoResult<Option<Account<R, G>>>
     where
-        AccRepo: AccountRepository<R, G>,
-        SecRepo: SecretRepository,
+        AccRepo: AccountRepository<R, G, Error = RepoError>,
+        SecRepo: SecretRepository<Error = RepoError>,
     {
         let account = Account::new(&self.user_id, &self.roles, &self.groups)
             .with_permissions(self.permissions);
@@ -141,11 +143,15 @@ where
             {
                 audit::account_insert_failure(&self.user_id, "account_repo_none");
             }
-            return Err(CoreError::Accounts(AccountsError::operation(
-                AccountOperation::Create,
-                "Account repository returned None on insertion",
-                Some(self.user_id.clone()),
-            )));
+            return Err(RepoError::Repositories(
+                RepositoriesError::operation_failed(
+                    RepositoryType::Account,
+                    RepositoryOperation::Insert,
+                    "Account repository returned None on insertion",
+                    Some(self.user_id.clone()),
+                    None,
+                ),
+            ));
         };
         #[cfg(feature = "audit-logging")]
         {
@@ -159,11 +165,15 @@ where
             {
                 audit::account_insert_failure(&self.user_id, "secret_store_false");
             }
-            Err(CoreError::Accounts(AccountsError::operation(
-                AccountOperation::Create,
-                "Storing secret in repository returned false",
-                Some(account.account_id.to_string()),
-            )))
+            Err(RepoError::Repositories(
+                RepositoriesError::operation_failed(
+                    RepositoryType::Secret,
+                    RepositoryOperation::Insert,
+                    "Storing secret in repository returned false",
+                    Some(account.account_id.to_string()),
+                    None,
+                ),
+            ))
         } else {
             debug!("Stored secret in secret repository.");
             Ok(Some(account))
@@ -208,10 +218,10 @@ where
         self,
         account_repository: Arc<AccRepo>,
         secret_repository: Arc<SecRepo>,
-    ) -> CoreResult<()>
+    ) -> RepoResult<()>
     where
-        AccRepo: AccountRepository<R, G>,
-        SecRepo: SecretRepository,
+        AccRepo: AccountRepository<R, G, Error = RepoError>,
+        SecRepo: SecretRepository<Error = RepoError>,
     {
         let user_id = &self.account.user_id;
         let account_id = &self.account.account_id;
@@ -225,9 +235,8 @@ where
             error!(%user_id, %account_id, "Secret missing for account deletion attempt");
             #[cfg(feature = "audit-logging")]
             audit::account_delete_failure(user_id, account_id, None, "secret_missing");
-            return Err(CoreError::Accounts(AccountsError::operation(
-                AccountOperation::Delete,
-                "Secret not found",
+            return Err(RepoError::Repositories(RepositoriesError::not_found(
+                RepositoryType::Secret,
                 Some(account_id.to_string()),
             )));
         };
@@ -274,11 +283,15 @@ where
                 }
             }
 
-            return Err(CoreError::Accounts(AccountsError::operation(
-                AccountOperation::Delete,
-                "Account deletion failed",
-                Some(account_id.to_string()),
-            )));
+            return Err(RepoError::Repositories(
+                RepositoriesError::operation_failed(
+                    RepositoryType::Account,
+                    RepositoryOperation::Delete,
+                    "Account deletion failed",
+                    Some(account_id.to_string()),
+                    None,
+                ),
+            ));
         }
 
         info!(%user_id, %account_id, "Account deletion succeeded");

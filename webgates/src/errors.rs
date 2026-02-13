@@ -4,7 +4,7 @@
 //! - `Error`: root enum wrapping all category errors
 //! - `Result<T>`: convenience alias
 //! - `UserFriendlyError`: trait providing multiple message levels
-//! - Category enums: `AccountsError`, `AuthnError`, `AuthzError`, `PermissionsError`,
+//! - Category enums: `AuthnError`, `AuthzError`, `PermissionsError`,
 //!   `CodecsError`, `JwtError`, `HashingError`, `SecretError`
 //!
 //! # Error Message Levels
@@ -14,7 +14,6 @@
 //! - **Support Code**: Unique reference code for customer support
 //!
 //! # When to Use Each Variant
-//! - `Accounts` – Account operations (create/update/delete/query/workflows/validation)
 //! - `Authn` – Authentication flows (login/logout/session/MFA/rate-limits)
 //! - `Authz` – Authorization issues (permission format, collisions, hierarchy violations)
 //! - `Permissions` – Permission validation/collision concerns
@@ -58,7 +57,6 @@ use std::fmt;
 use thiserror::Error;
 
 // Category-based error re-exports for ergonomic imports.
-pub use crate::accounts::errors::{AccountOperation, AccountsError};
 pub use crate::authn::errors::{AuthenticationError, AuthnError};
 pub use crate::authz::errors::AuthzError;
 pub use crate::codecs::errors::{CodecOperation, CodecsError, JwtError, JwtOperation};
@@ -168,10 +166,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// messaging for different audiences while maintaining security and consistency.
 #[derive(Debug, Error)]
 pub enum Error {
-    /// Accounts category errors
-    #[error(transparent)]
-    Accounts(#[from] AccountsError),
-
     /// Authentication category errors
     #[error(transparent)]
     Authn(#[from] AuthnError),
@@ -204,7 +198,6 @@ pub enum Error {
 impl UserFriendlyError for Error {
     fn user_message(&self) -> String {
         match self {
-            Error::Accounts(err) => err.user_message(),
             Error::Authn(err) => err.user_message(),
             Error::Authz(err) => err.user_message(),
             Error::Permissions(err) => err.user_message(),
@@ -217,7 +210,6 @@ impl UserFriendlyError for Error {
 
     fn developer_message(&self) -> String {
         match self {
-            Error::Accounts(err) => err.developer_message(),
             Error::Authn(err) => err.developer_message(),
             Error::Authz(err) => err.developer_message(),
             Error::Permissions(err) => err.developer_message(),
@@ -230,7 +222,6 @@ impl UserFriendlyError for Error {
 
     fn support_code(&self) -> String {
         match self {
-            Error::Accounts(err) => err.support_code(),
             Error::Authn(err) => err.support_code(),
             Error::Authz(err) => err.support_code(),
             Error::Permissions(err) => err.support_code(),
@@ -243,7 +234,6 @@ impl UserFriendlyError for Error {
 
     fn severity(&self) -> ErrorSeverity {
         match self {
-            Error::Accounts(err) => err.severity(),
             Error::Authn(err) => err.severity(),
             Error::Authz(err) => err.severity(),
             Error::Permissions(err) => err.severity(),
@@ -256,7 +246,6 @@ impl UserFriendlyError for Error {
 
     fn suggested_actions(&self) -> Vec<String> {
         match self {
-            Error::Accounts(err) => err.suggested_actions(),
             Error::Authn(err) => err.suggested_actions(),
             Error::Authz(err) => err.suggested_actions(),
             Error::Permissions(err) => err.suggested_actions(),
@@ -269,7 +258,6 @@ impl UserFriendlyError for Error {
 
     fn is_retryable(&self) -> bool {
         match self {
-            Error::Accounts(err) => err.is_retryable(),
             Error::Authn(err) => err.is_retryable(),
             Error::Authz(err) => err.is_retryable(),
             Error::Permissions(err) => err.is_retryable(),
@@ -310,8 +298,8 @@ impl From<crate::cookie_template::CookieTemplateBuilderError> for Error {
 #[cfg(test)]
 mod tests {
     use crate::errors::{
-        AccountOperation, AccountsError, AuthenticationError, AuthnError, AuthzError,
-        CodecOperation, Error, ErrorSeverity, HashingOperation, JwtOperation, UserFriendlyError,
+        AuthenticationError, AuthnError, AuthzError, CodecOperation, Error, ErrorSeverity,
+        HashingOperation, JwtOperation, UserFriendlyError,
     };
 
     #[test]
@@ -371,25 +359,7 @@ mod tests {
     }
 
     #[test]
-    fn error_display() {
-        let error = Error::Accounts(AccountsError::operation(
-            AccountOperation::Create,
-            "create failed",
-            Some("acc-1".into()),
-        ));
-        let display = format!("{}", error);
-        assert!(display.contains("Account operation"));
-
-        // Test all message levels
-        assert!(!error.user_message().is_empty());
-        assert!(!error.developer_message().is_empty());
-        assert!(!error.support_code().is_empty());
-        assert!(!matches!(error.severity(), ErrorSeverity::Info));
-    }
-
-    #[test]
     fn operation_display() {
-        assert_eq!(format!("{}", AccountOperation::Create), "create");
         assert_eq!(format!("{}", JwtOperation::Encode), "encode");
         assert_eq!(format!("{}", CodecOperation::Decode), "decode");
         assert_eq!(format!("{}", HashingOperation::Verify), "verify");

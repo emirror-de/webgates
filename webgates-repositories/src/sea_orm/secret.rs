@@ -15,7 +15,9 @@ use sea_orm::{
 use uuid::Uuid;
 
 impl SecretRepository for SeaOrmRepository {
-    async fn store_secret(&self, secret: Secret) -> Result<bool> {
+    type Error = RepoError;
+
+    async fn store_secret(&self, secret: Secret) -> RepoResult<bool> {
         let res: RepoResult<_> = {
             let account_id = secret.account_id;
             let model = seaorm_credentials::ActiveModel::from(secret);
@@ -29,11 +31,11 @@ impl SecretRepository for SeaOrmRepository {
             })?;
             Ok(true)
         };
-        res.map_err(Into::into)
+        res
     }
 
     /// Removes and returns the secret for the given account id.
-    async fn delete_secret(&self, account_id: &Uuid) -> Result<Option<Secret>> {
+    async fn delete_secret(&self, account_id: &Uuid) -> RepoResult<Option<Secret>> {
         let res: RepoResult<_> = {
             let Some(model) = seaorm_credentials::Entity::find()
                 .filter(seaorm_credentials::Column::AccountId.eq(*account_id))
@@ -68,10 +70,10 @@ impl SecretRepository for SeaOrmRepository {
                 secret: model.secret,
             }))
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn update_secret(&self, secret: Secret) -> Result<()> {
+    async fn update_secret(&self, secret: Secret) -> RepoResult<()> {
         let res: RepoResult<_> = {
             let account_id = secret.account_id;
             let old_model = super::models::credentials::Entity::find()
@@ -106,7 +108,7 @@ impl SecretRepository for SeaOrmRepository {
             })?;
             Ok(())
         };
-        res.map_err(Into::into)
+        res
     }
 }
 

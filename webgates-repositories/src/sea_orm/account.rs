@@ -1,7 +1,7 @@
 use super::SeaOrmRepository;
 use crate::TableName;
 use crate::comma_separated_value::CommaSeparatedValue;
-use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result as RepoResult};
+use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result};
 use crate::sea_orm::models::account as seaorm_account;
 use sea_orm::{
     ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
@@ -11,10 +11,9 @@ use serde::{Serialize, de::DeserializeOwned};
 use uuid::Uuid;
 use webgates::accounts::{Account, AccountRepository};
 use webgates::authz::AccessHierarchy;
-use webgates::errors::Result;
 
 /// Helper to convert a SeaORM model into the domain `Account`.
-fn model_to_account<R, G>(model: seaorm_account::Model) -> RepoResult<Account<R, G>>
+fn model_to_account<R, G>(model: seaorm_account::Model) -> Result<Account<R, G>>
 where
     R: AccessHierarchy + Eq + Clone + Serialize + DeserializeOwned,
     G: Eq + Clone + Serialize + DeserializeOwned,
@@ -58,8 +57,9 @@ where
     Vec<R>: CommaSeparatedValue,
     Vec<G>: CommaSeparatedValue,
 {
+    type Error = RepoError;
     async fn query_account_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let model = seaorm_account::Entity::find()
                 .filter(seaorm_account::Column::UserId.eq(user_id))
                 .one(&self.db)
@@ -78,11 +78,11 @@ where
                 None => Ok(None),
             }
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn query_account_by_id(&self, account_id: &Uuid) -> Result<Option<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let model = seaorm_account::Entity::find()
                 .filter(seaorm_account::Column::AccountId.eq(*account_id))
                 .one(&self.db)
@@ -101,11 +101,11 @@ where
                 None => Ok(None),
             }
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn store_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let mut model = seaorm_account::ActiveModel::from(account.clone());
             model.id = ActiveValue::NotSet;
 
@@ -120,11 +120,11 @@ where
 
             Ok(Some(model_to_account(inserted)?))
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn delete_account(&self, account_id: &Uuid) -> Result<Option<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let Some(model) = seaorm_account::Entity::find()
                 .filter(seaorm_account::Column::AccountId.eq(*account_id))
                 .one(&self.db)
@@ -155,11 +155,11 @@ where
 
             Ok(Some(model_to_account(model)?))
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn update_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let Some(db_account) = seaorm_account::Entity::find()
                 .filter(seaorm_account::Column::AccountId.eq(account.account_id))
                 .one(&self.db)
@@ -193,11 +193,11 @@ where
 
             Ok(Some(model_to_account(model)?))
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn query_all_accounts(&self) -> Result<Vec<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let models = seaorm_account::Entity::find()
                 .order_by_asc(seaorm_account::Column::UserId)
                 .all(&self.db)
@@ -217,6 +217,6 @@ where
             }
             Ok(out)
         };
-        res.map_err(Into::into)
+        res
     }
 }

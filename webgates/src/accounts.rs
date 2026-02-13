@@ -1,7 +1,6 @@
 //! Account management and user data structures.
 //!
-//! This module provides the core [`Account`] type and services for managing user accounts,
-//! including creation, deletion, and repository abstractions for data persistence.
+//! This module provides the core [`Account`] type and repository abstractions for account metadata.
 //!
 //! # Quick Start
 //!
@@ -20,7 +19,6 @@
 #[cfg(feature = "server")]
 mod server_impl {
     pub use super::account_repository::AccountRepository;
-    pub use super::errors::{AccountOperation, AccountsError};
 }
 
 #[cfg(feature = "server")]
@@ -33,8 +31,6 @@ use uuid::Uuid;
 
 #[cfg(feature = "server")]
 mod account_repository;
-#[cfg(feature = "server")]
-pub mod errors;
 
 /// An account contains authorization information about a user.
 ///

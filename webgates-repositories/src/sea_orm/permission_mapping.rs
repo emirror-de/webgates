@@ -13,10 +13,12 @@ use webgates::permissions::mapping::{
 };
 
 impl PermissionMappingRepository for SeaOrmRepository {
+    type Error = RepoError;
+
     async fn store_mapping(
         &self,
         mapping: PermissionMapping,
-    ) -> webgates::errors::Result<Option<PermissionMapping>> {
+    ) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
             if let Err(e) = mapping.validate() {
                 return Err(RepoError::Database(DatabaseError::with_context(
@@ -78,13 +80,13 @@ impl PermissionMappingRepository for SeaOrmRepository {
                 None => Ok(None),
             }
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn remove_mapping_by_id(
         &self,
         id: PermissionId,
-    ) -> webgates::errors::Result<Option<PermissionMapping>> {
+    ) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
             let id_str = id.as_u64().to_string();
             let txn = self.db.begin().await.map_err(|e| {
@@ -155,13 +157,13 @@ impl PermissionMappingRepository for SeaOrmRepository {
             })?;
             Ok(Some(domain))
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn remove_mapping_by_string(
         &self,
         permission: &str,
-    ) -> webgates::errors::Result<Option<PermissionMapping>> {
+    ) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
             let normalized = PermissionMapping::from(permission)
                 .normalized_string()
@@ -235,13 +237,10 @@ impl PermissionMappingRepository for SeaOrmRepository {
             })?;
             Ok(Some(domain))
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn query_mapping_by_id(
-        &self,
-        id: PermissionId,
-    ) -> webgates::errors::Result<Option<PermissionMapping>> {
+    async fn query_mapping_by_id(&self, id: PermissionId) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
             let id_str = id.as_u64().to_string();
             let model = seaorm_permission_mapping::Entity::find()
@@ -272,13 +271,13 @@ impl PermissionMappingRepository for SeaOrmRepository {
                 None => Ok(None),
             }
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn query_mapping_by_string(
         &self,
         permission: &str,
-    ) -> webgates::errors::Result<Option<PermissionMapping>> {
+    ) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
             let normalized = PermissionMapping::from(permission)
                 .normalized_string()
@@ -312,10 +311,10 @@ impl PermissionMappingRepository for SeaOrmRepository {
                 None => Ok(None),
             }
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn list_all_mappings(&self) -> webgates::errors::Result<Vec<PermissionMapping>> {
+    async fn list_all_mappings(&self) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {
             let models = seaorm_permission_mapping::Entity::find()
                 .order_by_asc(seaorm_permission_mapping::Column::PermissionId)
@@ -344,7 +343,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
             }
             Ok(out)
         };
-        res.map_err(Into::into)
+        res
     }
 }
 
@@ -352,7 +351,7 @@ impl PermissionMappingRepositoryBulk for SeaOrmRepository {
     async fn store_mappings(
         &self,
         mappings: Vec<PermissionMapping>,
-    ) -> webgates::errors::Result<Vec<PermissionMapping>> {
+    ) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {
             for mapping in &mappings {
                 if let Err(e) = mapping.validate() {
@@ -420,13 +419,13 @@ impl PermissionMappingRepositoryBulk for SeaOrmRepository {
 
             Ok(stored)
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn remove_mappings_by_ids(
         &self,
         ids: Vec<PermissionId>,
-    ) -> webgates::errors::Result<Vec<PermissionMapping>> {
+    ) -> RepoResult<Vec<PermissionMapping>> {
         let mut removed = Vec::new();
 
         for id in ids {
@@ -441,7 +440,7 @@ impl PermissionMappingRepositoryBulk for SeaOrmRepository {
     async fn query_mappings_by_ids(
         &self,
         ids: Vec<PermissionId>,
-    ) -> webgates::errors::Result<Vec<PermissionMapping>> {
+    ) -> RepoResult<Vec<PermissionMapping>> {
         let mut out = Vec::new();
         for id in ids {
             if let Some(pm) = self.query_mapping_by_id(id).await? {

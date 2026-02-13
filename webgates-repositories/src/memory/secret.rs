@@ -1,6 +1,5 @@
 use crate::errors::{
-    Error as RepoError, RepositoriesError, RepositoryOperation, RepositoryType,
-    Result as RepoResult,
+    Error as RepoError, RepositoriesError, RepositoryOperation, RepositoryType, Result,
 };
 use webgates::credentials::{Credentials, CredentialsVerifier};
 use webgates::hashing::HashingService;
@@ -77,7 +76,7 @@ pub struct MemorySecretRepository {
 
 impl MemorySecretRepository {
     /// Creates a new instance with [Argon2Hasher].
-    pub fn new_with_argon2_hasher() -> webgates::errors::Result<Self> {
+    pub fn new_with_argon2_hasher() -> Result<Self> {
         let hasher = Argon2Hasher::new_recommended()?;
         let dummy_hash = hasher.hash_value("dummy_password")?;
         Ok(Self {
@@ -88,8 +87,8 @@ impl MemorySecretRepository {
 }
 
 impl TryFrom<Vec<Secret>> for MemorySecretRepository {
-    type Error = webgates::errors::Error;
-    fn try_from(value: Vec<Secret>) -> webgates::errors::Result<Self> {
+    type Error = RepoError;
+    fn try_from(value: Vec<Secret>) -> Result<Self> {
         let mut store = HashMap::with_capacity(value.len());
         value.into_iter().for_each(|v| {
             store.insert(v.account_id, v);
@@ -101,8 +100,10 @@ impl TryFrom<Vec<Secret>> for MemorySecretRepository {
 }
 
 impl SecretRepository for MemorySecretRepository {
-    async fn store_secret(&self, secret: Secret) -> webgates::errors::Result<bool> {
-        let res: RepoResult<_> = {
+    type Error = RepoError;
+
+    async fn store_secret(&self, secret: Secret) -> Result<bool> {
+        let res: Result<_> = {
             let already_present = {
                 let read = self.store.read().await;
                 read.contains_key(&secret.account_id)
@@ -136,24 +137,24 @@ impl SecretRepository for MemorySecretRepository {
             };
             Ok(true)
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn delete_secret(&self, id: &Uuid) -> webgates::errors::Result<Option<Secret>> {
-        let res: RepoResult<_> = {
+    async fn delete_secret(&self, id: &Uuid) -> Result<Option<Secret>> {
+        let res: Result<_> = {
             let mut write = self.store.write().await;
             Ok(write.remove(id))
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn update_secret(&self, secret: Secret) -> webgates::errors::Result<()> {
-        let res: RepoResult<_> = {
+    async fn update_secret(&self, secret: Secret) -> Result<()> {
+        let res: Result<_> = {
             let mut write = self.store.write().await;
             write.insert(secret.account_id, secret);
             Ok(())
         };
-        res.map_err(Into::into)
+        res
     }
 }
 
@@ -165,7 +166,7 @@ impl CredentialsVerifier<Uuid> for MemorySecretRepository {
         use subtle::Choice;
         use webgates::hashing::HashingService;
 
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let read = self.store.read().await;
 
             let (stored_secret_str, user_exists_choice) = match read.get(&credentials.id) {

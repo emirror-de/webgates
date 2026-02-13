@@ -48,10 +48,12 @@ where
     G: Eq + Clone + Send + Sync + 'static,
     Inner: AccountRepository<R, G> + Send + Sync + 'static,
 {
+    type Error = <Inner as AccountRepository<R, G>>::Error;
+
     async fn store_account(
         &self,
         account: Account<R, G>,
-    ) -> webgates::errors::Result<Option<Account<R, G>>> {
+    ) -> Result<Option<Account<R, G>>, Self::Error> {
         let res = self.inner.store_account(account).await?;
         if let Some(ref acc) = res {
             info!(user_id = %acc.user_id, account_id = %acc.account_id, "OAuth2: new account inserted");
@@ -62,21 +64,21 @@ where
     async fn delete_account(
         &self,
         account_id: &uuid::Uuid,
-    ) -> webgates::errors::Result<Option<Account<R, G>>> {
+    ) -> Result<Option<Account<R, G>>, Self::Error> {
         self.inner.delete_account(account_id).await
     }
 
     async fn update_account(
         &self,
         account: Account<R, G>,
-    ) -> webgates::errors::Result<Option<Account<R, G>>> {
+    ) -> Result<Option<Account<R, G>>, Self::Error> {
         self.inner.update_account(account).await
     }
 
     async fn query_account_by_user_id(
         &self,
         user_id: &str,
-    ) -> webgates::errors::Result<Option<Account<R, G>>> {
+    ) -> Result<Option<Account<R, G>>, Self::Error> {
         let res = self.inner.query_account_by_user_id(user_id).await?;
         if let Some(ref acc) = res {
             info!(user_id = %acc.user_id, account_id = %acc.account_id, "OAuth2: existing account queried");
@@ -87,7 +89,7 @@ where
     async fn query_account_by_id(
         &self,
         account_id: &uuid::Uuid,
-    ) -> webgates::errors::Result<Option<Account<R, G>>> {
+    ) -> Result<Option<Account<R, G>>, Self::Error> {
         let res = self.inner.query_account_by_id(account_id).await?;
         if let Some(ref acc) = res {
             info!(user_id = %acc.user_id, account_id = %acc.account_id, "OAuth2: existing account queried by id");
@@ -95,7 +97,7 @@ where
         Ok(res)
     }
 
-    async fn query_all_accounts(&self) -> webgates::errors::Result<Vec<Account<R, G>>> {
+    async fn query_all_accounts(&self) -> Result<Vec<Account<R, G>>, Self::Error> {
         let res = self.inner.query_all_accounts().await?;
         info!(count = res.len(), "OAuth2: queried all accounts");
         Ok(res)

@@ -1,8 +1,7 @@
 use super::SurrealDbRepository;
-use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result as RepoResult};
+use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result};
 use webgates::accounts::{Account, AccountRepository};
 use webgates::authz::AccessHierarchy;
-use webgates::errors::Result;
 
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -15,8 +14,9 @@ where
     G: Serialize + DeserializeOwned + Eq + Clone + Send + Sync + 'static,
     S: Connection,
 {
+    type Error = RepoError;
     async fn query_account_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             self.use_ns_db().await?;
 
             let query = "SELECT * FROM type::table($table) WHERE user_id = $uid LIMIT 1";
@@ -44,11 +44,11 @@ where
                 ))
             })
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn query_account_by_id(&self, account_id: &Uuid) -> Result<Option<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             self.use_ns_db().await?;
 
             let db_account: Option<Account<R, G>> = self
@@ -68,11 +68,11 @@ where
                 })?;
             Ok(db_account)
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn store_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             self.use_ns_db().await?;
 
             let record_id =
@@ -97,7 +97,7 @@ where
     }
 
     async fn delete_account(&self, account_id: &Uuid) -> Result<Option<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             self.use_ns_db().await?;
 
             let db_account: Option<Account<R, G>> = self
@@ -117,11 +117,11 @@ where
                 })?;
             Ok(db_account)
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn update_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             self.use_ns_db().await?;
 
             let record_id =
@@ -141,11 +141,11 @@ where
                 })?;
             Ok(db_account)
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn query_all_accounts(&self) -> Result<Vec<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             self.use_ns_db().await?;
 
             let db_accounts: Vec<Account<R, G>> = self
@@ -162,6 +162,6 @@ where
                 })?;
             Ok(db_accounts)
         };
-        res.map_err(Into::into)
+        res
     }
 }

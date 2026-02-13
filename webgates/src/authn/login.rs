@@ -176,6 +176,7 @@ where
     where
         CredVeri: CredentialsVerifier<Uuid>,
         AccRepo: AccountRepository<R, G>,
+        AccRepo::Error: std::fmt::Display + Send + Sync + 'static,
         C: Codec<Payload = JwtClaims<Account<R, G>>>,
     {
         #[cfg(feature = "audit-logging")]
@@ -355,10 +356,12 @@ mod tests {
     }
 
     impl AccountRepository<Role, Group> for DummyAccountRepository {
+        type Error = crate::errors::Error;
+
         async fn store_account(
             &self,
             account: Account<Role, Group>,
-        ) -> crate::errors::Result<Option<Account<Role, Group>>> {
+        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
             let mut write = self.store.write().await;
             let inserted = write
                 .insert(account.user_id.clone(), account.clone())
@@ -369,7 +372,7 @@ mod tests {
         async fn delete_account(
             &self,
             account_id: &Uuid,
-        ) -> crate::errors::Result<Option<Account<Role, Group>>> {
+        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
             let mut write = self.store.write().await;
             let to_remove = write
                 .iter()
@@ -386,7 +389,7 @@ mod tests {
         async fn update_account(
             &self,
             account: Account<Role, Group>,
-        ) -> crate::errors::Result<Option<Account<Role, Group>>> {
+        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
             let mut write = self.store.write().await;
             let exists = write.contains_key(&account.user_id);
             write.insert(account.user_id.clone(), account.clone());
@@ -396,7 +399,7 @@ mod tests {
         async fn query_account_by_user_id(
             &self,
             user_id: &str,
-        ) -> crate::errors::Result<Option<Account<Role, Group>>> {
+        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
             let read = self.store.read().await;
             Ok(read.get(user_id).cloned())
         }
@@ -404,30 +407,32 @@ mod tests {
         async fn query_account_by_id(
             &self,
             account_id: &Uuid,
-        ) -> crate::errors::Result<Option<Account<Role, Group>>> {
+        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
             let read = self.store.read().await;
             Ok(read.values().find(|a| &a.account_id == account_id).cloned())
         }
 
-        async fn query_all_accounts(&self) -> crate::errors::Result<Vec<Account<Role, Group>>> {
+        async fn query_all_accounts(&self) -> Result<Vec<Account<Role, Group>>, Self::Error> {
             let read = self.store.read().await;
             Ok(read.values().cloned().collect())
         }
     }
 
     impl SecretRepository for DummySecretRepository {
-        async fn store_secret(&self, secret: Secret) -> crate::errors::Result<bool> {
+        type Error = crate::errors::Error;
+
+        async fn store_secret(&self, secret: Secret) -> Result<bool, Self::Error> {
             let mut write = self.store.write().await;
             let existed = write.insert(secret.account_id, secret).is_some();
             Ok(!existed)
         }
 
-        async fn delete_secret(&self, id: &Uuid) -> crate::errors::Result<Option<Secret>> {
+        async fn delete_secret(&self, id: &Uuid) -> Result<Option<Secret>, Self::Error> {
             let mut write = self.store.write().await;
             Ok(write.remove(id))
         }
 
-        async fn update_secret(&self, secret: Secret) -> crate::errors::Result<()> {
+        async fn update_secret(&self, secret: Secret) -> Result<(), Self::Error> {
             let mut write = self.store.write().await;
             write.insert(secret.account_id, secret);
             Ok(())

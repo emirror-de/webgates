@@ -1,4 +1,3 @@
-use crate::errors::Result;
 use crate::{accounts::Account, authz::AccessHierarchy};
 
 use std::future::Future;
@@ -34,6 +33,9 @@ where
     R: AccessHierarchy + Eq,
     G: Eq + Clone,
 {
+    /// Backend-specific error type for repository operations.
+    type Error: std::error::Error + Send + Sync + 'static;
+
     /// Persist a new account.
     ///
     /// Implementations SHOULD enforce uniqueness of `user_id`. Returning
@@ -43,7 +45,7 @@ where
     fn store_account(
         &self,
         account: Account<R, G>,
-    ) -> impl Future<Output = Result<Option<Account<R, G>>>> + Send;
+    ) -> impl Future<Output = Result<Option<Account<R, G>>, Self::Error>> + Send;
 
     /// Delete an account identified by its stable `account_id` (UUID).
     ///
@@ -54,7 +56,7 @@ where
     fn delete_account(
         &self,
         account_id: &Uuid,
-    ) -> impl Future<Output = Result<Option<Account<R, G>>>> + Send;
+    ) -> impl Future<Output = Result<Option<Account<R, G>>, Self::Error>> + Send;
 
     /// Update an existing account.
     ///
@@ -67,7 +69,7 @@ where
     fn update_account(
         &self,
         account: Account<R, G>,
-    ) -> impl Future<Output = Result<Option<Account<R, G>>>> + Send;
+    ) -> impl Future<Output = Result<Option<Account<R, G>>, Self::Error>> + Send;
 
     /// Fetch an account by its logical user identifier (`user_id`).
     ///
@@ -77,7 +79,7 @@ where
     fn query_account_by_user_id(
         &self,
         user_id: &str,
-    ) -> impl Future<Output = Result<Option<Account<R, G>>>> + Send;
+    ) -> impl Future<Output = Result<Option<Account<R, G>>, Self::Error>> + Send;
 
     /// Fetch an account by its stable internal identifier (`account_id` / UUID).
     ///
@@ -87,12 +89,14 @@ where
     fn query_account_by_id(
         &self,
         account_id: &Uuid,
-    ) -> impl Future<Output = Result<Option<Account<R, G>>>> + Send;
+    ) -> impl Future<Output = Result<Option<Account<R, G>>, Self::Error>> + Send;
 
     /// Query all accounts in the repository.
     ///
     /// Implementations SHOULD document ordering semantics if any. For large
     /// datasets consider offering a paginated variant rather than returning all
     /// accounts in memory.
-    fn query_all_accounts(&self) -> impl Future<Output = Result<Vec<Account<R, G>>>> + Send;
+    fn query_all_accounts(
+        &self,
+    ) -> impl Future<Output = Result<Vec<Account<R, G>>, Self::Error>> + Send;
 }

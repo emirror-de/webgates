@@ -1,7 +1,6 @@
-use crate::errors::Result as RepoResult;
+use crate::errors::{Error as RepoError, Result};
 use webgates::accounts::{Account, AccountRepository};
 use webgates::authz::AccessHierarchy;
-use webgates::errors::Result;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -83,18 +82,20 @@ where
     R: AccessHierarchy + Eq + Send + Sync + 'static,
     G: Eq + Clone + Send + Sync + 'static,
 {
+    type Error = RepoError;
+
     /// Lookup by the logical login identifier (`user_id`).
     ///
     /// The in-memory store's primary key is the stable `account_id` (UUID string).
     /// To fetch by `user_id` we scan the values; this is acceptable for tests and
     /// small datasets but should not be used as a model for production storage.
     async fn query_account_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let read = self.accounts.read().await;
             let found = read.values().find(|acc| acc.user_id == user_id).cloned();
             Ok(found)
         };
-        res.map_err(Into::into)
+        res
     }
 
     /// Query an account by its `account_id` field.
@@ -102,34 +103,34 @@ where
     /// The in-memory repository stores accounts keyed by the stable `account_id`
     /// (UUID string). This makes direct lookups efficient.
     async fn query_account_by_id(&self, account_id: &Uuid) -> Result<Option<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let read = self.accounts.read().await;
             let key = account_id.to_string();
             Ok(read.get(&key).cloned())
         };
-        res.map_err(Into::into)
+        res
     }
 
     /// Store an account using the stable `account_id` as the map key while
     /// preserving the `user_id` field inside the `Account`.
     async fn store_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let id = account.account_id.to_string();
             let mut write = self.accounts.write().await;
             write.insert(id, account.clone());
             Ok(Some(account))
         };
-        res.map_err(Into::into)
+        res
     }
 
     /// Delete an account by its stable `account_id` (UUID).
     async fn delete_account(&self, account_id: &Uuid) -> Result<Option<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let mut write = self.accounts.write().await;
             let key = account_id.to_string();
             Ok(write.remove(&key))
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn update_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
@@ -138,10 +139,10 @@ where
     }
 
     async fn query_all_accounts(&self) -> Result<Vec<Account<R, G>>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let read = self.accounts.read().await;
             Ok(read.values().cloned().collect())
         };
-        res.map_err(Into::into)
+        res
     }
 }

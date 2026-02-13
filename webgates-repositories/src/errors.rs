@@ -663,5 +663,31 @@ impl From<Error> for webgates::errors::Error {
     }
 }
 
+/// Conversion from the core webgates error type into the repository error domain.
+/// Non-hashing categories are mapped to repository-level failures with conservative defaults.
+impl From<webgates::errors::Error> for Error {
+    fn from(err: webgates::errors::Error) -> Self {
+        match err {
+            webgates::errors::Error::Hashing(e) => Error::Hashing(e),
+            webgates::errors::Error::Secrets(e) => {
+                Error::Repositories(RepositoriesError::operation_failed(
+                    RepositoryType::Secret,
+                    RepositoryOperation::Get,
+                    format!("core secrets error: {}", e),
+                    None,
+                    None,
+                ))
+            }
+            other => Error::Repositories(RepositoriesError::operation_failed(
+                RepositoryType::Account,
+                RepositoryOperation::Get,
+                format!("core error: {}", other),
+                None,
+                None,
+            )),
+        }
+    }
+}
+
 /// Convenience alias for results within this crate.
 pub type Result<T> = std::result::Result<T, Error>;

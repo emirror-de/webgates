@@ -1,6 +1,5 @@
 use super::Secret;
 
-use crate::errors::Result;
 use std::future::Future;
 use uuid::Uuid;
 
@@ -45,7 +44,7 @@ use uuid::Uuid;
 /// fn rotate_secret(
 ///     repo: &MemorySecretRepository,
 ///     new_secret: Secret
-/// ) -> webgates::errors::Result<()> {
+/// ) -> webgates_repositories::errors::Result<()> {
 ///     tokio_test::block_on(repo.update_secret(new_secret))
 /// }
 ///
@@ -69,13 +68,18 @@ pub trait SecretRepository
 where
     Self: Send + Sync,
 {
+    /// Backend-specific error type for repository operations.
+    type Error: std::error::Error + Send + Sync + 'static;
     /// Store a newly created secret.
     ///
     /// Returns:
     /// - `Ok(true)` if inserted
     /// - `Ok(false)` if a secret already exists for the associated account (no change)
     /// - `Err(e)` on backend failure
-    fn store_secret(&self, secret: Secret) -> impl Future<Output = Result<bool>> + Send;
+    fn store_secret(
+        &self,
+        secret: Secret,
+    ) -> impl Future<Output = Result<bool, Self::Error>> + Send;
 
     /// Update (replace) an existing secret.
     ///
@@ -83,7 +87,8 @@ where
     /// may choose to return an error if the secret does not already exist; if so
     /// that should be documented by the implementation. This trait treats absence
     /// as exceptional for updates (hence no `Option`).
-    fn update_secret(&self, secret: Secret) -> impl Future<Output = Result<()>> + Send;
+    fn update_secret(&self, secret: Secret)
+    -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Remove and return a secret by its owning account id.
     ///
@@ -94,5 +99,8 @@ where
     ///
     /// SHOULD be atomic (retrieve + delete) to allow callers to retry / rollback
     /// higher-level operations safely.
-    fn delete_secret(&self, id: &Uuid) -> impl Future<Output = Result<Option<Secret>>> + Send;
+    fn delete_secret(
+        &self,
+        id: &Uuid,
+    ) -> impl Future<Output = Result<Option<Secret>, Self::Error>> + Send;
 }

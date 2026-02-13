@@ -1,6 +1,6 @@
 use super::SeaOrmRepository;
 use crate::TableName;
-use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result as RepoResult};
+use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result};
 use crate::sea_orm::models::group as seaorm_group;
 use sea_orm::{
     ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
@@ -13,8 +13,10 @@ impl<T> GroupRepositoryTrait<T> for SeaOrmRepository
 where
     T: Serialize + DeserializeOwned + GroupEntity + Eq + Clone + Send + Sync + 'static,
 {
-    async fn store_group(&self, group: T) -> webgates::errors::Result<bool> {
-        let res: RepoResult<_> = {
+    type Error = RepoError;
+
+    async fn store_group(&self, group: T) -> Result<bool> {
+        let res: Result<_> = {
             let mut model = seaorm_group::ActiveModel::from(group);
             model.id = ActiveValue::NotSet;
 
@@ -35,11 +37,11 @@ where
                 }
             }
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn delete_group(&self, id: &str) -> webgates::errors::Result<Option<T>> {
-        let res: RepoResult<_> = {
+    async fn delete_group(&self, id: &str) -> Result<Option<T>> {
+        let res: Result<_> = {
             let model_opt = seaorm_group::Entity::find()
                 .filter(seaorm_group::Column::GroupId.eq(id.to_string()))
                 .one(&self.db)
@@ -80,11 +82,11 @@ where
             })?;
             Ok(Some(dom))
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn update_group(&self, group: T) -> webgates::errors::Result<Option<T>> {
-        let res: RepoResult<_> = {
+    async fn update_group(&self, group: T) -> Result<Option<T>> {
+        let res: Result<_> = {
             let gid = group.group_id().to_string();
             let model_opt = seaorm_group::Entity::find()
                 .filter(seaorm_group::Column::GroupId.eq(gid.clone()))
@@ -127,11 +129,11 @@ where
             })?;
             Ok(Some(dom))
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn query_group_by_id(&self, id: &str) -> webgates::errors::Result<Option<T>> {
-        let res: RepoResult<_> = {
+    async fn query_group_by_id(&self, id: &str) -> Result<Option<T>> {
+        let res: Result<_> = {
             let model_opt = seaorm_group::Entity::find()
                 .filter(seaorm_group::Column::GroupId.eq(id.to_string()))
                 .one(&self.db)
@@ -160,11 +162,11 @@ where
             })?;
             Ok(Some(dom))
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn query_all_groups(&self) -> webgates::errors::Result<Vec<T>> {
-        let res: RepoResult<_> = {
+    async fn query_all_groups(&self) -> Result<Vec<T>> {
+        let res: Result<_> = {
             let models = seaorm_group::Entity::find()
                 .order_by_asc(seaorm_group::Column::GroupId)
                 .all(&self.db)
@@ -192,6 +194,6 @@ where
             }
             Ok(out)
         };
-        res.map_err(Into::into)
+        res
     }
 }

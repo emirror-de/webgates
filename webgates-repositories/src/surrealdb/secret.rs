@@ -8,7 +8,7 @@ use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result
 use surrealdb::{Connection, RecordId, RecordIdKey};
 use uuid::Uuid;
 use webgates::credentials::{Credentials, CredentialsVerifier};
-use webgates::errors::Result;
+use webgates::errors::Result as CoreResult;
 use webgates::secrets::{Secret, SecretRepository};
 use webgates::verification_result::VerificationResult;
 
@@ -16,7 +16,9 @@ impl<S> SecretRepository for SurrealDbRepository<S>
 where
     S: Connection,
 {
-    async fn store_secret(&self, secret: Secret) -> Result<bool> {
+    type Error = RepoError;
+
+    async fn store_secret(&self, secret: Secret) -> RepoResult<bool> {
         let res: RepoResult<_> = {
             self.use_ns_db().await?;
 
@@ -41,10 +43,10 @@ where
             })?;
             Ok(db_credentials.is_some())
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn delete_secret(&self, id: &Uuid) -> Result<Option<Secret>> {
+    async fn delete_secret(&self, id: &Uuid) -> RepoResult<Option<Secret>> {
         let res: RepoResult<_> = {
             self.use_ns_db().await?;
             let record_id = RecordId::from_table_key(self.scope_settings.credentials.clone(), *id);
@@ -58,10 +60,10 @@ where
             })?;
             Ok(result)
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn update_secret(&self, secret: Secret) -> Result<()> {
+    async fn update_secret(&self, secret: Secret) -> RepoResult<()> {
         let res: RepoResult<_> = {
             self.use_ns_db().await?;
 
@@ -85,7 +87,7 @@ where
                     })?;
             Ok(())
         };
-        res.map_err(Into::into)
+        res
     }
 }
 
@@ -94,7 +96,10 @@ where
     S: Connection,
     Id: Into<RecordIdKey>,
 {
-    async fn verify_credentials(&self, credentials: Credentials<Id>) -> Result<VerificationResult> {
+    async fn verify_credentials(
+        &self,
+        credentials: Credentials<Id>,
+    ) -> CoreResult<VerificationResult> {
         use subtle::Choice;
 
         let res: RepoResult<_> = {

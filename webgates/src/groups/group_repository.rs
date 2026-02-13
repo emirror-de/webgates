@@ -1,5 +1,5 @@
 use super::GroupEntity;
-use crate::errors::Result;
+
 use serde::{Serialize, de::DeserializeOwned};
 use std::future::Future;
 
@@ -18,13 +18,16 @@ where
     Self: Send + Sync,
     T: Serialize + DeserializeOwned + GroupEntity + Eq + Clone + Send + Sync,
 {
+    /// Backend-specific error type for repository operations.
+    type Error: std::error::Error + Send + Sync + 'static;
+
     /// Persist a new group.
     ///
     /// Returns:
     /// - `Ok(true)` if the group was inserted
     /// - `Ok(false)` if a group with the same id already exists (no change)
     /// - `Err(e)` on backend failure
-    fn store_group(&self, group: T) -> impl Future<Output = Result<bool>> + Send;
+    fn store_group(&self, group: T) -> impl Future<Output = Result<bool, Self::Error>> + Send;
 
     /// Delete a group by its id (as returned by `GroupEntity::group_id`).
     ///
@@ -32,7 +35,8 @@ where
     /// - `Ok(Some(group))` if the group existed and was removed
     /// - `Ok(None)` if no group matched the provided id
     /// - `Err(e)` on backend failure
-    fn delete_group(&self, id: &str) -> impl Future<Output = Result<Option<T>>> + Send;
+    fn delete_group(&self, id: &str)
+    -> impl Future<Output = Result<Option<T>, Self::Error>> + Send;
 
     /// Update an existing group.
     ///
@@ -41,7 +45,8 @@ where
     /// - `Ok(Some(updated_group))` on success
     /// - `Ok(None)` if the group does not exist
     /// - `Err(e)` on failure
-    fn update_group(&self, group: T) -> impl Future<Output = Result<Option<T>>> + Send;
+    fn update_group(&self, group: T)
+    -> impl Future<Output = Result<Option<T>, Self::Error>> + Send;
 
     /// Fetch a group by id.
     ///
@@ -49,12 +54,15 @@ where
     /// - `Ok(Some(group))` if found
     /// - `Ok(None)` if not found
     /// - `Err(e)` on backend failure
-    fn query_group_by_id(&self, id: &str) -> impl Future<Output = Result<Option<T>>> + Send;
+    fn query_group_by_id(
+        &self,
+        id: &str,
+    ) -> impl Future<Output = Result<Option<T>, Self::Error>> + Send;
 
     /// Query all groups.
     ///
     /// Returns a vector with zero or more groups on success, or `Err` on failure.
     /// Implementations SHOULD document ordering semantics if any. For large
     /// datasets consider providing a separate paginated trait.
-    fn query_all_groups(&self) -> impl Future<Output = Result<Vec<T>>> + Send;
+    fn query_all_groups(&self) -> impl Future<Output = Result<Vec<T>, Self::Error>> + Send;
 }

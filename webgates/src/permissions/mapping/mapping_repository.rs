@@ -1,5 +1,4 @@
 use super::{PermissionId, PermissionMapping};
-use crate::errors::Result;
 
 use std::future::Future;
 
@@ -97,6 +96,9 @@ use std::future::Future;
 /// # }
 /// ```
 pub trait PermissionMappingRepository {
+    /// Backend-specific error type for repository operations.
+    type Error: std::error::Error + Send + Sync + 'static;
+
     /// Store a permission mapping.
     ///
     /// Implementations SHOULD enforce uniqueness of both the permission ID
@@ -112,7 +114,7 @@ pub trait PermissionMappingRepository {
     fn store_mapping(
         &self,
         mapping: PermissionMapping,
-    ) -> impl Future<Output = Result<Option<PermissionMapping>>>;
+    ) -> impl Future<Output = Result<Option<PermissionMapping>, Self::Error>>;
 
     /// Remove a permission mapping by its permission ID.
     ///
@@ -123,7 +125,7 @@ pub trait PermissionMappingRepository {
     fn remove_mapping_by_id(
         &self,
         id: PermissionId,
-    ) -> impl Future<Output = Result<Option<PermissionMapping>>>;
+    ) -> impl Future<Output = Result<Option<PermissionMapping>, Self::Error>>;
 
     /// Remove a permission mapping by its permission string.
     ///
@@ -137,7 +139,7 @@ pub trait PermissionMappingRepository {
     fn remove_mapping_by_string(
         &self,
         permission: &str,
-    ) -> impl Future<Output = Result<Option<PermissionMapping>>>;
+    ) -> impl Future<Output = Result<Option<PermissionMapping>, Self::Error>>;
 
     /// Query a permission mapping by its permission ID.
     ///
@@ -151,7 +153,7 @@ pub trait PermissionMappingRepository {
     fn query_mapping_by_id(
         &self,
         id: PermissionId,
-    ) -> impl Future<Output = Result<Option<PermissionMapping>>>;
+    ) -> impl Future<Output = Result<Option<PermissionMapping>, Self::Error>>;
 
     /// Query a permission mapping by its permission string.
     ///
@@ -165,7 +167,7 @@ pub trait PermissionMappingRepository {
     fn query_mapping_by_string(
         &self,
         permission: &str,
-    ) -> impl Future<Output = Result<Option<PermissionMapping>>>;
+    ) -> impl Future<Output = Result<Option<PermissionMapping>, Self::Error>>;
 
     /// List all stored permission mappings.
     ///
@@ -176,7 +178,9 @@ pub trait PermissionMappingRepository {
     /// Returns:
     /// - `Ok(mappings)` - Vector of all mappings (empty if none exist)
     /// - `Err(e)` on backend failure
-    fn list_all_mappings(&self) -> impl Future<Output = Result<Vec<PermissionMapping>>>;
+    fn list_all_mappings(
+        &self,
+    ) -> impl Future<Output = Result<Vec<PermissionMapping>, Self::Error>>;
 
     /// Check if a mapping exists for the given permission ID.
     ///
@@ -187,7 +191,10 @@ pub trait PermissionMappingRepository {
     /// - `Ok(true)` if a mapping exists
     /// - `Ok(false)` if no mapping exists
     /// - `Err(e)` on backend failure
-    fn has_mapping_for_id(&self, id: PermissionId) -> impl Future<Output = Result<bool>> {
+    fn has_mapping_for_id(
+        &self,
+        id: PermissionId,
+    ) -> impl Future<Output = Result<bool, Self::Error>> {
         async move {
             match self.query_mapping_by_id(id).await {
                 Ok(Some(_)) => Ok(true),
@@ -206,7 +213,10 @@ pub trait PermissionMappingRepository {
     /// - `Ok(true)` if a mapping exists
     /// - `Ok(false)` if no mapping exists
     /// - `Err(e)` on backend failure
-    fn has_mapping_for_string(&self, permission: &str) -> impl Future<Output = Result<bool>> {
+    fn has_mapping_for_string(
+        &self,
+        permission: &str,
+    ) -> impl Future<Output = Result<bool, Self::Error>> {
         async move {
             match self.query_mapping_by_string(permission).await {
                 Ok(Some(_)) => Ok(true),
@@ -238,7 +248,7 @@ pub trait PermissionMappingRepositoryBulk: PermissionMappingRepository {
     fn store_mappings(
         &self,
         mappings: Vec<PermissionMapping>,
-    ) -> impl Future<Output = Result<Vec<PermissionMapping>>>;
+    ) -> impl Future<Output = Result<Vec<PermissionMapping>, Self::Error>>;
 
     /// Remove multiple permission mappings by their IDs.
     ///
@@ -250,7 +260,7 @@ pub trait PermissionMappingRepositoryBulk: PermissionMappingRepository {
     fn remove_mappings_by_ids(
         &self,
         ids: Vec<PermissionId>,
-    ) -> impl Future<Output = Result<Vec<PermissionMapping>>>;
+    ) -> impl Future<Output = Result<Vec<PermissionMapping>, Self::Error>>;
 
     /// Query multiple permission mappings by their IDs.
     ///
@@ -265,5 +275,5 @@ pub trait PermissionMappingRepositoryBulk: PermissionMappingRepository {
     fn query_mappings_by_ids(
         &self,
         ids: Vec<PermissionId>,
-    ) -> impl Future<Output = Result<Vec<PermissionMapping>>>;
+    ) -> impl Future<Output = Result<Vec<PermissionMapping>, Self::Error>>;
 }

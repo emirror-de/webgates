@@ -1,5 +1,4 @@
-use crate::errors::Result as RepoResult;
-use webgates::errors::Result;
+use crate::errors::{Error as RepoError, Result};
 use webgates::groups::{GroupEntity, GroupRepository};
 
 use std::collections::HashMap;
@@ -51,8 +50,10 @@ impl<T> GroupRepository<T> for MemoryGroupRepository<T>
 where
     T: Serialize + DeserializeOwned + GroupEntity + Eq + Clone + Send + Sync + 'static,
 {
+    type Error = RepoError;
+
     async fn store_group(&self, group: T) -> Result<bool> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let id = group.group_id().to_string();
 
             {
@@ -66,19 +67,19 @@ where
             write.insert(id, group);
             Ok(true)
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn delete_group(&self, id: &str) -> Result<Option<T>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let mut write = self.store.write().await;
             Ok(write.remove(id))
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn update_group(&self, group: T) -> Result<Option<T>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let id = group.group_id().to_string();
             let mut write = self.store.write().await;
             if write.contains_key(&id) {
@@ -88,22 +89,22 @@ where
                 Ok(None)
             }
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn query_group_by_id(&self, id: &str) -> Result<Option<T>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let read = self.store.read().await;
             Ok(read.get(id).cloned())
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn query_all_groups(&self) -> Result<Vec<T>> {
-        let res: RepoResult<_> = {
+        let res: Result<_> = {
             let read = self.store.read().await;
             Ok(read.values().cloned().collect())
         };
-        res.map_err(Into::into)
+        res
     }
 }

@@ -1,6 +1,5 @@
 use crate::errors::{
-    Error as RepoError, RepositoriesError, RepositoryOperation, RepositoryType,
-    Result as RepoResult,
+    Error as RepoError, RepositoriesError, RepositoryOperation, RepositoryType, Result,
 };
 
 use webgates::permissions::PermissionId;
@@ -73,11 +72,10 @@ impl From<Vec<PermissionMapping>> for MemoryPermissionMappingRepository {
 }
 
 impl PermissionMappingRepository for MemoryPermissionMappingRepository {
-    async fn store_mapping(
-        &self,
-        mapping: PermissionMapping,
-    ) -> webgates::errors::Result<Option<PermissionMapping>> {
-        let res: RepoResult<_> = {
+    type Error = RepoError;
+
+    async fn store_mapping(&self, mapping: PermissionMapping) -> Result<Option<PermissionMapping>> {
+        let res: Result<_> = {
             if let Err(e) = mapping.validate() {
                 return Err(RepoError::Repositories(RepositoriesError::operation_failed(
                     RepositoryType::PermissionMapping,
@@ -108,25 +106,22 @@ impl PermissionMappingRepository for MemoryPermissionMappingRepository {
 
             Ok(Some(mapping))
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn remove_mapping_by_id(
-        &self,
-        id: PermissionId,
-    ) -> webgates::errors::Result<Option<PermissionMapping>> {
-        let res: RepoResult<_> = {
+    async fn remove_mapping_by_id(&self, id: PermissionId) -> Result<Option<PermissionMapping>> {
+        let res: Result<_> = {
             let mut write_by_id = self.mappings_by_id.write().await;
             Ok(write_by_id.remove(&id))
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn remove_mapping_by_string(
         &self,
         permission: &str,
-    ) -> webgates::errors::Result<Option<PermissionMapping>> {
-        let res: RepoResult<_> = {
+    ) -> Result<Option<PermissionMapping>> {
+        let res: Result<_> = {
             let normalized = normalize_permission(permission);
 
             let mut write_by_id = self.mappings_by_id.write().await;
@@ -146,25 +141,19 @@ impl PermissionMappingRepository for MemoryPermissionMappingRepository {
 
             Ok(None)
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn query_mapping_by_id(
-        &self,
-        id: PermissionId,
-    ) -> webgates::errors::Result<Option<PermissionMapping>> {
-        let res: RepoResult<_> = {
+    async fn query_mapping_by_id(&self, id: PermissionId) -> Result<Option<PermissionMapping>> {
+        let res: Result<_> = {
             let read = self.mappings_by_id.read().await;
             Ok(read.get(&id).cloned())
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn query_mapping_by_string(
-        &self,
-        permission: &str,
-    ) -> webgates::errors::Result<Option<PermissionMapping>> {
-        let res: RepoResult<_> = {
+    async fn query_mapping_by_string(&self, permission: &str) -> Result<Option<PermissionMapping>> {
+        let res: Result<_> = {
             let normalized = normalize_permission(permission);
 
             let read = self.mappings_by_id.read().await;
@@ -175,15 +164,15 @@ impl PermissionMappingRepository for MemoryPermissionMappingRepository {
             }
             Ok(None)
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn list_all_mappings(&self) -> webgates::errors::Result<Vec<PermissionMapping>> {
-        let res: RepoResult<_> = {
+    async fn list_all_mappings(&self) -> Result<Vec<PermissionMapping>> {
+        let res: Result<_> = {
             let read = self.mappings_by_id.read().await;
             Ok(read.values().cloned().collect())
         };
-        res.map_err(Into::into)
+        res
     }
 }
 
@@ -199,8 +188,8 @@ impl PermissionMappingRepositoryBulk for MemoryPermissionMappingRepository {
     async fn store_mappings(
         &self,
         mappings: Vec<PermissionMapping>,
-    ) -> webgates::errors::Result<Vec<PermissionMapping>> {
-        let res: RepoResult<_> = {
+    ) -> Result<Vec<PermissionMapping>> {
+        let res: Result<_> = {
             for mapping in &mappings {
                 if let Err(e) = mapping.validate() {
                     return Err(RepoError::Repositories(RepositoriesError::operation_failed(
@@ -230,14 +219,14 @@ impl PermissionMappingRepositoryBulk for MemoryPermissionMappingRepository {
 
             Ok(stored)
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn remove_mappings_by_ids(
         &self,
         ids: Vec<PermissionId>,
-    ) -> webgates::errors::Result<Vec<PermissionMapping>> {
-        let res: RepoResult<_> = {
+    ) -> Result<Vec<PermissionMapping>> {
+        let res: Result<_> = {
             let mut removed: Vec<PermissionMapping> = Vec::new();
 
             let mut write_by_id = self.mappings_by_id.write().await;
@@ -250,14 +239,14 @@ impl PermissionMappingRepositoryBulk for MemoryPermissionMappingRepository {
 
             Ok(removed)
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn query_mappings_by_ids(
         &self,
         ids: Vec<PermissionId>,
-    ) -> webgates::errors::Result<Vec<PermissionMapping>> {
-        let res: RepoResult<_> = {
+    ) -> Result<Vec<PermissionMapping>> {
+        let res: Result<_> = {
             let read_by_id = self.mappings_by_id.read().await;
             let mut out: Vec<PermissionMapping> = Vec::new();
 

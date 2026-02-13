@@ -59,10 +59,12 @@ impl<S> PermissionMappingRepository for SurrealDbRepository<S>
 where
     S: Connection,
 {
+    type Error = RepoError;
+
     async fn store_mapping(
         &self,
         mapping: PermissionMapping,
-    ) -> webgates::errors::Result<Option<PermissionMapping>> {
+    ) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
             if let Err(e) = mapping.validate() {
                 return Err(RepoError::Database(DatabaseError::with_context(
@@ -102,13 +104,13 @@ where
                 Ok(None)
             }
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn remove_mapping_by_id(
         &self,
         id: PermissionId,
-    ) -> webgates::errors::Result<Option<PermissionMapping>> {
+    ) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
             self.use_ns_db().await?;
 
@@ -139,13 +141,13 @@ where
                 })
                 .transpose()
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn remove_mapping_by_string(
         &self,
         permission: &str,
-    ) -> webgates::errors::Result<Option<PermissionMapping>> {
+    ) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
             self.use_ns_db().await?;
 
@@ -193,13 +195,10 @@ where
                 })
                 .transpose()
         };
-        res.map_err(Into::into)
+        res
     }
 
-    async fn query_mapping_by_id(
-        &self,
-        id: PermissionId,
-    ) -> webgates::errors::Result<Option<PermissionMapping>> {
+    async fn query_mapping_by_id(&self, id: PermissionId) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
             self.use_ns_db().await?;
 
@@ -231,13 +230,13 @@ where
                 })
                 .transpose()
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn query_mapping_by_string(
         &self,
         permission: &str,
-    ) -> webgates::errors::Result<Option<PermissionMapping>> {
+    ) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
             self.use_ns_db().await?;
 
@@ -288,7 +287,7 @@ where
         res.map_err(Into::into)
     }
 
-    async fn list_all_mappings(&self) -> webgates::errors::Result<Vec<PermissionMapping>> {
+    async fn list_all_mappings(&self) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {
             self.use_ns_db().await?;
 
@@ -319,7 +318,7 @@ where
             }
             Ok(out)
         };
-        res.map_err(Into::into)
+        res
     }
 }
 
@@ -330,7 +329,7 @@ where
     async fn store_mappings(
         &self,
         mappings: Vec<PermissionMapping>,
-    ) -> webgates::errors::Result<Vec<PermissionMapping>> {
+    ) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {
             self.use_ns_db().await?;
 
@@ -365,13 +364,13 @@ where
 
             Ok(mappings)
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn remove_mappings_by_ids(
         &self,
         ids: Vec<PermissionId>,
-    ) -> webgates::errors::Result<Vec<PermissionMapping>> {
+    ) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {
             self.use_ns_db().await?;
 
@@ -427,13 +426,13 @@ where
 
             Ok(removed)
         };
-        res.map_err(Into::into)
+        res
     }
 
     async fn query_mappings_by_ids(
         &self,
         ids: Vec<PermissionId>,
-    ) -> webgates::errors::Result<Vec<PermissionMapping>> {
+    ) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {
             self.use_ns_db().await?;
 
@@ -482,6 +481,6 @@ where
 
             Ok(out)
         };
-        res.map_err(Into::into)
+        res
     }
 }
