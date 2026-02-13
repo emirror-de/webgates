@@ -31,7 +31,7 @@ The workspace crates are intended to be consumed depending on the use case and r
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
-webgates-axum = { version = "0.1", features = ["server"] }
+webgates-axum = { version = "0.1" }
 ```
 
 If you only need domain logic (no server integration), depend on the core crate:

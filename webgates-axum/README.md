@@ -53,7 +53,6 @@ let app = Router::new()
 
 ## Features
 
-- `default = ["server"]`
 - `audit-logging`: propagate audit logging from core
 - `prometheus`: emit Prometheus metrics for auth events
 - Inherits core features transitively (`webgates`)
