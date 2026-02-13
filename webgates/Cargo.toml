@@ -37,6 +37,8 @@ server = [
 insecure-fast-hash = []
 audit-logging = ["dep:tracing"]
 prometheus = ["audit-logging", "dep:prometheus"]
+repo-surrealdb = []
+repo-seaorm = []
 
 [dependencies]
 const-crypto = { workspace = true }
@@ -62,6 +64,7 @@ uuid = { workspace = true, features = ["serde", "v7", "js"] }
 [dev-dependencies]
 
 webgates-repositories = { path = "../webgates-repositories", features = ["repo-seaorm", "repo-surrealdb"] }
+surrealdb = { workspace = true, features = ["kv-mem"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tokio-test = "0.4.4"
 uuid = "1"

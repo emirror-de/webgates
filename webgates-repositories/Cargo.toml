@@ -41,6 +41,7 @@ repo-seaorm = [
     "dep:sea-orm",
     "dep:sea-query",
     "dep:argon2",
+    "dep:serde_json",
 ]
 
 [dependencies]
@@ -60,3 +61,4 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio-test = "0.4.4"

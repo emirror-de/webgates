@@ -1,3 +1,8 @@
+/// SurrealDB-backed secret repository and credentials verifier.
+///
+/// This module implements `SecretRepository` and `CredentialsVerifier` for the
+/// SurrealDB backend, translating repository operations into SurrealQL while
+/// keeping error mapping consistent with the rest of the workspace.
 use super::SurrealDbRepository;
 use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result as RepoResult};
 use surrealdb::{Connection, RecordId, RecordIdKey};

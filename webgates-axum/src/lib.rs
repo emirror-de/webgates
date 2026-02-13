@@ -5,17 +5,19 @@
 /*!
 # webgates-axum
 
-Axum integration layer for the `webgates` core. This crate provides the
-middleware (“gates”) and ready‑made route handlers that plug the core
-authentication/authorization models into Axum applications.
+Axum integration layer for the `webgates` core. This crate adapts the
+framework-agnostic gate configurations from `webgates` into Axum tower layers
+and provides ready‑made route handlers that plug the core authentication/
+authorization models into Axum applications.
 
-- Cookie and bearer gates as Axum tower layers
+- Cookie and bearer gates as Axum tower layers built from core gate configs
 - OAuth2 helpers for Authorization Code + PKCE flows
 - Pre-built login/logout handlers
 - Optional audit logging and Prometheus metrics (feature-gated)
 
-The core domain models, hashing, codecs, and repositories live in the sibling
-`webgates` crate. Depend on **both** crates to secure Axum apps.
+The core domain models, hashing, codecs, repositories, and gate builders live in
+the sibling `webgates` crate. Depend on **both** crates: `webgates` for the
+core and `webgates-axum` for the Axum adapters.
 
 ## Basic usage
 

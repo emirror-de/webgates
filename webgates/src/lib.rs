@@ -8,8 +8,9 @@
 
 Domain models, codecs, hashing, and authorization logic for webgates.
 This crate is platform-agnostic and does **not** depend on any specific web
-framework. The axum integration (middleware, handlers, cookie templates, OAuth2
-routing) now lives in the sibling `webgates-axum` crate.
+framework. Gate configurations (cookie/bearer) live here; framework adapters
+(e.g., Axum middleware, route handlers, OAuth2 routing) are provided by the
+sibling `webgates-axum` crate.
 
 ## What’s here
 
@@ -21,16 +22,15 @@ routing) now lives in the sibling `webgates-axum` crate.
 - Error taxonomy with user-friendly messaging
 - Utilities for permission validation and deterministic hashing
 
-## What moved to `webgates-axum`
+## What lives in `webgates-axum`
 
-- Gate builders (cookie/bearer)
+- Axum adapters for the gates (tower layers)
 - OAuth2 flow helpers and route builders
 - Axum route handlers (login/logout)
-- Cookie template helpers for HTTP responses
+- HTTP cookie writer helpers
 
-If you need to protect axum routes, depend on both crates and wire the
-integration from `webgates-axum`, while keeping your core logic and models
-coming from this crate.
+Use this crate for gate configuration and domain logic, and `webgates-axum` to
+adapt them into Axum layers.
 
 ## Quick start (core)
 
@@ -62,6 +62,8 @@ pub mod authz;
 pub mod codecs;
 #[cfg(feature = "server")]
 pub mod cookie_template;
+#[cfg(feature = "server")]
+pub mod gate;
 
 pub mod credentials;
 #[cfg(feature = "server")]

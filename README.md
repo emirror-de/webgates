@@ -24,6 +24,27 @@ This workspace now ships two crates:
 
 The legacy `storage-seaorm` / `storage-surrealdb` feature flags no longer exist on `webgates`.
 
+## Adding a new framework integration
+
+1. Depend on `webgates` for the core gate builders (`Gate::cookie`, `Gate::bearer`) and domain types.
+2. Create a small adapter crate for your framework:
+   - Re-export the core `Gate` entry point from `webgates`.
+   - Implement adapter traits that translate the core `CookieGate` / `BearerGate` into your framework’s middleware type.
+   - Keep the core crate free of framework dependencies (no `tower`, `http`, etc.).
+3. Map core configuration to your framework layer:
+   - Respect `with_policy`, `allow_anonymous_with_optional_user`, and `require_login`.
+   - Apply the `cookie_template` exactly when reading/writing auth cookies.
+   - Honor static-token mode and optional mode semantics.
+4. Tests to add:
+   - Deny-all policy returns 401/blocked by default.
+   - Valid JWT passes and injects user/claims; invalid JWT is rejected.
+   - Optional mode never blocks and installs optional context types.
+   - Static token mode accepts only the configured token and handles optional mode correctly.
+5. Documentation to provide:
+   - Minimal setup snippet showing how to wrap routes/endpoints with the adapted gate.
+   - Notes on issuer consistency and cookie name alignment across login and gate layers.
+   - Security reminders: HTTPS, Secure/HttpOnly cookies, bounded token TTL, consistent issuer.
+
 ## Install
 
 Core crate (server defaults enabled):
