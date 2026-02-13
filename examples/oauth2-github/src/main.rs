@@ -148,7 +148,7 @@ async fn main() {
     let github_client_secret = env::var("GITHUB_CLIENT_SECRET")
         .expect("GITHUB_CLIENT_SECRET must be set (GitHub OAuth app)");
     let github_redirect = env::var("GITHUB_REDIRECT_URL")
-        .unwrap_or_else(|_| "http://localhost:3000/auth/callback".into());
+        .unwrap_or_else(|_| format!("http://{}/auth/callback", addr));
 
     // Construct OAuth2 gate for GitHub
     // The account mapper below fetches info from GitHub's user APIs:
