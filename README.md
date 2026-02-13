@@ -1,149 +1,110 @@
 # webgates
 
-Flexible, type-safe authentication and authorization for Axum with JWTs and optional OAuth2. The workspace contains core types, Axum adapters, and repository backends.
+[![Crates.io](https://img.shields.io/crates/v/webgates.svg)](https://crates.io/crates/webgates)
+[![Documentation](https://docs.rs/webgates/badge.svg)](https://docs.rs/webgates)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Build Status](https://github.com/emirror-de/webgates/workflows/CI/badge.svg)](https://github.com/emirror-de/webgates/actions)
 
+Flexible, type-safe authentication and authorization primitives and integrations for Rust web services.
+
+This repository is a workspace split into focused crates:
+
+- `webgates` — core domain models and services (JWT codecs, permissions, roles, domain types).
+- `webgates-axum` — Axum integration layer (extractors, middleware, route handlers for login/logout, OAuth2 flows).
+- `webgates-repositories` — repository implementations (in-memory, SeaORM, SurrealDB backends, password hashing helpers).
+- `examples/` — curated examples demonstrating common integrations and deployment patterns.
+
+Feature highlights (available across the workspace):
 - Cookie and bearer authentication
-- OAuth2 Authorization Code + PKCE that can mint first-party JWT cookies
+- OAuth2 Authorization Code + PKCE flow with optional first‑party JWT cookie issuance
 - Hierarchical roles, groups, and string-based permissions
-- Ready-to-use login/logout handlers
+- Ready-to-use login/logout handlers and extractors for Axum
 - Optional anonymous user context and static-token mode for internal services
-- In-memory and database-backed repositories (SeaORM, SurrealDB)
+- In-memory and optional database-backed repositories (SeaORM, SurrealDB)
 - Feature-gated audit logging and Prometheus metrics
 
-## Workspace layout
+## Install
 
-- `webgates` — core domain types, gate builders (cookie/bearer), codecs, validation, hashing.
-- `webgates-axum` — Axum middleware/layers and route handlers built from the core gates.
-- `webgates-repositories` — repository implementations (in-memory, SeaORM, SurrealDB) and repo-facing services.
-
-## Install (pick what you need)
-
-Core only:
+The workspace crates are intended to be consumed independently. The most common usage is to depend on the Axum integration crate which re-exports the core APIs when appropriate:
 
 ```toml
 [dependencies]
-webgates = { version = "0.1" }
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+webgates-axum = { version = "0.1", features = ["server"] }
 ```
 
-Axum integration:
+If you only need domain logic (no server integration), depend on the core crate:
 
 ```toml
 [dependencies]
-webgates = { version = "0.1" }
-webgates-axum = { version = "0.1" }
+webgates = "0.1"
 ```
 
-Repositories (choose a backend):
+Repository/backends are provided by the `webgates-repositories` crate and are feature-gated. Common optional features across the workspace:
+- `repo-surrealdb` — SurrealDB repositories
+- `repo-seaorm` — SeaORM repositories
+- `audit-logging` — structured audit events
+- `prometheus` — Prometheus metrics (depends on `audit-logging`)
+- `insecure-fast-hash` — development-only faster Argon2 preset
 
-```toml
-[dependencies]
-webgates = { version = "0.1" }
-webgates-repositories = { version = "0.1", features = ["repo-seaorm"] }
-# or
-webgates-repositories = { version = "0.1", features = ["repo-surrealdb"] }
-# in-memory requires no extra feature flags
-```
+Note: Feature names and exact crate versions are listed in each crate's `Cargo.toml` and documentation on docs.rs.
 
-Minimum Rust version: 1.88
+## Core concepts
 
-## Quick start (core, gate configuration)
+- Gate layer (Axum helpers)
+  - `Gate::cookie("issuer", codec)` — JWT via HTTP-only cookies (for browser-based apps)
+  - `Gate::bearer("issuer", codec)` — JWT via `Authorization: Bearer` header (for APIs)
+  - `Gate::bearer(...).with_static_token("...")` — static/shared-secret mode for internal services
+  - `Gate::oauth2::<R, G>()` — OAuth2 Authorization Code + PKCE flow builder (Axum helpers)
+  - `allow_anonymous_with_optional_user()` — never blocks; injects optional user context
+  - `require_login()` — require authenticated user (respects role hierarchy)
+- Access policies
+  - `require_role(..)`, `require_role_or_supervisor(..)` — role-based guards
+  - `require_group(..)` — group membership checks
+  - `require_permission("domain:action")` — deterministic mapping to `PermissionId`; use the provided macros to validate registries at test-time
+- Login/logout
+  - Provided route handlers verify credentials and set/remove auth cookies (see `webgates-axum::route_handlers`)
+- Repositories
+  - In-memory implementations for quick development and tests
+  - Optional database-backed repositories in `webgates-repositories` (SeaORM / SurrealDB) behind features
+- JWT codec
+  - `codecs::jwt::JsonWebToken` and associated options — persist keys in production; swap in different backends if needed via feature flags
 
-```rust
-use std::sync::Arc;
-use webgates::authz::AccessPolicy;
-use webgates::gate::Gate;
-use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
-use webgates::accounts::Account;
-use webgates::prelude::{Role, Group};
+## Cryptographic Backend
 
-type AppClaims = JwtClaims<Account<Role, Group>>;
-let codec = Arc::new(JsonWebToken::<AppClaims>::default());
+JWT operations use the `rust_crypto` backend where applicable (see crate documentation for configured features). Password hashing and other crypto primitives are exposed via the domain crates and repository helpers.
 
-let gate = Gate::cookie::<_, Role, Group>("my-app", Arc::clone(&codec))
-    .require_login() // baseline role + supervisors
-    .with_policy(AccessPolicy::require_permission("admin:read"));
-```
+## Security
 
-- `Gate::cookie` — JWT in HTTP-only cookies (web apps).
-- `Gate::bearer` — JWT in Authorization header (APIs); `with_static_token` for shared-secret mode.
-- `allow_anonymous_with_optional_user` — never blocks; injects optional user context.
-- `require_login` — allow baseline role and supervisors via the role hierarchy.
+- Use a persistent JWT signing key in production (do not rely on ephemeral defaults)
+- Keep the JWT issuer consistent between Gate configuration and registered claims
+- Use secure cookie attributes in production (`HttpOnly`, `Secure`, appropriate `SameSite`)
+- Rate-limit sensitive endpoints (login, token endpoints)
+- Enable `audit-logging` and `prometheus` features for observability; never log secrets, tokens, or raw cookie values
 
-## Quick start (Axum)
+## Examples and docs
 
-```rust,ignore
-use std::sync::Arc;
-use axum::{routing::get, Router};
-use webgates_axum::gate::Gate;
-use webgates::authz::AccessPolicy;
-use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
-use webgates::accounts::Account;
-use webgates::prelude::{Role, Group};
+- API docs for each crate are published on docs.rs:
+  - `webgates`: https://docs.rs/webgates
+  - `webgates-axum`: https://docs.rs/webgates-axum
+  - `webgates-repositories`: https://docs.rs/webgates-repositories
+- The repository contains curated examples under `examples/` (OAuth2 flows, Prometheus integration, permission validation, etc.). See the examples to understand typical wiring for Axum servers and repository setup.
+- For practical debugging and common integration issues, consult `TROUBLESHOOTING.md` in the repository.
 
-type AppClaims = JwtClaims<Account<Role, Group>>;
-let codec = Arc::new(JsonWebToken::<AppClaims>::default());
+## MSRV and license
 
-let app = Router::new()
-    .route("/admin", get(|| async { "ok" }))
-    .layer(
-        Gate::cookie("my-app", Arc::clone(&codec))
-            .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin)),
-    );
-```
-
-- `Gate::bearer` works similarly for APIs.
-- Use `with_cookie_template` or `configure_cookie_template` to align cookie name/path with your login writer.
-- Optional mode inserts `Option<Account<_>>` / `Option<RegisteredClaims>` and never blocks.
-
-## Login / logout handlers (Axum)
-
-`webgates-axum::route_handlers::{login, logout}` set and clear the auth cookie. Ensure the cookie template and issuer match your gate configuration.
-
-## Repository backends (`webgates-repositories`)
-
-- In-memory: zero config, great for tests and examples.
-- SeaORM (`repo-seaorm`): relational databases supported by SeaORM. Bring the DB driver via SeaORM features.
-- SurrealDB (`repo-surrealdb`): SurrealDB-backed repositories (see BUSL note below).
-
-Repository APIs return `webgates_repositories::errors::Result<T>` with a rich error stack. Keep error details internal; map to user-facing errors at your API boundary.
-
-## Features (core)
-
-- `default = ["server"]`
-- `server`: pulls in tokio, serde_json, subtle, tracing, etc.
-- `audit-logging`: structured audit events (uses `tracing`)
-- `prometheus`: metrics for audit (implies `audit-logging`)
-- `insecure-fast-hash`: faster Argon2 for development only
-- `wasm`: build core types for WASM (no server deps)
-
-Features (repositories):
-
-- `default = ["server"]`
-- `repo-seaorm`, `repo-surrealdb` select backends
-- `audit-logging` enables repository audit hooks
-
-## Examples (runnable)
-
-- `examples/simple-usage` (in-memory)
-- `examples/distributed`
-- `examples/oauth2-github`
-- `examples/permission-registry`
-- `examples/prometheus`
-- `examples/rate-limiting`
-- `webgates-repositories/examples/sea-orm`
-- `webgates-repositories/examples/surrealdb`
-
-## Security checklist
-
-- Use a persistent JWT key; do not rely on the default random key in production.
-- Keep issuer strings identical between login (claims) and gates.
-- Align cookie names/templates between login and gate; set Secure/HttpOnly/SameSite appropriately.
-- Rate-limit login; validate inputs at boundaries.
-- Avoid logging secrets or tokens; prefer correlation IDs.
-- Enable `audit-logging` and `prometheus` for observability.
-
-## License and notices
-
-- License: MIT
 - MSRV: 1.88
-- SurrealDB (when enabling `repo-surrealdb`): BUSL-1.1. Production use is restricted by BUSL; include required third-party notices and comply with SurrealDB licensing.
+- License: MIT
+
+SurrealDB (BUSL-1.1) notice:
+- Enabling the optional feature that pulls in SurrealDB (`repo-surrealdb` / `storage-surrealdb`) includes SurrealDB which is licensed under the Business Source License 1.1 (BUSL). That license places restrictions on Production Use until the project's Change Date unless you obtain a commercial license or otherwise comply with the BUSL terms.
+- The SurrealDB feature is off by default. If you enable it for builds or distributions, ensure you comply with SurrealDB's BUSL terms and include required third-party notices.
+- For fully open-source distributions, prefer the in-memory or SeaORM-backed repositories.
+
+Subtle and other third-party license notices:
+- Some dependencies carry additional notices (see the repository `NOTICE` file when redistributing).
+
+---
+For more details, examples, and API references, see the crate documentation and the `examples/` folder in this repository.
