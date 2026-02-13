@@ -83,8 +83,10 @@
 pub(crate) mod cookie_service;
 
 use self::cookie_service::CookieGateService;
+use crate::accounts::Account;
 use crate::authz::{AccessHierarchy, AccessPolicy};
 use crate::codecs::Codec;
+use crate::codecs::jwt::JwtClaims;
 use crate::cookie_template::{CookieTemplate, CookieTemplateBuilderError};
 
 use std::sync::Arc;
@@ -126,9 +128,9 @@ use tower::Layer;
 #[derive(Clone)]
 pub struct CookieGate<C, R, G>
 where
-    C: Codec,
+    C: Codec<Payload = JwtClaims<Account<R, G>>>,
     R: AccessHierarchy + Eq + std::fmt::Display,
-    G: Eq,
+    G: Eq + Clone,
 {
     issuer: String,
     policy: AccessPolicy<R, G>,
@@ -143,9 +145,9 @@ where
 
 impl<C, R, G> CookieGate<C, R, G>
 where
-    C: Codec,
-    R: AccessHierarchy + Eq + std::fmt::Display,
-    G: Eq,
+    C: Codec<Payload = JwtClaims<Account<R, G>>>,
+    R: AccessHierarchy + Eq + std::fmt::Display + Default,
+    G: Eq + Clone,
 {
     /// Creates a new instance with default values and the given parameter.
     pub(super) fn new_with_codec(issuer: &str, codec: Arc<C>) -> Self {
@@ -282,8 +284,8 @@ where
 
 impl<S, C, R, G> Layer<S> for CookieGate<C, R, G>
 where
-    C: Codec,
-    R: AccessHierarchy + Eq + std::fmt::Display,
+    C: Codec<Payload = JwtClaims<Account<R, G>>>,
+    R: AccessHierarchy + Eq + std::fmt::Display + Default,
     G: Eq + Clone,
 {
     type Service = CookieGateService<C, R, G, S>;
@@ -310,9 +312,9 @@ where
 
 impl<C, R, G> CookieGate<C, R, G>
 where
-    C: Codec,
-    R: AccessHierarchy + std::fmt::Display,
-    G: Eq,
+    C: Codec<Payload = JwtClaims<Account<R, G>>>,
+    R: AccessHierarchy + std::fmt::Display + Default,
+    G: Eq + Clone,
 {
     /// Configures the gate to allow any authenticated user (baseline role + all supervisors).
     ///

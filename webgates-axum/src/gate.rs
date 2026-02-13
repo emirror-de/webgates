@@ -12,8 +12,10 @@
 
 use std::sync::Arc;
 
+use webgates::accounts::Account;
 use webgates::authz::AccessHierarchy;
 use webgates::codecs::Codec;
+use webgates::codecs::jwt::JwtClaims;
 use webgates::gate::{self as core_gate, Gate as CoreGate};
 
 pub mod bearer;
@@ -28,7 +30,7 @@ impl Gate {
     /// Create a cookie-based gate as an axum layer using the core configuration.
     pub fn cookie<C, R, G>(issuer: &str, codec: Arc<C>) -> cookie::CookieGate<C, R, G>
     where
-        C: Codec,
+        C: Codec<Payload = JwtClaims<Account<R, G>>>,
         R: AccessHierarchy + Eq + std::fmt::Display + Default + Clone + Send + Sync + 'static,
         G: Eq + Clone + Send + Sync + 'static,
     {
@@ -66,7 +68,7 @@ struct CookieAdapter;
 
 impl<C, R, G> core_gate::cookie::CookieGateAdapter<C, R, G> for CookieAdapter
 where
-    C: Codec,
+    C: Codec<Payload = JwtClaims<Account<R, G>>>,
     R: AccessHierarchy + Eq + std::fmt::Display + Default + Clone + Send + Sync + 'static,
     G: Eq + Clone + Send + Sync + 'static,
 {

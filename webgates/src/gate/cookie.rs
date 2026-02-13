@@ -15,9 +15,12 @@
 use std::fmt::Display;
 use std::sync::Arc;
 
-use crate::authz::{AccessHierarchy, AccessPolicy};
+use crate::accounts::Account;
+use crate::authz::{AccessHierarchy, AccessPolicy, AuthorizationService};
 use crate::codecs::Codec;
+use crate::codecs::jwt::{JwtClaims, JwtValidationResult, JwtValidationService, RegisteredClaims};
 use crate::cookie_template::{CookieTemplate, CookieTemplateBuilderError};
+use uuid::Uuid;
 
 /// Builder/configuration for cookie-backed JWT gates (framework-agnostic).
 #[derive(Clone, Debug)]
@@ -27,10 +30,15 @@ where
     R: AccessHierarchy + Eq + Display,
     G: Eq,
 {
+    /// Expected issuer for JWT validation.
     issuer: String,
+    /// Access policy configured for this gate.
     policy: AccessPolicy<R, G>,
+    /// Shared JWT codec used to decode/encode tokens.
     codec: Arc<C>,
+    /// Template describing how to read/write the authentication cookie.
     cookie_template: CookieTemplate,
+    /// When true, the gate runs in optional mode and never blocks requests.
     install_optional_extensions: bool,
 }
 
@@ -144,4 +152,187 @@ where
 
     /// Convert a framework-agnostic `CookieGate` into the framework-specific middleware/layer.
     fn adapt(&self, gate: CookieGate<C, R, G>) -> Self::Output;
+}
+
+/// Outcome of evaluating a cookie gate token independent of any HTTP framework.
+///
+/// This enables adapters (e.g., Axum, Warp) to perform authentication and
+/// authorization in the core crate and then map the outcome to their transport.
+#[derive(Debug, Clone)]
+pub enum CookieEvaluation<R, G>
+where
+    R: AccessHierarchy + Eq + Display + Clone,
+    G: Eq + Clone,
+{
+    /// Optional mode: no valid token present.
+    OptionalAnonymous,
+    /// Optional mode: valid token decoded; policy not enforced.
+    OptionalAuthorized {
+        /// Decoded account claims from the JWT.
+        account: Account<R, G>,
+        /// Registered (standard) JWT claims.
+        registered_claims: RegisteredClaims,
+    },
+    /// Strict mode: required token is missing.
+    MissingToken,
+    /// Strict mode: token failed validation.
+    InvalidToken,
+    /// Strict mode: token issuer mismatch.
+    InvalidIssuer {
+        /// Expected issuer configured on the gate.
+        expected: String,
+        /// Actual issuer value found in the token.
+        actual: String,
+    },
+    /// Strict mode: policy denies all (empty requirements).
+    DenyAllPolicy,
+    /// Strict mode: decoded token but policy check failed.
+    PolicyDenied {
+        /// Account identifier from the decoded token when authorization failed.
+        account_id: Uuid,
+    },
+    /// Strict mode: token validated and policy passed.
+    Authorized {
+        /// Decoded account claims from the JWT.
+        account: Account<R, G>,
+        /// Registered (standard) JWT claims.
+        registered_claims: RegisteredClaims,
+    },
+}
+
+/// Runtime evaluator built from a `CookieGate` that executes validation and
+/// authorization independent of any HTTP framework.
+#[derive(Clone, Debug)]
+pub struct CookieGateRuntime<C, R, G>
+where
+    C: Codec,
+    R: AccessHierarchy + Eq + Display + Clone,
+    G: Eq + Clone,
+{
+    /// Authorization evaluator built from the configured access policy.
+    authorization_service: AuthorizationService<R, G>,
+    /// Validates and decodes JWTs for this gate.
+    jwt_validation_service: JwtValidationService<C>,
+    /// Indicates whether the gate runs in optional (non-blocking) mode.
+    install_optional_extensions: bool,
+}
+
+impl<C, R, G> CookieGateRuntime<C, R, G>
+where
+    C: Codec<Payload = JwtClaims<Account<R, G>>>,
+    R: AccessHierarchy + Eq + Display + Clone,
+    G: Eq + Clone,
+{
+    /// Build a runtime evaluator from a configured gate.
+    pub fn new(gate: &CookieGate<C, R, G>) -> Self {
+        Self {
+            authorization_service: AuthorizationService::new(gate.policy().clone()),
+            jwt_validation_service: JwtValidationService::new(
+                Arc::clone(gate.codec()),
+                gate.issuer(),
+            ),
+            install_optional_extensions: gate.installs_optional_extensions(),
+        }
+    }
+
+    /// Whether the gate is in optional mode (never blocks requests).
+    pub fn is_optional(&self) -> bool {
+        self.install_optional_extensions
+    }
+
+    /// Evaluate an optional token string and return the authorization outcome.
+    pub fn evaluate(&self, token: Option<&str>) -> CookieEvaluation<R, G> {
+        if self.install_optional_extensions {
+            if let Some(token) = token {
+                if let JwtValidationResult::Valid(jwt) =
+                    self.jwt_validation_service.validate_token(token)
+                {
+                    return CookieEvaluation::OptionalAuthorized {
+                        account: jwt.custom_claims,
+                        registered_claims: jwt.registered_claims,
+                    };
+                }
+            }
+            return CookieEvaluation::OptionalAnonymous;
+        }
+
+        if self.authorization_service.policy_denies_all_access() {
+            return CookieEvaluation::DenyAllPolicy;
+        }
+
+        let Some(token) = token else {
+            return CookieEvaluation::MissingToken;
+        };
+
+        match self.jwt_validation_service.validate_token(token) {
+            JwtValidationResult::Valid(jwt) => {
+                let account = jwt.custom_claims;
+                let registered_claims = jwt.registered_claims;
+                let account_id = account.account_id;
+                if self.authorization_service.is_authorized(&account) {
+                    CookieEvaluation::Authorized {
+                        account,
+                        registered_claims,
+                    }
+                } else {
+                    CookieEvaluation::PolicyDenied { account_id }
+                }
+            }
+            JwtValidationResult::InvalidToken => CookieEvaluation::InvalidToken,
+            JwtValidationResult::InvalidIssuer { expected, actual } => {
+                CookieEvaluation::InvalidIssuer { expected, actual }
+            }
+        }
+    }
+}
+
+impl<C, R, G> CookieGate<C, R, G>
+where
+    C: Codec,
+    R: AccessHierarchy + Eq + Display + Clone,
+    G: Eq + Clone,
+{
+    /// Create a runtime evaluator that performs JWT validation and policy checks.
+    pub fn runtime(&self) -> CookieGateRuntime<C, R, G>
+    where
+        C: Codec<Payload = JwtClaims<Account<R, G>>>,
+    {
+        CookieGateRuntime::new(self)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::codecs::jwt::{JsonWebToken, JwtClaims};
+    use crate::groups::Group;
+    use crate::roles::Role;
+    use std::sync::Arc;
+
+    #[test]
+    fn optional_mode_missing_token_is_anonymous() {
+        let gate = CookieGate::<_, Role, Group>::new_with_codec(
+            "issuer",
+            Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default()),
+        )
+        .allow_anonymous_with_optional_user();
+
+        let runtime = gate.runtime();
+        let result = runtime.evaluate(None);
+
+        assert!(matches!(result, CookieEvaluation::OptionalAnonymous));
+    }
+
+    #[test]
+    fn strict_mode_with_deny_all_policy_short_circuits() {
+        let gate = CookieGate::<_, Role, Group>::new_with_codec(
+            "issuer",
+            Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default()),
+        );
+
+        let runtime = gate.runtime();
+        let result = runtime.evaluate(None);
+
+        assert!(matches!(result, CookieEvaluation::DenyAllPolicy));
+    }
 }
