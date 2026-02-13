@@ -20,7 +20,7 @@
 //! use webgates::accounts::Account;
 //! use webgates::prelude::{Role, Group, Credentials};
 //! use webgates::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
-//! use webgates::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+//! use webgates_repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
 //! use std::sync::Arc;
 //!
 //! # tokio_test::block_on(async {

@@ -6,7 +6,7 @@
 /*!
 # webgates (core)
 
-Domain models, codecs, hashing, repositories, and authorization logic for webgates.
+Domain models, codecs, hashing, and authorization logic for webgates.
 This crate is platform-agnostic and does **not** depend on any specific web
 framework. The axum integration (middleware, handlers, cookie templates, OAuth2
 routing) now lives in the sibling `webgates-axum` crate.
@@ -17,7 +17,7 @@ routing) now lives in the sibling `webgates-axum` crate.
 - Authorization policies and validation helpers
 - JWT codecs and registered claim types
 - Password hashing (Argon2) and credential verification
-- Repository traits plus in-memory, SurrealDB, and SeaORM implementations
+- Result and error helpers for downstream libraries
 - Error taxonomy with user-friendly messaging
 - Utilities for permission validation and deterministic hashing
 
@@ -62,8 +62,7 @@ pub mod authz;
 pub mod codecs;
 #[cfg(feature = "server")]
 pub mod cookie_template;
-#[cfg(all(feature = "server", feature = "storage-seaorm"))]
-pub mod comma_separated_value;
+
 pub mod credentials;
 #[cfg(feature = "server")]
 pub mod errors;
@@ -72,8 +71,7 @@ pub mod groups;
 pub mod hashing;
 pub mod permissions;
 pub mod prelude;
-#[cfg(feature = "server")]
-pub mod repositories;
+
 pub mod roles;
 #[cfg(feature = "server")]
 pub mod secrets;

@@ -6,15 +6,11 @@
 use axum_extra::extract::CookieJar;
 use webgates::cookie;
 use webgates::errors::Result;
-use webgates::{
-    accounts::AccountInsertService,
-    codecs::jwt::RegisteredClaims,
-    cookie_template::CookieTemplate,
-    prelude::*,
-    repositories::memory::{MemoryAccountRepository, MemorySecretRepository},
-};
+use webgates::{codecs::jwt::RegisteredClaims, cookie_template::CookieTemplate, prelude::*};
 use webgates_axum::gate::Gate;
 use webgates_axum::route_handlers::{login, logout};
+use webgates_repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+use webgates_repositories::services::AccountInsertService;
 
 use std::sync::Arc;
 

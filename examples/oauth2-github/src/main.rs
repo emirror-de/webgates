@@ -17,9 +17,9 @@ use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
 use webgates::cookie;
 use webgates::cookie_template::CookieTemplate;
 use webgates::prelude::{AccessPolicy, Group, Role};
-use webgates::repositories::memory::MemoryAccountRepository;
 use webgates_axum::gate::Gate;
 use webgates_axum::route_handlers;
+use webgates_repositories::memory::MemoryAccountRepository;
 
 #[derive(serde::Deserialize)]
 struct GithubUser {
@@ -168,30 +168,35 @@ async fn main() {
         .with_post_login_redirect(post_login_redirect.clone())
         .with_jwt_codec(&jwt_issuer, Arc::clone(&jwt_codec), jwt_ttl_secs)
         .with_account_repository(Arc::clone(&logging_repo))
-        .with_account_mapper(|token_resp: &oauth2::StandardTokenResponse<oauth2::EmptyExtraTokenFields, oauth2::basic::BasicTokenType>| {
-            Box::pin(async move {
-                // Fetch the actual GitHub username using the access token.
-                let access_token = token_resp.access_token().secret().to_string();
+        .with_account_mapper(
+            |token_resp: &oauth2::StandardTokenResponse<
+                oauth2::EmptyExtraTokenFields,
+                oauth2::basic::BasicTokenType,
+            >| {
+                Box::pin(async move {
+                    // Fetch the actual GitHub username using the access token.
+                    let access_token = token_resp.access_token().secret().to_string();
 
-                let client = reqwest::Client::new();
-                let login = match client
-                    .get("https://api.github.com/user")
-                    .header("Authorization", format!("Bearer {}", access_token))
-                    .header("Accept", "application/vnd.github+json")
-                    .header("User-Agent", "webgates-oauth2-github-example")
-                    .send()
-                    .await
-                {
-                    Ok(r) => match r.json::<GithubUser>().await {
-                        Ok(user) => user.login,
+                    let client = reqwest::Client::new();
+                    let login = match client
+                        .get("https://api.github.com/user")
+                        .header("Authorization", format!("Bearer {}", access_token))
+                        .header("Accept", "application/vnd.github+json")
+                        .header("User-Agent", "webgates-oauth2-github-example")
+                        .send()
+                        .await
+                    {
+                        Ok(r) => match r.json::<GithubUser>().await {
+                            Ok(user) => user.login,
+                            Err(_) => "github-user".to_string(),
+                        },
                         Err(_) => "github-user".to_string(),
-                    },
-                    Err(_) => "github-user".to_string(),
-                };
+                    };
 
-                Ok(Account::<Role, Group>::new(&login, &[Role::User], &[]))
-            })
-        });
+                    Ok(Account::<Role, Group>::new(&login, &[Role::User], &[]))
+                })
+            },
+        );
 
     // Mount OAuth2 routes at /auth/login and /auth/callback
     let auth_router = oauth2_gate

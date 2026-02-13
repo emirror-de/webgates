@@ -48,11 +48,11 @@ fn median(mut v: Vec<Duration>) -> Duration {
 // SurrealDB Timing Test
 //
 #[tokio::test]
-#[cfg(feature = "storage-surrealdb")]
+#[cfg(feature = "repo-surrealdb")]
 async fn surrealdb_timing_symmetry() {
     use surrealdb::Surreal;
     use surrealdb::engine::local::Mem;
-    use webgates::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
+    use webgates_repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 
     const ITERATIONS: usize = 5;
 
@@ -170,11 +170,11 @@ async fn surrealdb_timing_symmetry() {
 //
 #[tokio::test]
 #[allow(clippy::unwrap_used)]
-#[cfg(feature = "storage-seaorm")]
+#[cfg(feature = "repo-seaorm")]
 async fn seaorm_timing_symmetry() {
-    #[cfg(feature = "storage-seaorm")]
+    #[cfg(feature = "repo-seaorm")]
     use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Schema};
-    use webgates::repositories::sea_orm::SeaOrmRepository;
+    use webgates_repositories::sea_orm::SeaOrmRepository;
 
     const ITERATIONS: usize = 5;
 
@@ -188,7 +188,7 @@ async fn seaorm_timing_symmetry() {
     };
 
     // Create tables using SeaORM entity definitions (no migrations needed)
-    use webgates::repositories::sea_orm::models::{
+    use webgates_repositories::sea_orm::models::{
         account as seaorm_account, credentials as seaorm_credentials,
     };
     let builder = Schema::new(DatabaseBackend::Sqlite);

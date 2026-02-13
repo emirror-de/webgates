@@ -4,7 +4,7 @@
 //!
 //! ```rust
 //! use webgates::prelude::*;
-//! use webgates::repositories::memory::MemoryAccountRepository;
+//! use webgates_repositories::memory::MemoryAccountRepository;
 //! use std::sync::Arc;
 //!
 //! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());

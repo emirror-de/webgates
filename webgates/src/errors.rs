@@ -5,7 +5,7 @@
 //! - `Result<T>`: convenience alias
 //! - `UserFriendlyError`: trait providing multiple message levels
 //! - Category enums: `AccountsError`, `AuthnError`, `AuthzError`, `PermissionsError`,
-//!   `CodecsError`, `JwtError`, `RepositoriesError`, `DatabaseError`, `HashingError`, `SecretError`
+//!   `CodecsError`, `JwtError`, `HashingError`, `SecretError`
 //!
 //! # Error Message Levels
 //! Each error provides three message levels for different audiences:
@@ -20,8 +20,7 @@
 //! - `Permissions` – Permission validation/collision concerns
 //! - `Codecs` – Codec/serialization problems (encode/decode/serialize/deserialize/validate)
 //! - `Jwt` – JWT processing (encode/decode/validate/refresh/revoke)
-//! - `Repositories` – Repository contract/operation failures by repository type
-//! - `Database` – Database driver/engine operation failures
+
 //! - `Hashing` – Hashing/verification problems (hash/verify/generate_salt/update_hash)
 //! - `Secrets` – Secret storage and verification (repo + hashing in secret flows)
 //!
@@ -65,11 +64,7 @@ pub use crate::authz::errors::AuthzError;
 pub use crate::codecs::errors::{CodecOperation, CodecsError, JwtError, JwtOperation};
 pub use crate::hashing::errors::{HashingError, HashingOperation};
 pub use crate::permissions::errors::PermissionsError;
-pub use crate::repositories::errors::{
-    DatabaseError, DatabaseOperation, RepositoriesError, RepositoryOperation, RepositoryType,
-};
 pub use crate::secrets::errors::SecretError;
-
 
 /// Trait providing user-friendly error messaging at multiple levels.
 ///
@@ -197,14 +192,6 @@ pub enum Error {
     #[error(transparent)]
     Jwt(#[from] JwtError),
 
-    /// Repository category errors
-    #[error(transparent)]
-    Repositories(#[from] RepositoriesError),
-
-    /// Database category errors
-    #[error(transparent)]
-    Database(#[from] DatabaseError),
-
     /// Hashing/verification category errors
     #[error(transparent)]
     Hashing(#[from] HashingError),
@@ -212,8 +199,6 @@ pub enum Error {
     /// Secret storage/category errors
     #[error(transparent)]
     Secrets(#[from] SecretError),
-
-
 }
 
 impl UserFriendlyError for Error {
@@ -225,8 +210,6 @@ impl UserFriendlyError for Error {
             Error::Permissions(err) => err.user_message(),
             Error::Codecs(err) => err.user_message(),
             Error::Jwt(err) => err.user_message(),
-            Error::Repositories(err) => err.user_message(),
-            Error::Database(err) => err.user_message(),
             Error::Hashing(err) => err.user_message(),
             Error::Secrets(err) => err.user_message(),
         }
@@ -240,8 +223,6 @@ impl UserFriendlyError for Error {
             Error::Permissions(err) => err.developer_message(),
             Error::Codecs(err) => err.developer_message(),
             Error::Jwt(err) => err.developer_message(),
-            Error::Repositories(err) => err.developer_message(),
-            Error::Database(err) => err.developer_message(),
             Error::Hashing(err) => err.developer_message(),
             Error::Secrets(err) => err.developer_message(),
         }
@@ -255,8 +236,6 @@ impl UserFriendlyError for Error {
             Error::Permissions(err) => err.support_code(),
             Error::Codecs(err) => err.support_code(),
             Error::Jwt(err) => err.support_code(),
-            Error::Repositories(err) => err.support_code(),
-            Error::Database(err) => err.support_code(),
             Error::Hashing(err) => err.support_code(),
             Error::Secrets(err) => err.support_code(),
         }
@@ -270,8 +249,6 @@ impl UserFriendlyError for Error {
             Error::Permissions(err) => err.severity(),
             Error::Codecs(err) => err.severity(),
             Error::Jwt(err) => err.severity(),
-            Error::Repositories(err) => err.severity(),
-            Error::Database(err) => err.severity(),
             Error::Hashing(err) => err.severity(),
             Error::Secrets(err) => err.severity(),
         }
@@ -285,8 +262,6 @@ impl UserFriendlyError for Error {
             Error::Permissions(err) => err.suggested_actions(),
             Error::Codecs(err) => err.suggested_actions(),
             Error::Jwt(err) => err.suggested_actions(),
-            Error::Repositories(err) => err.suggested_actions(),
-            Error::Database(err) => err.suggested_actions(),
             Error::Hashing(err) => err.suggested_actions(),
             Error::Secrets(err) => err.suggested_actions(),
         }
@@ -300,24 +275,9 @@ impl UserFriendlyError for Error {
             Error::Permissions(err) => err.is_retryable(),
             Error::Codecs(err) => err.is_retryable(),
             Error::Jwt(err) => err.is_retryable(),
-            Error::Repositories(err) => err.is_retryable(),
-            Error::Database(err) => err.is_retryable(),
             Error::Hashing(err) => err.is_retryable(),
             Error::Secrets(err) => err.is_retryable(),
         }
-    }
-}
-
-// External library error conversions
-#[cfg(feature = "storage-surrealdb")]
-impl From<surrealdb::Error> for Error {
-    fn from(err: surrealdb::Error) -> Self {
-        Error::Database(DatabaseError::with_context(
-            DatabaseOperation::Query,
-            format!("SurrealDB error: {}", err),
-            None,
-            None,
-        ))
     }
 }
 
@@ -351,8 +311,7 @@ impl From<crate::cookie_template::CookieTemplateBuilderError> for Error {
 mod tests {
     use crate::errors::{
         AccountOperation, AccountsError, AuthenticationError, AuthnError, AuthzError,
-        CodecOperation, DatabaseError, DatabaseOperation, Error, ErrorSeverity, HashingOperation,
-        JwtOperation, RepositoriesError, RepositoryOperation, RepositoryType, UserFriendlyError,
+        CodecOperation, Error, ErrorSeverity, HashingOperation, JwtOperation, UserFriendlyError,
     };
 
     #[test]
@@ -412,69 +371,6 @@ mod tests {
     }
 
     #[test]
-    fn database_error_query() {
-        let error = Error::Database(DatabaseError::new(
-            DatabaseOperation::Query,
-            "Connection failed",
-        ));
-
-        // Test error structure
-        match &error {
-            Error::Database(DatabaseError::Operation {
-                operation, message, ..
-            }) => {
-                matches!(operation, DatabaseOperation::Query);
-                assert_eq!(*message, "Connection failed");
-            }
-            _ => panic!("Expected Database::Operation variant"),
-        }
-
-        // Test user-friendly messages
-        assert!(error.user_message().contains("technical difficulties"));
-        assert!(error.developer_message().contains("Database"));
-        assert_eq!(error.severity(), ErrorSeverity::Error);
-        assert!(error.is_retryable());
-    }
-
-    #[test]
-    fn repositories_error_operation_failed() {
-        let error = Error::Repositories(RepositoriesError::operation_failed(
-            RepositoryType::Account,
-            RepositoryOperation::Insert,
-            "Insert failed",
-            Some("user-123".into()),
-            Some("insert_account".into()),
-        ));
-
-        // Test error structure
-        match &error {
-            Error::Repositories(RepositoriesError::OperationFailed {
-                repository,
-                operation,
-                message,
-                ..
-            }) => {
-                matches!(repository, RepositoryType::Account);
-                matches!(operation, RepositoryOperation::Insert);
-                assert_eq!(*message, "Insert failed");
-            }
-            _ => panic!("Expected Repositories::OperationFailed variant"),
-        }
-
-        // Test user-friendly messages
-        assert!(error.user_message().contains("account information"));
-        assert!(
-            error
-                .developer_message()
-                .contains("Repository operation failed")
-        );
-        assert!(
-            error.severity() == ErrorSeverity::Error || error.severity() == ErrorSeverity::Critical
-        );
-        assert!(error.is_retryable());
-    }
-
-    #[test]
     fn error_display() {
         let error = Error::Accounts(AccountsError::operation(
             AccountOperation::Create,
@@ -494,7 +390,6 @@ mod tests {
     #[test]
     fn operation_display() {
         assert_eq!(format!("{}", AccountOperation::Create), "create");
-        assert_eq!(format!("{}", DatabaseOperation::Query), "query");
         assert_eq!(format!("{}", JwtOperation::Encode), "encode");
         assert_eq!(format!("{}", CodecOperation::Decode), "decode");
         assert_eq!(format!("{}", HashingOperation::Verify), "verify");

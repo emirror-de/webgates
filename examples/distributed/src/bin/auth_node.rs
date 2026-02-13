@@ -3,8 +3,8 @@ use distributed::{ApiPermission, AppPermissions, PermissionHelper};
 use webgates::accounts::AccountInsertService;
 use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, RegisteredClaims};
 use webgates::prelude::{Credentials, Group, Role};
-use webgates::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
 use webgates_axum::route_handlers;
+use webgates_repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
 
 use std::sync::Arc;
 

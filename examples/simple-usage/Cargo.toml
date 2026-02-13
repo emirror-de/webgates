@@ -8,6 +8,7 @@ license = "MIT"
 axum = { workspace = true }
 axum-extra = { workspace = true }
 webgates = { path = "../../webgates" }
+webgates-repositories = { path = "../../webgates-repositories" }
 webgates-axum = { path = "../../webgates-axum" }
 chrono = { workspace = true }
 serde = { workspace = true }

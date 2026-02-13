@@ -33,8 +33,7 @@ server = [
 ]
 audit-logging = ["webgates/audit-logging"]
 prometheus = ["audit-logging", "webgates/prometheus", "dep:prometheus"]
-storage-surrealdb = ["webgates/storage-surrealdb"]
-storage-seaorm = ["webgates/storage-seaorm"]
+
 
 [dependencies]
 webgates = { path = "../webgates", default-features = true }

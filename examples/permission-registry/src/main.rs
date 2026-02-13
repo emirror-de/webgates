@@ -16,7 +16,7 @@ use webgates::permissions::{
     mapping::{PermissionMapping, PermissionMappingRepository},
 };
 use webgates::prelude::{Account, Group, PermissionId, Role};
-use webgates::repositories::memory::MemoryPermissionMappingRepository;
+use webgates_repositories::memory::MemoryPermissionMappingRepository;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

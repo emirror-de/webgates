@@ -16,8 +16,6 @@ categories = ["authentication"]
 [package.metadata.docs.rs]
 features = [
     "insecure-fast-hash",
-    "storage-surrealdb",
-    "storage-seaorm",
     "audit-logging",
     "prometheus",
 ]
@@ -37,8 +35,6 @@ server = [
     "dep:tracing",
 ]
 insecure-fast-hash = []
-storage-surrealdb = ["surrealdb"]
-storage-seaorm = ["sea-orm/uuid"]
 audit-logging = ["dep:tracing"]
 prometheus = ["audit-logging", "dep:prometheus"]
 
@@ -50,14 +46,13 @@ cookie = { workspace = true, optional = true }
 jsonwebtoken = { workspace = true }
 rand = { workspace = true, optional = true }
 roaring = { workspace = true, features = ["serde"] }
-sea-orm = { workspace = true, optional = true }
-sea-query = { workspace = true, optional = true }
+
 serde = { workspace = true }
 serde_json = { workspace = true, optional = true }
 serde_with = { workspace = true, optional = true }
 strum = { workspace = true }
 subtle = { workspace = true, optional = true }
-surrealdb = { workspace = true, optional = true }
+
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true }
 tracing = { workspace = true, optional = true }
@@ -65,8 +60,8 @@ prometheus = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["serde", "v7", "js"] }
 
 [dev-dependencies]
-sea-orm = { workspace = true, features = ["sqlx-sqlite", "runtime-tokio"] }
-surrealdb = { workspace = true }
+
+webgates-repositories = { path = "../webgates-repositories", features = ["repo-seaorm", "repo-surrealdb"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tokio-test = "0.4.4"
 uuid = "1"

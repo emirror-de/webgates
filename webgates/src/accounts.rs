@@ -6,35 +6,21 @@
 //! # Quick Start
 //!
 //! ```rust
-//! use webgates::accounts::{Account, AccountInsertService};
+//! use webgates::accounts::Account;
 //! use webgates::prelude::{Role, Group};
 //! use webgates::permissions::Permissions;
-//! use webgates::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
-//! use std::sync::Arc;
 //!
-//! # tokio_test::block_on(async {
-//! // Create repositories
-//! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-//! let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
-//!
-//! // Create a new account
-//! let account = AccountInsertService::insert("user@example.com", "password")
-//!     .with_roles(vec![Role::User, Role::Reporter])
-//!     .with_groups(vec![Group::new("engineering"), Group::new("backend-team")])
-//!     .with_permissions(Permissions::from_iter(["read:api", "write:docs"]))
-//!     .into_repositories(account_repo, secret_repo)
-//!     .await;
-//! # });
+//! let account = Account::new(
+//!     "user@example.com",
+//!     &[Role::User, Role::Reporter],
+//!     &[Group::new("engineering"), Group::new("backend-team")],
+//! ).with_permissions(Permissions::from_iter(["read:api", "write:docs"]));
 //! ```
 
 #[cfg(feature = "server")]
 mod server_impl {
-    pub use super::account_delete::AccountDeleteService;
-    pub use super::account_insert::AccountInsertService;
     pub use super::account_repository::AccountRepository;
     pub use super::errors::{AccountOperation, AccountsError};
-    #[cfg(feature = "storage-seaorm")]
-    pub use crate::comma_separated_value::CommaSeparatedValue;
 }
 
 #[cfg(feature = "server")]
@@ -45,10 +31,6 @@ use crate::permissions::{PermissionId, Permissions};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[cfg(feature = "server")]
-mod account_delete;
-#[cfg(feature = "server")]
-mod account_insert;
 #[cfg(feature = "server")]
 mod account_repository;
 #[cfg(feature = "server")]
@@ -178,7 +160,6 @@ where
     /// * `user_id` - Unique identifier for the user
     /// * `roles` - Roles to assign to this account
     /// * `groups` - Groups this account should belong to
-    #[cfg(feature = "storage-seaorm")]
     pub(crate) fn new_with_account_id(
         account_id: &Uuid,
         user_id: &str,
@@ -322,27 +303,5 @@ where
         P: Into<PermissionId>,
     {
         self.permissions.has(permission)
-    }
-}
-
-#[cfg(feature = "storage-seaorm")]
-impl<R, G> TryFrom<crate::repositories::sea_orm::models::account::Model> for Account<R, G>
-where
-    R: AccessHierarchy + Eq + std::fmt::Display + Clone,
-    Vec<R>: CommaSeparatedValue,
-    G: Eq + Clone,
-    Vec<G>: CommaSeparatedValue,
-{
-    type Error = String;
-
-    fn try_from(
-        value: crate::repositories::sea_orm::models::account::Model,
-    ) -> Result<Self, Self::Error> {
-        Ok(Self::new_with_account_id(
-            &value.account_id,
-            &value.user_id,
-            &Vec::<R>::from_csv(&value.roles)?,
-            &Vec::<G>::from_csv(&value.groups)?,
-        ))
     }
 }

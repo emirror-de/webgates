@@ -1,10 +1,10 @@
-#![cfg(feature = "storage-surrealdb")]
+#![cfg(feature = "repo-surrealdb")]
 
 use webgates::permissions::{
     PermissionId,
     mapping::{PermissionMapping, PermissionMappingRepository},
 };
-use webgates::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
+use webgates_repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 
 use surrealdb::Surreal;
 use surrealdb::engine::local::Mem;

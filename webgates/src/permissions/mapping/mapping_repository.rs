@@ -27,7 +27,7 @@ use std::future::Future;
 /// # use webgates::permissions::mapping::PermissionMapping;
 /// # use webgates::permissions::Permissions;
 /// # use webgates::permissions::mapping::PermissionMappingRepository;
-/// # use webgates::repositories::memory::MemoryPermissionMappingRepository;
+/// # use webgates_repositories::memory::MemoryPermissionMappingRepository;
 ///
 /// // In-memory repository
 /// let repo = MemoryPermissionMappingRepository::default();
@@ -72,7 +72,7 @@ use std::future::Future;
 /// ```rust
 /// use webgates::permissions::Permissions;
 /// use webgates::permissions::mapping::{PermissionMapping, PermissionMappingRepository};
-/// use webgates::repositories::memory::MemoryPermissionMappingRepository;
+/// use webgates_repositories::memory::MemoryPermissionMappingRepository;
 ///
 /// async fn grant_permission_with_registry(
 ///     permissions: &mut Permissions,

@@ -196,8 +196,8 @@ let protected_routes = Router::new()
 | Backend | Feature Flag | Production Ready | Notes |
 |---------|--------------|------------------|-------|
 | In-Memory | (default) | ❌ Development only | Lost on restart |
-| SurrealDB | `storage-surrealdb` | ✅ | Embedded or remote |
-| SeaORM | `storage-seaorm` | ✅ | Multi-database support |
+| SurrealDB | `repo-surrealdb` | ✅ | Embedded or remote |
+| SeaORM | `repo-seaorm` | ✅ | Multi-database support |
 
 ---
 
@@ -383,8 +383,8 @@ match auth_result {
 | Feature | Security Impact | Recommendation |
 |---------|-----------------|----------------|
 | `insecure-fast-hash` | ⚠️ Weakens password hashing | **NEVER** enable in production |
-| `storage-surrealdb` | ✅ Production-ready storage | Safe for production |
-| `storage-seaorm` | ✅ Production-ready storage | Safe for production |
+| `repo-surrealdb` | ✅ Production-ready storage | Safe for production |
+| `repo-seaorm` | ✅ Production-ready storage | Safe for production |
 | `audit-logging` | ✅ Enhances security monitoring | Recommended for production |
 | `prometheus` | ✅ Enables metrics collection | Recommended for production monitoring |
 
@@ -394,12 +394,14 @@ match auth_result {
 [dependencies]
 webgates = {
     version = "2.0.0-dev",
-    features = ["storage-surrealdb", "audit-logging", "prometheus"]
+    features = ["audit-logging", "prometheus"]
 }
+webgates-repositories = { version = "2.0.0-dev", features = ["repo-surrealdb"] }
 
 // Development configuration (faster hashing automatically enabled in debug builds)
 [dev-dependencies]
-webgates = { version = "2.0.0-dev", features = ["storage-surrealdb"] }
+webgates = { version = "2.0.0-dev" }
+webgates-repositories = { version = "2.0.0-dev", features = ["repo-surrealdb"] }
 ```
 
 ---

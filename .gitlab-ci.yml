@@ -44,8 +44,8 @@ clippy_check:
     <<: *rust_job
     stage: check
     script:
-        # Run clippy for combinations that include storage-surrealdb,storage-seaorm
-        - cargo clippy --workspace --all-targets --features storage-surrealdb,storage-seaorm -- -D warnings
+        # Run clippy for combinations that include repo-surrealdb,repo-seaorm
+        - cargo clippy --workspace --all-targets --features repo-surrealdb,repo-seaorm -- -D warnings
         # Run clippy for wasm feature (no default features)
         - cargo clippy --workspace --all-targets --no-default-features --features wasm -- -D warnings
     allow_failure: false
@@ -78,14 +78,14 @@ test_storage_surrealdb:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --features storage-surrealdb
+        - cargo test --workspace --features repo-surrealdb
     allow_failure: false
 
 test_storage_seaorm:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --features storage-seaorm
+        - cargo test --workspace --features repo-seaorm
     allow_failure: false
 
 # Feature combination tests
@@ -93,21 +93,21 @@ test_all_storage_features:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --features storage-surrealdb,storage-seaorm
+        - cargo test --workspace --features repo-surrealdb,repo-seaorm
     allow_failure: false
 
 test_fast_hash_with_surrealdb:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --features insecure-fast-hash,storage-surrealdb
+        - cargo test --workspace --features insecure-fast-hash,repo-surrealdb
     allow_failure: false
 
 test_fast_hash_with_seaorm:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --features insecure-fast-hash,storage-seaorm
+        - cargo test --workspace --features insecure-fast-hash,repo-seaorm
     allow_failure: false
 
 # Integration and doc tests
@@ -170,7 +170,7 @@ cargo_semver_checks_storage_surrealdb:
     stage: security
     script:
         - cargo install cargo-semver-checks
-        - cargo semver-checks check-release --only-explicit-features --features storage-surrealdb,default
+        - cargo semver-checks check-release --only-explicit-features --features repo-surrealdb,default
     allow_failure: false
     only:
         - merge_requests
@@ -181,7 +181,7 @@ cargo_semver_checks_storage_seaorm:
     stage: security
     script:
         - cargo install cargo-semver-checks
-        - cargo semver-checks check-release --only-explicit-features --features storage-seaorm,default
+        - cargo semver-checks check-release --only-explicit-features --features repo-seaorm,default
     allow_failure: false
     only:
         - merge_requests

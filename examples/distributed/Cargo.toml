@@ -16,6 +16,7 @@ path = "src/bin/consumer_node.rs"
 axum = { workspace = true }
 webgates = { path = "../../webgates" }
 webgates-axum = { path = "../../webgates-axum" }
+webgates-repositories = { path = "../../webgates-repositories" }
 chrono = { workspace = true }
 dotenvy = { workspace = true }
 roaring = { workspace = true }

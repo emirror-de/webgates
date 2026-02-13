@@ -61,10 +61,12 @@ jobs:
                   restore-keys: ${{ runner.os }}-cargo-
             - name: cargo clippy
               run: |
-                  # Core crate (all server/storage features)
+                  # Core crate (all features)
                   cargo clippy -p webgates --all-targets --all-features -- -D warnings
                   # Core crate (wasm only; no server deps)
                   cargo clippy -p webgates --all-targets --no-default-features --features wasm -- -D warnings
+                  # Repository crate (all repo/backend features)
+                  cargo clippy -p webgates-repositories --all-targets --all-features -- -D warnings
                   # Axum integration crate
                   cargo clippy -p webgates-axum --all-targets --all-features -- -D warnings
 
@@ -84,16 +86,12 @@ jobs:
 
                     - name: insecure_fast_hash
                       cmd: cargo test -p webgates --features insecure-fast-hash
-                    - name: storage_surrealdb
-                      cmd: cargo test -p webgates --features storage-surrealdb
-                    - name: storage_seaorm
-                      cmd: cargo test -p webgates --features storage-seaorm
-                    - name: all_storage_features
-                      cmd: cargo test -p webgates --features storage-surrealdb,storage-seaorm
-                    - name: fast_hash_with_surrealdb
-                      cmd: cargo test -p webgates --features insecure-fast-hash,storage-surrealdb
-                    - name: fast_hash_with_seaorm
-                      cmd: cargo test -p webgates --features insecure-fast-hash,storage-seaorm
+                    - name: repo_surrealdb
+                      cmd: cargo test -p webgates-repositories --features repo-surrealdb
+                    - name: repo_seaorm
+                      cmd: cargo test -p webgates-repositories --features repo-seaorm
+                    - name: repo_all_features
+                      cmd: cargo test -p webgates-repositories --features repo-surrealdb,repo-seaorm
                     - name: axum_default
                       cmd: cargo test -p webgates-axum
         steps:
@@ -298,10 +296,6 @@ jobs:
 
                     - name: insecure-fast-hash
                       args: "--only-explicit-features --features default,insecure-fast-hash"
-                    - name: storage-surrealdb
-                      args: "--only-explicit-features --features default,storage-surrealdb"
-                    - name: storage-seaorm
-                      args: "--only-explicit-features --features default,storage-seaorm"
                     - name: audit-logging
                       args: "--only-explicit-features --features default,audit-logging"
                     - name: prometheus

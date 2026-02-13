@@ -3,13 +3,14 @@ Tests for bulk permission mapping repository operations.
 
 Covers:
 - In-memory repository (fast unit test)
-- SeaORM repository using in-memory SQLite (integration-style; requires `storage-seaorm` feature)
-- SurrealDB repository using the in-memory engine (integration-style; requires `storage-surrealdb` feature)
+- SeaORM repository using in-memory SQLite (integration-style; requires `repo-seaorm` feature)
+- SurrealDB repository using the in-memory engine (integration-style; requires `repo-surrealdb` feature)
 
 These tests validate:
 - `store_mappings` inserts only new mappings and skips duplicates
 - `query_mappings_by_ids` returns stored mappings
-- `remove_mappings_by_ids` deletes requested mappings and returns removed domain objects
+- `remove_mapping_by_id` deletes a mapping and returns it
+- `remove_mapping_by_string` deletes by normalized string and returns it
 */
 
 use webgates::permissions::mapping::{
@@ -18,7 +19,7 @@ use webgates::permissions::mapping::{
 
 #[tokio::test]
 async fn memory_permission_mapping_bulk_ops() {
-    use webgates::repositories::memory::MemoryPermissionMappingRepository;
+    use webgates_repositories::memory::MemoryPermissionMappingRepository;
 
     let repo = MemoryPermissionMappingRepository::default();
 
@@ -75,10 +76,10 @@ async fn memory_permission_mapping_bulk_ops() {
     assert_eq!(remaining[0].permission_id(), m3.permission_id());
 }
 
-#[cfg(feature = "storage-seaorm")]
+#[cfg(feature = "repo-seaorm")]
 #[tokio::test]
 async fn seaorm_permission_mapping_bulk_ops() {
-    use webgates::repositories::sea_orm::SeaOrmRepository;
+    use webgates_repositories::sea_orm::SeaOrmRepository;
 
     use sea_orm::Database;
 
@@ -150,12 +151,12 @@ async fn seaorm_permission_mapping_bulk_ops() {
     assert_eq!(all[0].permission_id(), c.permission_id());
 }
 
-#[cfg(feature = "storage-surrealdb")]
+#[cfg(feature = "repo-surrealdb")]
 #[tokio::test]
 async fn surrealdb_permission_mapping_bulk_ops() {
     use surrealdb::Surreal;
     use surrealdb::engine::local::Mem;
-    use webgates::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
+    use webgates_repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 
     // Create in-memory SurrealDB
     let db = Surreal::new::<Mem>(())

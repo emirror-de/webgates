@@ -3,6 +3,7 @@ resolver = "3"
 members = [
     "webgates",
     "webgates-axum",
+    "webgates-repositories",
     "examples/custom-roles",
     "examples/distributed",
     "examples/oauth2-github",
@@ -10,9 +11,9 @@ members = [
     "examples/permission-validation",
     "examples/prometheus",
     "examples/rate-limiting",
-    "examples/sea-orm",
     "examples/simple-usage",
-    "examples/surrealdb",
+    "webgates-repositories/examples/sea-orm",
+    "webgates-repositories/examples/surrealdb",
 ]
 
 [workspace.dependencies]

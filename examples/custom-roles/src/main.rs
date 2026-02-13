@@ -21,9 +21,9 @@ use webgates::authz::{AccessHierarchy, AccessPolicy};
 use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
 use webgates::cookie_template::CookieTemplate;
 use webgates::prelude::{Account, Credentials};
-use webgates::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
 use webgates_axum::gate::Gate;
 use webgates_axum::route_handlers;
+use webgates_repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
 
 use std::sync::Arc;
 
