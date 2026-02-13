@@ -36,7 +36,7 @@ tower = { workspace = true }
 tower-http = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v7"] }
-webgates = { path = "../webgates" }
+webgates = { path = "../webgates", features = ["server"] }
 
 [dev-dependencies]
 axum = { workspace = true }

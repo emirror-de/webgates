@@ -26,8 +26,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                     format!("Invalid permission mapping: {}", e),
                     Some(TableName::WebgatesPermissionMappings.to_string()),
                     None,
-                ))
-                .into());
+                )));
             }
 
             let active = seaorm_permission_mapping::ActiveModel::from(mapping.clone());
@@ -360,8 +359,7 @@ impl PermissionMappingRepositoryBulk for SeaOrmRepository {
                         format!("Invalid permission mapping in bulk store: {}", e),
                         Some(TableName::WebgatesPermissionMappings.to_string()),
                         None,
-                    ))
-                    .into());
+                    )));
                 }
             }
 

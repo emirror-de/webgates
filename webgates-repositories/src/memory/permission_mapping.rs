@@ -83,8 +83,7 @@ impl PermissionMappingRepository for MemoryPermissionMappingRepository {
                     format!("Invalid permission mapping: {}", e),
                     None,
                     Some("store".to_string()),
-                ))
-                .into());
+                )));
             }
 
             let id = mapping.permission_id();
@@ -198,8 +197,7 @@ impl PermissionMappingRepositoryBulk for MemoryPermissionMappingRepository {
                         format!("Invalid permission mapping in bulk store: {}", e),
                         None,
                         Some("store_mappings".to_string()),
-                    ))
-                    .into());
+                    )));
                 }
             }
 
@@ -258,6 +256,5 @@ impl PermissionMappingRepositoryBulk for MemoryPermissionMappingRepository {
 
             Ok(out)
         };
-        res.map_err(Into::into)
-    }
+        res}
 }

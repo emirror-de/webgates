@@ -11,7 +11,6 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use webgates::cookie_template::CookieTemplate;
 use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use http::StatusCode;
@@ -19,6 +18,7 @@ use tower::Service;
 use tracing::{trace, warn};
 #[cfg(feature = "audit-logging")]
 use webgates::audit;
+use webgates::cookie_template::CookieTemplate;
 
 /// Cookie-backed JWT gate service.
 ///

@@ -116,8 +116,7 @@ impl SecretRepository for MemorySecretRepository {
                     "AccountID is already present",
                     None,
                     None,
-                ))
-                .into());
+                )));
             }
 
             let mut write = self.store.write().await;
@@ -132,8 +131,7 @@ impl SecretRepository for MemorySecretRepository {
                         None,
                         Some("store".to_string()),
                     ),
-                )
-                .into());
+                ));
             };
             Ok(true)
         };

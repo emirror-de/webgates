@@ -243,8 +243,8 @@ where
     /// Evaluate an optional token string and return the authorization outcome.
     pub fn evaluate(&self, token: Option<&str>) -> CookieEvaluation<R, G> {
         if self.install_optional_extensions {
-            if let Some(token) = token {
-                if let JwtValidationResult::Valid(jwt) =
+            if let Some(token) = token
+                && let JwtValidationResult::Valid(jwt) =
                     self.jwt_validation_service.validate_token(token)
                 {
                     return CookieEvaluation::OptionalAuthorized {
@@ -252,7 +252,6 @@ where
                         registered_claims: jwt.registered_claims,
                     };
                 }
-            }
             return CookieEvaluation::OptionalAnonymous;
         }
 

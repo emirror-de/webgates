@@ -72,8 +72,7 @@ where
                     format!("Invalid permission mapping: {}", e),
                     Some(self.scope_settings.permission_mappings.clone()),
                     None,
-                ))
-                .into());
+                )));
             }
 
             self.use_ns_db().await?;
@@ -284,8 +283,7 @@ where
                 })
                 .transpose()
         };
-        res.map_err(Into::into)
-    }
+        res}
 
     async fn list_all_mappings(&self) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {
@@ -344,8 +342,7 @@ where
                         "Invalid permission mapping in bulk insert".to_string(),
                         Some(self.scope_settings.permission_mappings.clone()),
                         None,
-                    ))
-                    .into());
+                    )));
                 }
             }
 
@@ -357,8 +354,7 @@ where
                             .to_string(),
                         Some(self.scope_settings.permission_mappings.clone()),
                         None,
-                    ))
-                    .into());
+                    )));
                 }
             }
 

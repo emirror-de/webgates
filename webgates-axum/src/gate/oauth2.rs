@@ -349,7 +349,7 @@ where
         pkce_cookie,
     };
 
-    let exchanger = ReqwestTokenExchanger::default();
+    let exchanger = ReqwestTokenExchanger;
     match st.runtime.evaluate_callback(input, &exchanger).await {
         CallbackOutcome::Success {
             cookies,

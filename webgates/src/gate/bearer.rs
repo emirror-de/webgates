@@ -298,8 +298,8 @@ where
     /// Evaluate an optional bearer token.
     pub fn evaluate(&self, token: Option<&str>) -> BearerEvaluation<R, G> {
         if self.optional {
-            if let Some(token) = token {
-                if let JwtValidationResult::Valid(jwt) =
+            if let Some(token) = token
+                && let JwtValidationResult::Valid(jwt) =
                     self.jwt_validation_service.validate_token(token)
                 {
                     return BearerEvaluation::JwtOptionalAuthorized {
@@ -307,7 +307,6 @@ where
                         registered_claims: jwt.registered_claims,
                     };
                 }
-            }
             return BearerEvaluation::JwtOptionalAnonymous;
         }
 
@@ -378,11 +377,10 @@ where
             };
         }
 
-        if let Some(token) = token {
-            if token == self.token {
+        if let Some(token) = token
+            && token == self.token {
                 return BearerEvaluation::StaticAuthorized;
             }
-        }
         BearerEvaluation::StaticDenied
     }
 }
