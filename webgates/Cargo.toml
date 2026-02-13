@@ -21,7 +21,7 @@ features = [
 ]
 
 [features]
-default = ["server"]
+default = []
 wasm = ["uuid/js"]
 server = [
     "dep:argon2",
