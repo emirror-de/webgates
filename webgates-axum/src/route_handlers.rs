@@ -10,10 +10,8 @@
 //! ```rust
 //! use axum::{routing::post, Router, Json, extract::State};
 //! use webgates_axum::route_handlers::{login, logout};
-//! use webgates_axum::prelude::Credentials;
+//! use webgates::prelude::{Role, Group, Credentials, Account};
 //! use webgates::codecs::jwt::{RegisteredClaims, JsonWebToken, JwtClaims};
-//! use webgates::accounts::Account;
-//! use webgates::prelude::{Role, Group};
 //! use webgates_repositories::memory::{MemorySecretRepository, MemoryAccountRepository};
 //! use axum_extra::extract::CookieJar;
 //! use std::sync::Arc;

@@ -30,6 +30,7 @@
 //! ```rust
 //! use std::sync::Arc;
 //! use axum::Router;
+//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
 //! use webgates_axum::prelude::*;
 //! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
@@ -42,6 +43,7 @@
 //! Example (JWT optional):
 //! ```rust
 //! use std::sync::Arc;
+//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
 //! use webgates_axum::prelude::*;
 //! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
@@ -52,6 +54,7 @@
 //! Transition to static token mode (compile-time change of available methods):
 //! ```rust
 //! use std::sync::Arc;
+//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
 //! use webgates_axum::prelude::*;
 //! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
@@ -62,6 +65,7 @@
 //! Static token optional:
 //! ```rust
 //! use std::sync::Arc;
+//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
 //! use webgates_axum::prelude::*;
 //! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
@@ -72,6 +76,7 @@
 //!
 //! Handler extraction (static token optional):
 //! ```rust
+//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
 //! use webgates_axum::gate::bearer::StaticTokenAuthorized;
 //!
 //! async fn handler(

@@ -20,7 +20,8 @@
 //! ```rust
 //! # use axum::{routing::get, Router};
 //! # use std::sync::Arc;
-//! # use webgates_axum::prelude::*;
+//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
+//! use webgates_axum::prelude::*;
 //! # async fn admin() {}
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin);
@@ -35,8 +36,9 @@
 //!
 //! # Optional user context (never blocks):
 //! ```rust
-//! # use std::sync::Arc;
-//! # use webgates_axum::prelude::*;
+//! use std::sync::Arc;
+//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
+//! use webgates_axum::prelude::*;
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt)
 //!     .allow_anonymous_with_optional_user(); // inserts Option<Account>, Option<RegisteredClaims>
@@ -44,8 +46,9 @@
 //!
 //! # Convenience for “any authenticated user”:
 //! ```rust
-//! # use std::sync::Arc;
-//! # use webgates_axum::prelude::*;
+//! use std::sync::Arc;
+//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
+//! use webgates_axum::prelude::*;
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt)
 //!     .require_login(); // baseline role + all supervisors
@@ -53,8 +56,9 @@
 //!
 //! # Cookie template configuration
 //! ```rust
-//! # use std::sync::Arc;
-//! # use webgates_axum::prelude::*;
+//! use std::sync::Arc;
+//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
+//! use webgates_axum::prelude::*;
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt)
 //!     .configure_cookie_template(|tpl| {
@@ -341,9 +345,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::{super::*, *};
-    use webgates::roles::Role;
-    use webgates::groups::Group;
     use webgates::accounts::Account;
+    use webgates::groups::Group;
+    use webgates::roles::Role;
 
     use std::sync::Arc;
     use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
