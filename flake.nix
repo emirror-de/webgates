@@ -202,6 +202,7 @@
               cargo-deny
               cargo-nextest
               cargo-watch
+              cargo-sort
               cargo-expand # For macro debugging
               cargo-machete # For unused dependency detection
 

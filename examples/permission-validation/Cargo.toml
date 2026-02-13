@@ -6,9 +6,9 @@ license = "MIT"
 
 [dependencies]
 axum = { workspace = true }
-webgates = { path = "../../webgates" }
-webgates-axum = { path = "../../webgates-axum" }
 serde = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+webgates = { path = "../../webgates" }
+webgates-axum = { path = "../../webgates-axum" }

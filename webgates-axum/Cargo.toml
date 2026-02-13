@@ -18,7 +18,6 @@ audit-logging = ["webgates/audit-logging"]
 prometheus = ["audit-logging", "webgates/prometheus", "dep:prometheus"]
 
 [dependencies]
-webgates = { path = "../webgates" }
 axum = { workspace = true }
 axum-extra = { workspace = true }
 chrono = { workspace = true }
@@ -26,8 +25,9 @@ cookie = { workspace = true }
 http = "1"
 jsonwebtoken = { workspace = true }
 oauth2 = { workspace = true }
-reqwest = { workspace = true }
+prometheus = { workspace = true, optional = true }
 rand = { workspace = true }
+reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -35,8 +35,8 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tower = { workspace = true }
 tower-http = { workspace = true }
 tracing = { workspace = true }
-prometheus = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["serde", "v7"] }
+webgates = { path = "../webgates" }
 
 [dev-dependencies]
 axum = { workspace = true }

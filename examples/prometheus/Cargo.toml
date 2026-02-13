@@ -7,12 +7,12 @@ license = "MIT"
 [dependencies]
 axum = { workspace = true }
 axum-extra = { workspace = true }
-webgates = { path = "../../webgates", features = ["prometheus"] }
-webgates-axum = { path = "../../webgates-axum", features = ["prometheus"] }
-webgates-repositories = { path = "../../webgates-repositories" }
 chrono = { workspace = true }
 prometheus = { workspace = true }
 serde = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["std", "env-filter"] }
+webgates = { path = "../../webgates", features = ["prometheus"] }
+webgates-axum = { path = "../../webgates-axum", features = ["prometheus"] }
+webgates-repositories = { path = "../../webgates-repositories" }
