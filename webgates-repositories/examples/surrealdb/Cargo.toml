@@ -6,9 +6,9 @@ license = "MIT"
 
 [dependencies]
 axum = { workspace = true }
-webgates = { path = "../../webgates" }
-webgates-axum = { path = "../../webgates-axum" }
-webgates-repositories = { path = "../../webgates-repositories", features = ["repo-surrealdb"] }
+webgates = { path = "../../../webgates" }
+webgates-axum = { path = "../../../webgates-axum" }
+webgates-repositories = { path = "../../", features = ["repo-surrealdb"] }
 chrono = { workspace = true }
 dotenvy = { workspace = true }
 surrealdb = { workspace = true }
