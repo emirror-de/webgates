@@ -12,7 +12,6 @@ This repository is a workspace split into focused crates:
 - `webgates` — core domain models and services (JWT codecs, permissions, roles, domain types).
 - `webgates-axum` — Axum integration layer (extractors, middleware, route handlers for login/logout, OAuth2 flows).
 - `webgates-repositories` — repository implementations (in-memory, SeaORM, SurrealDB backends, password hashing helpers).
-- `examples/` — curated examples demonstrating common integrations and deployment patterns.
 
 Feature highlights (available across the workspace):
 - Cookie and bearer authentication
@@ -25,7 +24,7 @@ Feature highlights (available across the workspace):
 
 ## Install
 
-The workspace crates are intended to be consumed independently. The most common usage is to depend on the Axum integration crate which re-exports the core APIs when appropriate:
+The workspace crates are intended to be consumed depending on the use case and required features. The most common usage is to depend on the Axum integration crate which re-exports the core APIs when appropriate:
 
 ```toml
 [dependencies]
