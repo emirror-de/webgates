@@ -1,7 +1,7 @@
-use crate::accounts::Account;
-use crate::authz::{AccessHierarchy, AccessPolicy};
-use crate::codecs::Codec;
-use crate::codecs::jwt::{JwtClaims, RegisteredClaims};
+use webgates::accounts::Account;
+use webgates::authz::{AccessHierarchy, AccessPolicy};
+use webgates::codecs::Codec;
+use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
 use webgates::gate::Gate as CoreGate;
 use webgates::gate::cookie::{CookieEvaluation, CookieGateRuntime};
 
@@ -11,14 +11,14 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-#[cfg(feature = "audit-logging")]
-use crate::audit;
-use crate::cookie_template::CookieTemplate;
+use webgates::cookie_template::CookieTemplate;
 use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use http::StatusCode;
 use tower::Service;
 use tracing::{trace, warn};
+#[cfg(feature = "audit-logging")]
+use webgates::audit;
 
 /// Cookie-backed JWT gate service.
 ///

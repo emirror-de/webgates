@@ -114,11 +114,11 @@
 //! Note: In production, serve over HTTPS and prefer `Secure=true`. If you set `SameSite=None` you must also set `Secure=true`
 //! (browser enforcement); `CookieTemplate::validate()` guards against insecure combinations.
 
-use crate::accounts::{Account, AccountRepository};
-use crate::authz::AccessHierarchy;
-use crate::codecs::Codec;
-use crate::codecs::jwt::{JwtClaims, RegisteredClaims};
-use crate::cookie_template::CookieTemplate;
+use webgates::accounts::{Account, AccountRepository};
+use webgates::authz::AccessHierarchy;
+use webgates::codecs::Codec;
+use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
+use webgates::cookie_template::CookieTemplate;
 pub mod errors;
 use self::errors::{OAuth2CookieKind, OAuth2Error, Result as OAuth2Result};
 
@@ -920,10 +920,10 @@ where
 mod tests {
 
     use super::OAuth2Gate;
-    use crate::cookie_template::CookieTemplate;
-    use crate::prelude::{Group, Role};
+    use webgates::prelude::{Group, Role};
     #[cfg(debug_assertions)]
     use cookie::SameSite;
+    use webgates::cookie_template::CookieTemplate;
 
     #[test]
     fn cookie_template_recommended_is_valid_in_debug_defaults() {

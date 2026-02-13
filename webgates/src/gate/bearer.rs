@@ -12,8 +12,11 @@
 use std::fmt::Display;
 use std::sync::Arc;
 
-use crate::authz::{AccessHierarchy, AccessPolicy};
+use crate::accounts::Account;
+use crate::authz::{AccessHierarchy, AccessPolicy, AuthorizationService};
 use crate::codecs::Codec;
+use crate::codecs::jwt::{JwtClaims, JwtValidationResult, JwtValidationService, RegisteredClaims};
+use uuid::Uuid;
 
 /// JWT mode configuration (compile-time).
 #[derive(Clone)]
@@ -22,7 +25,9 @@ where
     R: AccessHierarchy + Eq + Display,
     G: Eq,
 {
+    /// Access policy applied in JWT mode.
     policy: AccessPolicy<R, G>,
+    /// Whether optional (non-blocking) mode is enabled for JWTs.
     optional: bool,
 }
 
@@ -41,7 +46,9 @@ where
 /// Static token mode configuration (compile-time).
 #[derive(Clone, Debug)]
 pub struct StaticTokenConfig {
+    /// Exact static bearer token to match.
     token: String,
+    /// Whether optional (non-blocking) mode is enabled.
     optional: bool,
 }
 
@@ -53,9 +60,13 @@ where
     R: AccessHierarchy + Eq + Display,
     G: Eq,
 {
+    /// Issuer value expected when validating bearer JWTs (unused for static token mode).
     issuer: String,
+    /// Shared codec used to decode/encode bearer JWTs.
     codec: Arc<C>,
+    /// Mode configuration (JWT or static token).
     mode: M,
+    /// Marker to retain generic types without storing them at runtime.
     _phantom: std::marker::PhantomData<(R, G)>,
 }
 
@@ -199,6 +210,213 @@ where
 
     /// Convert a framework-agnostic `BearerGate` into the framework-specific middleware/layer type.
     fn adapt(&self, gate: BearerGate<C, R, G, M>) -> Self::Output;
+}
+
+/// Outcome of evaluating bearer authentication/authorization independent of any HTTP framework.
+#[derive(Debug, Clone)]
+pub enum BearerEvaluation<R, G>
+where
+    R: AccessHierarchy + Eq + Display + Clone,
+    G: Eq + Clone,
+{
+    /// Optional JWT mode: no bearer token present.
+    JwtOptionalAnonymous,
+    /// Optional JWT mode: token validated; policy not enforced.
+    JwtOptionalAuthorized {
+        /// Decoded account claims.
+        account: Account<R, G>,
+        /// Registered JWT claims.
+        registered_claims: RegisteredClaims,
+    },
+    /// Strict JWT mode: required token missing.
+    JwtMissingToken,
+    /// Strict JWT mode: token failed validation.
+    JwtInvalidToken,
+    /// Strict JWT mode: issuer mismatch.
+    JwtInvalidIssuer {
+        /// Expected issuer configured on the gate.
+        expected: String,
+        /// Actual issuer embedded in the token.
+        actual: String,
+    },
+    /// Strict JWT mode: policy denies all access.
+    JwtDenyAllPolicy,
+    /// Strict JWT mode: decoded token but policy check failed.
+    JwtPolicyDenied {
+        /// Identifier of the decoded account.
+        account_id: Uuid,
+    },
+    /// Strict JWT mode: token validated and policy passed.
+    JwtAuthorized {
+        /// Decoded account claims.
+        account: Account<R, G>,
+        /// Registered JWT claims.
+        registered_claims: RegisteredClaims,
+    },
+    /// Static token mode: authorized.
+    StaticAuthorized,
+    /// Static token mode: denied.
+    StaticDenied,
+    /// Static token optional mode: forwarded with match indicator.
+    StaticOptionalAuthorized {
+        /// Whether the provided token matched the configured static token.
+        matched: bool,
+    },
+}
+
+/// Runtime evaluator for JWT bearer gates.
+#[derive(Clone, Debug)]
+pub struct JwtBearerRuntime<C, R, G>
+where
+    C: Codec,
+    R: AccessHierarchy + Eq + Display + Clone,
+    G: Eq + Clone,
+{
+    /// Authorization evaluator built from the configured access policy.
+    authorization_service: AuthorizationService<R, G>,
+    /// Validates and decodes bearer JWTs for this gate.
+    jwt_validation_service: JwtValidationService<C>,
+    /// Whether the gate runs in optional (non-blocking) mode.
+    optional: bool,
+}
+
+impl<C, R, G> JwtBearerRuntime<C, R, G>
+where
+    C: Codec<Payload = JwtClaims<Account<R, G>>>,
+    R: AccessHierarchy + Eq + Display + Clone,
+    G: Eq + Clone,
+{
+    /// Build a runtime evaluator from a configured gate.
+    pub fn new(issuer: &str, policy: AccessPolicy<R, G>, codec: Arc<C>, optional: bool) -> Self {
+        Self {
+            authorization_service: AuthorizationService::new(policy),
+            jwt_validation_service: JwtValidationService::new(codec, issuer),
+            optional,
+        }
+    }
+
+    /// Evaluate an optional bearer token.
+    pub fn evaluate(&self, token: Option<&str>) -> BearerEvaluation<R, G> {
+        if self.optional {
+            if let Some(token) = token {
+                if let JwtValidationResult::Valid(jwt) =
+                    self.jwt_validation_service.validate_token(token)
+                {
+                    return BearerEvaluation::JwtOptionalAuthorized {
+                        account: jwt.custom_claims,
+                        registered_claims: jwt.registered_claims,
+                    };
+                }
+            }
+            return BearerEvaluation::JwtOptionalAnonymous;
+        }
+
+        if self.authorization_service.policy_denies_all_access() {
+            return BearerEvaluation::JwtDenyAllPolicy;
+        }
+
+        let Some(token) = token else {
+            return BearerEvaluation::JwtMissingToken;
+        };
+
+        match self.jwt_validation_service.validate_token(token) {
+            JwtValidationResult::Valid(jwt) => {
+                let account = jwt.custom_claims;
+                let registered_claims = jwt.registered_claims;
+                let account_id = account.account_id;
+                if self.authorization_service.is_authorized(&account) {
+                    BearerEvaluation::JwtAuthorized {
+                        account,
+                        registered_claims,
+                    }
+                } else {
+                    BearerEvaluation::JwtPolicyDenied { account_id }
+                }
+            }
+            JwtValidationResult::InvalidToken => BearerEvaluation::JwtInvalidToken,
+            JwtValidationResult::InvalidIssuer { expected, actual } => {
+                BearerEvaluation::JwtInvalidIssuer { expected, actual }
+            }
+        }
+    }
+}
+
+/// Runtime evaluator for static bearer token gates.
+#[derive(Clone, Debug)]
+pub struct StaticTokenRuntime<R, G>
+where
+    R: AccessHierarchy + Eq + Display + Clone,
+    G: Eq + Clone,
+{
+    /// Exact static bearer token to match.
+    token: String,
+    /// Whether optional (non-blocking) mode is enabled.
+    optional: bool,
+    /// Marker to retain generic types without runtime storage.
+    _phantom: std::marker::PhantomData<(R, G)>,
+}
+
+impl<R, G> StaticTokenRuntime<R, G>
+where
+    R: AccessHierarchy + Eq + Display + Clone,
+    G: Eq + Clone,
+{
+    /// Build a runtime evaluator for static token gates.
+    pub fn new(token: impl Into<String>, optional: bool) -> Self {
+        Self {
+            token: token.into(),
+            optional,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    /// Evaluate an optional bearer token string.
+    pub fn evaluate(&self, token: Option<&str>) -> BearerEvaluation<R, G> {
+        if self.optional {
+            return BearerEvaluation::StaticOptionalAuthorized {
+                matched: token.is_some() && token == Some(self.token.as_str()),
+            };
+        }
+
+        if let Some(token) = token {
+            if token == self.token {
+                return BearerEvaluation::StaticAuthorized;
+            }
+        }
+        BearerEvaluation::StaticDenied
+    }
+}
+
+impl<C, R, G> BearerGate<C, R, G, JwtConfig<R, G>>
+where
+    C: Codec<Payload = JwtClaims<Account<R, G>>>,
+    R: AccessHierarchy + Eq + Display + Clone,
+    G: Eq + Clone,
+{
+    /// Create a runtime evaluator that performs JWT validation and policy checks.
+    pub fn runtime(&self) -> JwtBearerRuntime<C, R, G>
+    where
+        R: Default,
+    {
+        JwtBearerRuntime::new(
+            &self.issuer,
+            self.mode.policy.clone(),
+            Arc::clone(&self.codec),
+            self.mode.optional,
+        )
+    }
+}
+
+impl<C, R, G> BearerGate<C, R, G, StaticTokenConfig>
+where
+    C: Codec,
+    R: AccessHierarchy + Eq + Display,
+    G: Eq + Clone,
+{
+    /// Create a runtime evaluator for static token gates.
+    pub fn runtime(&self) -> StaticTokenRuntime<R, G> {
+        StaticTokenRuntime::new(self.mode.token.clone(), self.mode.optional)
+    }
 }
 
 impl<C, R, G, M> BearerGate<C, R, G, M>

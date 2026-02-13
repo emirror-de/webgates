@@ -1,4 +1,4 @@
-use crate::authn::LogoutService;
+use webgates::authn::LogoutService;
 
 use axum_extra::extract::CookieJar;
 
@@ -28,7 +28,7 @@ use axum_extra::extract::CookieJar;
 /// ```
 pub async fn logout(
     cookie_jar: CookieJar,
-    cookie_template: crate::cookie_template::CookieTemplate,
+    cookie_template: webgates::cookie_template::CookieTemplate,
 ) -> CookieJar {
     #[cfg(feature = "audit-logging")]
     let _audit_span = tracing::span!(tracing::Level::INFO, "auth.logout");

@@ -89,13 +89,13 @@ use std::sync::Arc;
 use axum::{body::Body, extract::Request, http::Response};
 use http::StatusCode;
 use tower::{Layer, Service};
-use tracing::{debug, trace, warn};
+use tracing::warn;
 
 pub use self::static_token_authorized::StaticTokenAuthorized;
-use crate::accounts::Account;
-use crate::authz::{AccessHierarchy, AccessPolicy, AuthorizationService};
-use crate::codecs::Codec;
-use crate::codecs::jwt::{JwtClaims, JwtValidationResult, JwtValidationService, RegisteredClaims};
+use webgates::accounts::Account;
+use webgates::authz::{AccessHierarchy, AccessPolicy};
+use webgates::codecs::Codec;
+use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
 
 mod static_token_authorized;
 
@@ -204,7 +204,7 @@ where
     /// Safe to call multiple times; registration is idempotent.
     #[cfg(feature = "prometheus")]
     pub fn with_prometheus_metrics(self) -> Self {
-        let _ = crate::audit::prometheus_metrics::install_prometheus_metrics();
+        let _ = webgates::audit::prometheus_metrics::install_prometheus_metrics();
         self
     }
 
@@ -214,7 +214,7 @@ where
     #[cfg(feature = "prometheus")]
     pub fn with_prometheus_registry(self, registry: &prometheus::Registry) -> Self {
         let _ =
-            crate::audit::prometheus_metrics::install_prometheus_metrics_with_registry(registry);
+            webgates::audit::prometheus_metrics::install_prometheus_metrics_with_registry(registry);
         self
     }
 
@@ -254,7 +254,7 @@ where
 
 impl<S, C, R, G> Layer<S> for BearerGate<C, R, G, JwtConfig<R, G>>
 where
-    C: Codec,
+    C: Codec<Payload = JwtClaims<Account<R, G>>>,
     R: AccessHierarchy + Eq + std::fmt::Display + Sync + Send + 'static,
     G: Eq + Clone + Sync + Send + 'static,
 {
@@ -305,38 +305,31 @@ where
 /// validating tokens from the `Authorization: Bearer <token>` header.
 pub struct JwtBearerService<C, R, G, S>
 where
-    C: Codec,
+    C: Codec<Payload = JwtClaims<Account<R, G>>>,
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq + Clone,
 {
     inner: S,
-    authorization: AuthorizationService<R, G>,
-    validator: JwtValidationService<C>,
-    optional: bool,
+    runtime: webgates::gate::bearer::JwtBearerRuntime<C, R, G>,
 }
 
 impl<C, R, G, S> JwtBearerService<C, R, G, S>
 where
-    C: Codec,
+    C: Codec<Payload = JwtClaims<Account<R, G>>>,
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq + Clone,
 {
     fn new(inner: S, issuer: &str, policy: AccessPolicy<R, G>, codec: Arc<C>) -> Self {
         Self {
             inner,
-            authorization: AuthorizationService::new(policy),
-            validator: JwtValidationService::new(codec, issuer),
-            optional: false,
+            runtime: webgates::gate::bearer::JwtBearerRuntime::new(issuer, policy, codec, false),
         }
     }
 
     fn new_optional(inner: S, issuer: &str, policy: AccessPolicy<R, G>, codec: Arc<C>) -> Self {
-        // policy retained only for debugging; not used in optional path
         Self {
             inner,
-            authorization: AuthorizationService::new(policy),
-            validator: JwtValidationService::new(codec, issuer),
-            optional: true,
+            runtime: webgates::gate::bearer::JwtBearerRuntime::new(issuer, policy, codec, true),
         }
     }
 
@@ -384,107 +377,72 @@ where
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         #[cfg(feature = "audit-logging")]
-        use crate::audit;
+        use webgates::audit;
 
         let unauthorized_future = Box::pin(async move { Ok(Self::unauthorized()) });
 
         #[cfg(feature = "audit-logging")]
         let _span = audit::request_span(req.method().as_str(), req.uri().path(), None);
 
-        if self.optional {
-            let mut opt_account: Option<Account<R, G>> = None;
-            let mut opt_claims: Option<RegisteredClaims> = None;
+        let eval = self.runtime.evaluate(Self::bearer_token(&req));
 
-            if let Some(token) = Self::bearer_token(&req) {
-                trace!("JWT optional bearer header present");
-                if let JwtValidationResult::Valid(jwt) = self.validator.validate_token(token) {
-                    // Valid JWT present; optional mode inserts only Option<...> extensions
-                    opt_account = Some(jwt.custom_claims.clone());
-                    opt_claims = Some(jwt.registered_claims.clone());
-                } else {
-                    debug!("Optional JWT: invalid token; inserting None extensions");
-                }
+        match eval {
+            webgates::gate::bearer::BearerEvaluation::JwtOptionalAnonymous => {
+                req.extensions_mut().insert(Option::<Account<R, G>>::None);
+                req.extensions_mut()
+                    .insert(Option::<RegisteredClaims>::None);
+                let fut = self.inner.call(req);
+                Box::pin(fut)
             }
-
-            req.extensions_mut().insert(opt_account);
-            req.extensions_mut().insert(opt_claims);
-
-            let fut = self.inner.call(req);
-            return Box::pin(fut);
-        }
-
-        if self.authorization.policy_denies_all_access() {
-            debug!("Bearer JWT gate denying access (deny-all policy)");
-            #[cfg(feature = "audit-logging")]
-            audit::denied(None, "policy_denies_all");
-            return unauthorized_future;
-        }
-
-        let Some(token) = Self::bearer_token(&req) else {
-            #[cfg(feature = "audit-logging")]
-            audit::denied(None, "missing_authorization_header");
-            return unauthorized_future;
-        };
-
-        #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
-        let jwt_validation_start = std::time::Instant::now();
-
-        let jwt = match self.validator.validate_token(token) {
-            JwtValidationResult::Valid(jwt) => {
-                #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
-                crate::audit::prometheus_metrics::observe_jwt_validation_latency(
-                    jwt_validation_start,
-                    crate::audit::prometheus_metrics::JwtValidationOutcome::Valid,
-                );
-                jwt
+            webgates::gate::bearer::BearerEvaluation::JwtOptionalAuthorized {
+                account,
+                registered_claims,
+            } => {
+                req.extensions_mut().insert(Some(account));
+                req.extensions_mut().insert(Some(registered_claims));
+                let fut = self.inner.call(req);
+                Box::pin(fut)
             }
-            JwtValidationResult::InvalidToken => {
-                #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
-                crate::audit::prometheus_metrics::observe_jwt_validation_latency(
-                    jwt_validation_start,
-                    crate::audit::prometheus_metrics::JwtValidationOutcome::InvalidToken,
-                );
-                debug!("JWT token validation failed");
+            webgates::gate::bearer::BearerEvaluation::JwtDenyAllPolicy => {
+                #[cfg(feature = "audit-logging")]
+                audit::denied(None, "policy_denies_all");
+                unauthorized_future
+            }
+            webgates::gate::bearer::BearerEvaluation::JwtMissingToken => {
+                #[cfg(feature = "audit-logging")]
+                audit::denied(None, "missing_authorization_header");
+                unauthorized_future
+            }
+            webgates::gate::bearer::BearerEvaluation::JwtInvalidToken => {
                 #[cfg(feature = "audit-logging")]
                 audit::jwt_invalid_token("validation_failed");
-                return unauthorized_future;
+                unauthorized_future
             }
-            JwtValidationResult::InvalidIssuer { expected, actual } => {
-                #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
-                crate::audit::prometheus_metrics::observe_jwt_validation_latency(
-                    jwt_validation_start,
-                    crate::audit::prometheus_metrics::JwtValidationOutcome::InvalidIssuer,
-                );
-                warn!("JWT issuer mismatch. Expected='{expected}', Actual='{actual}'");
+            webgates::gate::bearer::BearerEvaluation::JwtInvalidIssuer { expected, actual } => {
                 #[cfg(feature = "audit-logging")]
                 audit::jwt_invalid_issuer(&expected, &actual);
-                return unauthorized_future;
+                warn!("JWT issuer mismatch. Expected='{expected}', Actual='{actual}'");
+                unauthorized_future
             }
-        };
-
-        #[cfg(feature = "audit-logging")]
-        let _authz_span = audit::authorization_span(Some(&jwt.custom_claims.account_id), None);
-        #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
-        let authz_start = std::time::Instant::now();
-
-        if !self.authorization.is_authorized(&jwt.custom_claims) {
-            #[cfg(feature = "audit-logging")]
-            audit::denied(Some(&jwt.custom_claims.account_id), "policy_denied");
-            #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
-            crate::audit::observe_authz_latency(authz_start, crate::audit::AuthzOutcome::Denied);
-            return unauthorized_future;
+            webgates::gate::bearer::BearerEvaluation::JwtPolicyDenied { account_id } => {
+                #[cfg(feature = "audit-logging")]
+                audit::denied(Some(&account_id), "policy_denied");
+                unauthorized_future
+            }
+            webgates::gate::bearer::BearerEvaluation::JwtAuthorized {
+                account,
+                registered_claims,
+            } => {
+                #[cfg(feature = "audit-logging")]
+                audit::authorized(&account.account_id, None);
+                req.extensions_mut().insert(account);
+                req.extensions_mut().insert(registered_claims);
+                let fut = self.inner.call(req);
+                Box::pin(fut)
+            }
+            // Static token evaluation is not handled here; JWT runtime only.
+            _ => unauthorized_future,
         }
-
-        #[cfg(feature = "audit-logging")]
-        audit::authorized(&jwt.custom_claims.account_id, None);
-        #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
-        crate::audit::observe_authz_latency(authz_start, crate::audit::AuthzOutcome::Authorized);
-
-        req.extensions_mut().insert(jwt.custom_claims.clone());
-        req.extensions_mut().insert(jwt.registered_claims.clone());
-
-        let fut = self.inner.call(req);
-        Box::pin(fut)
     }
 }
 
@@ -558,7 +516,7 @@ where
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         #[cfg(feature = "audit-logging")]
-        use crate::audit;
+        use webgates::audit;
 
         #[cfg(feature = "audit-logging")]
         let _span = audit::request_span(req.method().as_str(), req.uri().path(), None);
@@ -598,10 +556,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::accounts::Account;
-    use crate::codecs::jwt::{JsonWebToken, JwtClaims};
-    use crate::groups::Group;
-    use crate::roles::Role;
+    use webgates::accounts::Account;
+    use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
+    use webgates::groups::Group;
+    use webgates::roles::Role;
 
     type BearerGateJsonwebtoken = BearerGate<
         JsonWebToken<JwtClaims<Account<Role, Group>>>,
