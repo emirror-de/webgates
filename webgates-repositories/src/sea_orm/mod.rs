@@ -8,7 +8,7 @@
 //! executed.
 
 use crate::errors::{Error, Result};
-use webgates::hashing::{HashingService, argon2::Argon2Hasher};
+use webgates::hashing::{HashingService, argon2::Argon2Hasher, errors::HashingError};
 
 use sea_orm::DatabaseConnection;
 
@@ -78,8 +78,18 @@ pub struct SeaOrmRepository {
 impl SeaOrmRepository {
     /// Creates a new repository that uses the given database connection as backend.
     pub fn new(db: &DatabaseConnection) -> Result<Self> {
-        let hasher = Argon2Hasher::new_recommended()?;
-        let dummy_hash = hasher.hash_value("dummy_password")?;
+        let hasher = Argon2Hasher::new_recommended().map_err(|error| {
+            Error::Hashing(HashingError::new(
+                webgates::hashing::HashingOperation::Hash,
+                format!("Failed to initialize Argon2 hasher: {error}"),
+            ))
+        })?;
+        let dummy_hash = hasher.hash_value("dummy_password").map_err(|error| {
+            Error::Hashing(HashingError::new(
+                webgates::hashing::HashingOperation::Hash,
+                format!("Failed to generate dummy password hash: {error}"),
+            ))
+        })?;
         Ok(Self {
             db: db.clone(),
             dummy_hash,

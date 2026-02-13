@@ -2,7 +2,9 @@ use std::collections::hash_map::DefaultHasher;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use thiserror::Error;
-use webgates::hashing::errors::HashingError;
+use webgates::errors::UserFriendlyError as CoreUserFriendlyError;
+use webgates::hashing::{HashingOperation, errors::HashingError};
+use webgates::secrets::errors::SecretError;
 
 /// Severity levels for categorizing errors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -610,7 +612,12 @@ impl UserFriendlyError for Error {
         match self {
             Error::Repositories(e) => e.severity(),
             Error::Database(e) => e.severity(),
-            Error::Hashing(e) => e.severity(),
+            Error::Hashing(e) => match e.severity() {
+                webgates::errors::ErrorSeverity::Error => ErrorSeverity::Error,
+                webgates::errors::ErrorSeverity::Warning => ErrorSeverity::Warning,
+                webgates::errors::ErrorSeverity::Info => ErrorSeverity::Info,
+                webgates::errors::ErrorSeverity::Critical => ErrorSeverity::Critical,
+            },
         }
     }
 
@@ -627,6 +634,31 @@ impl UserFriendlyError for Error {
             Error::Repositories(e) => e.is_retryable(),
             Error::Database(e) => e.is_retryable(),
             Error::Hashing(e) => e.is_retryable(),
+        }
+    }
+}
+
+/// Conversion into the core webgates error type for compatibility.
+impl From<Error> for webgates::errors::Error {
+    fn from(err: Error) -> Self {
+        match err {
+            Error::Repositories(e) => {
+                webgates::errors::Error::Secrets(SecretError::hashing_with_context(
+                    HashingOperation::Verify,
+                    format!("repository error: {}", e),
+                    None,
+                    None,
+                ))
+            }
+            Error::Database(e) => {
+                webgates::errors::Error::Secrets(SecretError::hashing_with_context(
+                    HashingOperation::Verify,
+                    format!("database error: {}", e),
+                    None,
+                    None,
+                ))
+            }
+            Error::Hashing(e) => webgates::errors::Error::Hashing(e),
         }
     }
 }

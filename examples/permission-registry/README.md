@@ -78,7 +78,7 @@ Repository trait for storing and retrieving mappings.
 
 ```rust
 use webgates::permissions::mapping::{PermissionMapping, PermissionMappingRepository};
-use webgates::repositories::memory::MemoryPermissionMappingRepository;
+use webgates_repositories::memory::MemoryPermissionMappingRepository;
 use webgates::prelude::PermissionId;
 
 # async fn demo() -> webgates::errors::Result<()> {
@@ -156,7 +156,7 @@ async fn log_permissions<R: PermissionMappingRepository>(
 ## Available Implementations
 
 - In-Memory (`MemoryPermissionMappingRepository`)
-  - Path: `webgates::repositories::memory::MemoryPermissionMappingRepository`
+  - Path: `webgates_repositories::memory::MemoryPermissionMappingRepository`
   - Intended for development and small deployments
   - Lookups are O(n) (linear scan) in the in-memory implementation
 

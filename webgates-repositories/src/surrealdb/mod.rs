@@ -2,6 +2,7 @@
 
 use super::TableName;
 use crate::errors::{DatabaseError, DatabaseOperation, Error, Result};
+use webgates::hashing::errors::HashingError;
 use webgates::hashing::{HashingService, argon2::Argon2Hasher};
 
 use std::default::Default;
@@ -68,10 +69,20 @@ where
 {
     /// Creates a new repository that uses the given database connection limited by the given scope.
     pub fn new(db: Surreal<S>, scope_settings: DatabaseScope) -> Result<Self> {
-        let hasher = Argon2Hasher::new_recommended()?;
+        let hasher = Argon2Hasher::new_recommended().map_err(|error| {
+            Error::Hashing(HashingError::new(
+                webgates::hashing::HashingOperation::Hash,
+                format!("Failed to initialize Argon2 hasher: {error}"),
+            ))
+        })?;
         // Panic on failure here is acceptable: construction failure indicates a
         // fundamental issue (e.g. RNG) and mirrors the in‑memory repo strategy.
-        let dummy_hash = hasher.hash_value("dummy_password")?;
+        let dummy_hash = hasher.hash_value("dummy_password").map_err(|error| {
+            Error::Hashing(HashingError::new(
+                webgates::hashing::HashingOperation::Hash,
+                format!("Failed to generate dummy password hash: {error}"),
+            ))
+        })?;
         Ok(Self {
             db,
             scope_settings,

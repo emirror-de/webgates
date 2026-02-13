@@ -1,4 +1,3 @@
-use webgates::accounts::AccountInsertService;
 use webgates::accounts::AccountRepository;
 use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
 use webgates::hashing::argon2::Argon2Hasher;
@@ -6,6 +5,7 @@ use webgates::prelude::*;
 use webgates::secrets::{Secret, SecretRepository};
 use webgates_axum::route_handlers;
 use webgates_repositories::sea_orm::SeaOrmRepository;
+use webgates_repositories::services::AccountInsertService;
 
 use std::sync::Arc;
 
@@ -80,7 +80,7 @@ async fn main() {
     let secrets_repository = Arc::clone(&account_repository);
     debug!("Secrets repository initialized.");
 
-    AccountInsertService::insert("admin@example.com", "admin_password")
+    AccountInsertService::<Role, Group>::insert("admin@example.com", "admin_password")
         .with_roles(vec![Role::Admin])
         .with_groups(vec![Group::new("admin")])
         .into_repositories(
@@ -91,7 +91,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted Admin.");
 
-    AccountInsertService::insert("reporter@example.com", "reporter_password")
+    AccountInsertService::<Role, Group>::insert("reporter@example.com", "reporter_password")
         .with_roles(vec![Role::Reporter])
         .with_groups(vec![Group::new("reporter")])
         .into_repositories(
@@ -102,7 +102,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted Reporter.");
 
-    AccountInsertService::insert("user@example.com", "user_password")
+    AccountInsertService::<Role, Group>::insert("user@example.com", "user_password")
         .with_roles(vec![Role::User])
         .with_groups(vec![Group::new("user")])
         .into_repositories(
@@ -129,7 +129,7 @@ async fn main() {
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar, Json(credentials): Json<Credentials<String>>| {
-                    route_handlers::login(
+                    route_handlers::login::<_, _, _, Role, Group>(
                         cookie_jar,
                         credentials,
                         registered_claims,

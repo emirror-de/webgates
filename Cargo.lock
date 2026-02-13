@@ -1052,6 +1052,7 @@ dependencies = [
  "tracing-subscriber",
  "webgates",
  "webgates-axum",
+ "webgates-repositories",
 ]
 
 [[package]]
@@ -1285,6 +1286,7 @@ dependencies = [
  "tracing-subscriber",
  "webgates",
  "webgates-axum",
+ "webgates-repositories",
 ]
 
 [[package]]
@@ -2519,7 +2521,6 @@ version = "0.30.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e99fb7a497b1e3339bc746195567ed8d3e24945ecd636e3619d20b9de9e9149"
 dependencies = [
- "cc",
  "pkg-config",
  "vcpkg",
 ]
@@ -2916,6 +2917,7 @@ dependencies = [
  "uuid",
  "webgates",
  "webgates-axum",
+ "webgates-repositories",
 ]
 
 [[package]]
@@ -3119,6 +3121,7 @@ dependencies = [
  "tracing-subscriber",
  "webgates",
  "webgates-axum",
+ "webgates-repositories",
 ]
 
 [[package]]
@@ -3403,6 +3406,7 @@ dependencies = [
  "tracing-subscriber",
  "webgates",
  "webgates-axum",
+ "webgates-repositories",
 ]
 
 [[package]]
@@ -4336,10 +4340,8 @@ dependencies = [
  "sea-orm-macros",
  "sea-query 1.0.0-rc.30",
  "sea-query-sqlx",
- "sea-schema",
  "serde",
  "serde_json",
- "sqlx",
  "strum",
  "thiserror 2.0.18",
  "time",
@@ -4363,6 +4365,7 @@ dependencies = [
  "tracing-subscriber",
  "webgates",
  "webgates-axum",
+ "webgates-repositories",
 ]
 
 [[package]]
@@ -4443,31 +4446,6 @@ checksum = "e4377164b09a11bb692dec6966eb0e6908d63d768defef0be689b39e02cf8544"
 dependencies = [
  "sea-query 1.0.0-rc.30",
  "sqlx",
-]
-
-[[package]]
-name = "sea-schema"
-version = "0.17.0-rc.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b363dd21c20fe4d1488819cb2bc7f8d4696c62dd9f39554f97639f54d57dd0ab"
-dependencies = [
- "async-trait",
- "sea-query 1.0.0-rc.30",
- "sea-query-sqlx",
- "sea-schema-derive",
- "sqlx",
-]
-
-[[package]]
-name = "sea-schema-derive"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "debdc8729c37fdbf88472f97fd470393089f997a909e535ff67c544d18cfccf0"
-dependencies = [
- "heck 0.4.1",
- "proc-macro2",
- "quote",
- "syn 2.0.114",
 ]
 
 [[package]]
@@ -4717,6 +4695,7 @@ dependencies = [
  "tracing-subscriber",
  "webgates",
  "webgates-axum",
+ "webgates-repositories",
 ]
 
 [[package]]
@@ -4852,8 +4831,6 @@ dependencies = [
  "smallvec",
  "thiserror 2.0.18",
  "time",
- "tokio",
- "tokio-stream",
  "tracing",
  "url",
  "uuid",
@@ -4893,7 +4870,6 @@ dependencies = [
  "sqlx-postgres",
  "sqlx-sqlite",
  "syn 2.0.114",
- "tokio",
  "url",
 ]
 
@@ -5271,6 +5247,7 @@ dependencies = [
  "tracing-subscriber",
  "webgates",
  "webgates-axum",
+ "webgates-repositories",
 ]
 
 [[package]]
@@ -6103,19 +6080,17 @@ dependencies = [
  "prometheus",
  "rand 0.9.2",
  "roaring 0.11.3",
- "sea-orm",
- "sea-query 0.32.7",
  "serde",
  "serde_json",
  "serde_with",
  "strum",
  "subtle",
- "surrealdb",
  "thiserror 2.0.18",
  "tokio",
  "tokio-test",
  "tracing",
  "uuid",
+ "webgates-repositories",
 ]
 
 [[package]]
@@ -6139,6 +6114,25 @@ dependencies = [
  "tokio-test",
  "tower",
  "tower-http",
+ "tracing",
+ "uuid",
+ "webgates",
+]
+
+[[package]]
+name = "webgates-repositories"
+version = "0.1.0-dev"
+dependencies = [
+ "argon2",
+ "sea-orm",
+ "sea-query 0.32.7",
+ "serde",
+ "serde_json",
+ "strum",
+ "subtle",
+ "surrealdb",
+ "thiserror 2.0.18",
+ "tokio",
  "tracing",
  "uuid",
  "webgates",

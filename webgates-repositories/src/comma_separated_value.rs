@@ -41,8 +41,8 @@
 //!
 //! # Note
 //!
-This module is available when the `repo-seaorm` feature of `webgates-repositories`
-is enabled, because it exists to support the SeaORM storage backend in this crate.
+//! This module is available when the `repo-seaorm` feature of `webgates-repositories`
+//! is enabled because it exists to support the SeaORM storage backend in this crate.
 
 /// Conversion between a model and its CSV representation.
 pub trait CommaSeparatedValue
@@ -53,6 +53,27 @@ where
     fn into_csv(self) -> String;
     /// Converts the given slice into the model.
     fn from_csv(value: &str) -> Result<Self, String>;
+}
+
+#[cfg(feature = "repo-seaorm")]
+impl CommaSeparatedValue for Vec<webgates::prelude::Role> {
+    fn into_csv(self) -> String {
+        self.into_iter()
+            .map(|r| r.to_string())
+            .collect::<Vec<_>>()
+            .join(",")
+    }
+
+    fn from_csv(value: &str) -> Result<Self, String> {
+        if value.trim().is_empty() {
+            return Ok(Vec::new());
+        }
+        value
+            .split(',')
+            .map(|s| s.trim().parse::<webgates::prelude::Role>())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| format!("failed to parse role from csv: {e}"))
+    }
 }
 
 #[cfg(feature = "repo-seaorm")]

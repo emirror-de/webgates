@@ -43,8 +43,8 @@ pub use webgates;
 
 /// Re-export common modules from the core so gate code resolves paths unchanged.
 pub use webgates::{
-    accounts, authn, authz, codecs, credentials, errors, groups, hashing, permissions,
-    repositories, roles, secrets, verification_result,
+    accounts, authn, authz, codecs, credentials, errors, groups, hashing, permissions, roles,
+    secrets, verification_result,
 };
 
 #[cfg(feature = "audit-logging")]
@@ -64,9 +64,9 @@ pub use uuid;
 
 /// Prelude for convenient imports (core prelude + Gate).
 pub mod prelude {
-    pub use webgates::prelude::*;
-    pub use webgates::cookie_template::CookieTemplate;
     pub use crate::gate::Gate;
+    pub use webgates::cookie_template::CookieTemplate;
+    pub use webgates::prelude::*;
 }
 
 /// Gate builders and middleware for Axum.

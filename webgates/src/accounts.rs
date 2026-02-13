@@ -150,33 +150,6 @@ where
         }
     }
 
-    /// Creates a new account with the specified account ID.
-    ///
-    /// This constructor is primarily used internally when loading accounts from
-    /// repositories. Most applications should use `new()` which generates a random ID.
-    ///
-    /// # Arguments
-    /// * `account_id` - The UUID to use for this account
-    /// * `user_id` - Unique identifier for the user
-    /// * `roles` - Roles to assign to this account
-    /// * `groups` - Groups this account should belong to
-    pub(crate) fn new_with_account_id(
-        account_id: &Uuid,
-        user_id: &str,
-        roles: &[R],
-        groups: &[G],
-    ) -> Self {
-        let roles = roles.to_vec();
-        let groups = groups.to_vec();
-        Self {
-            account_id: account_id.to_owned(),
-            user_id: user_id.to_owned(),
-            groups,
-            roles,
-            permissions: Permissions::new(),
-        }
-    }
-
     /// Consumes this account and returns it with the specified permissions.
     ///
     /// This is useful when building accounts with specific permission sets.

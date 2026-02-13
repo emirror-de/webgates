@@ -1,7 +1,7 @@
-use webgates::accounts::AccountInsertService;
 use webgates::codecs::jwt::RegisteredClaims;
 use webgates::prelude::*;
 use webgates_axum::route_handlers;
+use webgates_repositories::services::AccountInsertService;
 use webgates_repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 
 use std::sync::Arc;
@@ -41,7 +41,7 @@ async fn main() {
     let secrets_repository = Arc::clone(&account_repository);
     debug!("Secrets repository initialized.");
 
-    AccountInsertService::insert("admin@example.com", "admin_password")
+    AccountInsertService::<Role, Group>::insert("admin@example.com", "admin_password")
         .with_roles(vec![Role::Admin])
         .with_groups(vec![Group::new("admin")])
         .into_repositories(
@@ -52,7 +52,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted Admin.");
 
-    AccountInsertService::insert("reporter@example.com", "reporter_password")
+    AccountInsertService::<Role, Group>::insert("reporter@example.com", "reporter_password")
         .with_roles(vec![Role::Reporter])
         .with_groups(vec![Group::new("reporter")])
         .into_repositories(
@@ -63,7 +63,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted Reporter.");
 
-    AccountInsertService::insert("user@example.com", "user_password")
+    AccountInsertService::<Role, Group>::insert("user@example.com", "user_password")
         .with_roles(vec![Role::User])
         .with_groups(vec![Group::new("user")])
         .into_repositories(

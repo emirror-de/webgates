@@ -15,16 +15,18 @@
 
 use axum_extra::extract::CookieJar;
 use webgates::{
-    accounts::AccountInsertService,
     authz::AccessPolicy,
     codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims},
     cookie_template::CookieTemplate,
     prelude::{Account, Credentials, Group, Role},
-    repositories::memory::{MemoryAccountRepository, MemorySecretRepository},
 };
 use webgates_axum::{
     gate::Gate,
     route_handlers::{login, logout},
+};
+use webgates_repositories::{
+    memory::{MemoryAccountRepository, MemorySecretRepository},
+    services::AccountInsertService,
 };
 
 use std::sync::Arc;

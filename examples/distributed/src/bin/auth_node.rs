@@ -1,10 +1,10 @@
 use distributed::{ApiPermission, AppPermissions, PermissionHelper};
 
-use webgates::accounts::AccountInsertService;
 use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, RegisteredClaims};
 use webgates::prelude::{Credentials, Group, Role};
 use webgates_axum::route_handlers;
 use webgates_repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+use webgates_repositories::services::AccountInsertService;
 
 use std::sync::Arc;
 
@@ -42,7 +42,7 @@ async fn main() {
     let mut admin_permissions = roaring::RoaringTreemap::new();
     PermissionHelper::grant_admin_access(&mut admin_permissions);
 
-    AccountInsertService::insert("admin@example.com", "admin_password")
+    AccountInsertService::<Role, Group>::insert("admin@example.com", "admin_password")
         .with_roles(vec![Role::Admin])
         .with_groups(vec![Group::new("admin")])
         .with_permissions(admin_permissions.into())
@@ -58,7 +58,7 @@ async fn main() {
     let mut reporter_permissions = roaring::RoaringTreemap::new();
     PermissionHelper::grant_repository_access(&mut reporter_permissions);
 
-    AccountInsertService::insert("reporter@example.com", "reporter_password")
+    AccountInsertService::<Role, Group>::insert("reporter@example.com", "reporter_password")
         .with_roles(vec![Role::Reporter])
         .with_groups(vec![Group::new("reporter")])
         .with_permissions(reporter_permissions.into())
@@ -77,7 +77,7 @@ async fn main() {
         &AppPermissions::Api(ApiPermission::Read),
     );
 
-    AccountInsertService::insert("user@example.com", "user_password")
+    AccountInsertService::<Role, Group>::insert("user@example.com", "user_password")
         .with_roles(vec![Role::User])
         .with_groups(vec![Group::new("user")])
         .with_permissions(user_permissions.into())

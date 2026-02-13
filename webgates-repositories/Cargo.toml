@@ -53,6 +53,7 @@ tokio = { workspace = true, optional = true, features = ["rt-multi-thread", "mac
 sea-orm = { workspace = true, optional = true }
 sea-query = { workspace = true, optional = true }
 surrealdb = { workspace = true, optional = true }
+subtle = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v7", "js"] }
 serde = { workspace = true }
 serde_json = { workspace = true, optional = true }

@@ -66,7 +66,6 @@ use webgates::errors::{Error as CoreError, Result as CoreResult};
 use webgates::hashing::argon2::Argon2Hasher;
 use webgates::permissions::Permissions;
 use webgates::secrets::{Secret, SecretRepository};
-use webgates::verification_result::VerificationResult;
 
 /// Service for creating new user accounts with their associated authentication secrets.
 ///

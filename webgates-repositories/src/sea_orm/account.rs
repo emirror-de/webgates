@@ -1,16 +1,47 @@
 use super::SeaOrmRepository;
 use crate::TableName;
 use crate::comma_separated_value::CommaSeparatedValue;
-use crate::errors::{DatabaseError, DatabaseOperation, Error, Result};
+use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result as RepoResult};
 use crate::sea_orm::models::account as seaorm_account;
-use webgates::accounts::{Account, AccountRepository};
-use webgates::authz::AccessHierarchy;
-
 use sea_orm::{
-    ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter,
+    ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
     entity::{ActiveModelTrait, ActiveValue},
 };
 use serde::{Serialize, de::DeserializeOwned};
+use uuid::Uuid;
+use webgates::accounts::{Account, AccountRepository};
+use webgates::authz::AccessHierarchy;
+use webgates::errors::Result;
+
+/// Helper to convert a SeaORM model into the domain `Account`.
+fn model_to_account<R, G>(model: seaorm_account::Model) -> RepoResult<Account<R, G>>
+where
+    R: AccessHierarchy + Eq + Clone + Serialize + DeserializeOwned,
+    G: Eq + Clone + Serialize + DeserializeOwned,
+    Vec<R>: CommaSeparatedValue,
+    Vec<G>: CommaSeparatedValue,
+{
+    let roles = Vec::<R>::from_csv(&model.roles).map_err(|e| {
+        RepoError::Database(DatabaseError::with_context(
+            DatabaseOperation::Query,
+            format!("Failed to parse roles csv: {}", e),
+            Some(TableName::AxumGateAccounts.to_string()),
+            Some(model.user_id.clone()),
+        ))
+    })?;
+    let groups = Vec::<G>::from_csv(&model.groups).map_err(|e| {
+        RepoError::Database(DatabaseError::with_context(
+            DatabaseOperation::Query,
+            format!("Failed to parse groups csv: {}", e),
+            Some(TableName::AxumGateAccounts.to_string()),
+            Some(model.user_id.clone()),
+        ))
+    })?;
+
+    let mut account = Account::new(&model.user_id, &roles, &groups);
+    account.account_id = model.account_id;
+    Ok(account)
+}
 
 impl<R, G> AccountRepository<R, G> for SeaOrmRepository
 where
@@ -23,191 +54,169 @@ where
         + Send
         + Sync
         + 'static,
-    G: Eq + Clone + Send + Sync + 'static,
+    G: Eq + Clone + Serialize + DeserializeOwned + Send + Sync + 'static,
     Vec<R>: CommaSeparatedValue,
     Vec<G>: CommaSeparatedValue,
 {
     async fn query_account_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
-        let Some(model) = seaorm_account::Entity::find()
-            .filter(seaorm_account::Column::UserId.eq(user_id))
-            .one(&self.db)
-            .await
-            .map_err(|e| {
-                Error::Database(DatabaseError::with_context(
-                    DatabaseOperation::Query,
-                    format!("Failed to query account by user_id: {}", e),
-                    Some(TableName::AxumGateAccounts.to_string()),
-                    Some(user_id.to_string()),
-                ))
-            })?
-        else {
-            return Ok(None);
-        };
+        let res: RepoResult<_> = {
+            let model = seaorm_account::Entity::find()
+                .filter(seaorm_account::Column::UserId.eq(user_id))
+                .one(&self.db)
+                .await
+                .map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Query,
+                        format!("Failed to query account by user_id: {}", e),
+                        Some(TableName::AxumGateAccounts.to_string()),
+                        Some(user_id.to_string()),
+                    ))
+                })?;
 
-        Ok(Some(Account::try_from(model).map_err(|e| {
-            Error::Database(DatabaseError::with_context(
-                DatabaseOperation::Query,
-                format!("Failed to convert database model to Account: {}", e),
-                Some(TableName::AxumGateAccounts.to_string()),
-                Some(user_id.to_string()),
-            ))
-        })?))
+            match model {
+                Some(m) => Ok(Some(model_to_account(m)?)),
+                None => Ok(None),
+            }
+        };
+        res.map_err(Into::into)
     }
 
-    async fn query_account_by_id(&self, account_id: &uuid::Uuid) -> Result<Option<Account<R, G>>> {
-        let Some(model) = seaorm_account::Entity::find()
-            .filter(seaorm_account::Column::AccountId.eq(*account_id))
-            .one(&self.db)
-            .await
-            .map_err(|e| {
-                Error::Database(DatabaseError::with_context(
-                    DatabaseOperation::Query,
-                    format!("Failed to query account by account_id: {}", e),
-                    Some(TableName::AxumGateAccounts.to_string()),
-                    Some(account_id.to_string()),
-                ))
-            })?
-        else {
-            return Ok(None);
-        };
+    async fn query_account_by_id(&self, account_id: &Uuid) -> Result<Option<Account<R, G>>> {
+        let res: RepoResult<_> = {
+            let model = seaorm_account::Entity::find()
+                .filter(seaorm_account::Column::AccountId.eq(*account_id))
+                .one(&self.db)
+                .await
+                .map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Query,
+                        format!("Failed to query account by account_id: {}", e),
+                        Some(TableName::AxumGateAccounts.to_string()),
+                        Some(account_id.to_string()),
+                    ))
+                })?;
 
-        Ok(Some(Account::try_from(model).map_err(|e| {
-            Error::Database(DatabaseError::with_context(
-                DatabaseOperation::Query,
-                format!("Failed to convert database model to Account: {}", e),
-                Some(TableName::AxumGateAccounts.to_string()),
-                Some(account_id.to_string()),
-            ))
-        })?))
+            match model {
+                Some(m) => Ok(Some(model_to_account(m)?)),
+                None => Ok(None),
+            }
+        };
+        res.map_err(Into::into)
     }
 
     async fn store_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
-        let mut model = seaorm_account::ActiveModel::from(account);
-        model.id = ActiveValue::NotSet;
-        let model = model.insert(&self.db).await.map_err(|e| {
-            Error::Database(DatabaseError::with_context(
-                DatabaseOperation::Insert,
-                format!("Failed to insert account: {}", e),
-                Some(TableName::AxumGateAccounts.to_string()),
-                None,
-            ))
-        })?;
-        Ok(Some(Account::try_from(model).map_err(|e| {
-            Error::Database(DatabaseError::with_context(
-                DatabaseOperation::Insert,
-                format!("Failed to convert inserted model to Account: {}", e),
-                Some(TableName::AxumGateAccounts.to_string()),
-                None,
-            ))
-        })?))
-    }
+        let res: RepoResult<_> = {
+            let mut model = seaorm_account::ActiveModel::from(account.clone());
+            model.id = ActiveValue::NotSet;
 
-    async fn delete_account(&self, account_id: &uuid::Uuid) -> Result<Option<Account<R, G>>> {
-        let Some(model) = seaorm_account::Entity::find()
-            .filter(seaorm_account::Column::AccountId.eq(*account_id))
-            .one(&self.db)
-            .await
-            .map_err(|e| {
-                Error::Database(DatabaseError::with_context(
-                    DatabaseOperation::Query,
-                    format!("Failed to query account for deletion: {}", e),
+            let inserted = model.insert(&self.db).await.map_err(|e| {
+                RepoError::Database(DatabaseError::with_context(
+                    DatabaseOperation::Insert,
+                    format!("Failed to insert account: {}", e),
                     Some(TableName::AxumGateAccounts.to_string()),
-                    Some(account_id.to_string()),
-                ))
-            })?
-        else {
-            return Ok(None);
-        };
-
-        seaorm_account::Entity::delete_by_id(model.id)
-            .exec(&self.db)
-            .await
-            .map_err(|e| {
-                Error::Database(DatabaseError::with_context(
-                    DatabaseOperation::Delete,
-                    format!("Failed to delete account: {}", e),
-                    Some(TableName::AxumGateAccounts.to_string()),
-                    Some(account_id.to_string()),
+                    None,
                 ))
             })?;
 
-        Ok(Some(Account::try_from(model).map_err(|e| {
-            Error::Database(DatabaseError::with_context(
-                DatabaseOperation::Delete,
-                format!("Failed to convert deleted model to Account: {}", e),
-                Some(TableName::AxumGateAccounts.to_string()),
-                Some(account_id.to_string()),
-            ))
-        })?))
+            Ok(Some(model_to_account(inserted)?))
+        };
+        res.map_err(Into::into)
+    }
+
+    async fn delete_account(&self, account_id: &Uuid) -> Result<Option<Account<R, G>>> {
+        let res: RepoResult<_> = {
+            let Some(model) = seaorm_account::Entity::find()
+                .filter(seaorm_account::Column::AccountId.eq(*account_id))
+                .one(&self.db)
+                .await
+                .map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Query,
+                        format!("Failed to query account for deletion: {}", e),
+                        Some(TableName::AxumGateAccounts.to_string()),
+                        Some(account_id.to_string()),
+                    ))
+                })?
+            else {
+                return Ok(None);
+            };
+
+            seaorm_account::Entity::delete_by_id(model.id)
+                .exec(&self.db)
+                .await
+                .map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Delete,
+                        format!("Failed to delete account: {}", e),
+                        Some(TableName::AxumGateAccounts.to_string()),
+                        Some(account_id.to_string()),
+                    ))
+                })?;
+
+            Ok(Some(model_to_account(model)?))
+        };
+        res.map_err(Into::into)
     }
 
     async fn update_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
-        let Some(db_account) = seaorm_account::Entity::find()
-            .filter(seaorm_account::Column::AccountId.eq(account.account_id))
-            .one(&self.db)
-            .await
-            .map_err(|e| {
-                Error::Database(DatabaseError::with_context(
-                    DatabaseOperation::Query,
-                    format!("Failed to query account for update: {}", e),
-                    Some(TableName::AxumGateAccounts.to_string()),
-                    Some(account.user_id.clone()),
-                ))
-            })?
-        else {
-            return Ok(None);
-        };
-        let mut db_account = db_account.into_active_model();
-        let user_id = account.user_id.clone();
-        db_account.user_id = ActiveValue::Set(account.user_id);
-        db_account.groups = ActiveValue::Set(account.groups.into_csv());
-        db_account.roles = ActiveValue::Set(account.roles.into_csv());
+        let res: RepoResult<_> = {
+            let Some(db_account) = seaorm_account::Entity::find()
+                .filter(seaorm_account::Column::AccountId.eq(account.account_id))
+                .one(&self.db)
+                .await
+                .map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Query,
+                        format!("Failed to query account for update: {}", e),
+                        Some(TableName::AxumGateAccounts.to_string()),
+                        Some(account.user_id.clone()),
+                    ))
+                })?
+            else {
+                return Ok(None);
+            };
 
-        let model = db_account.update(&self.db).await.map_err(|e| {
-            Error::Database(DatabaseError::with_context(
-                DatabaseOperation::Update,
-                format!("Failed to update account: {}", e),
-                Some(TableName::AxumGateAccounts.to_string()),
-                Some(user_id.clone()),
-            ))
-        })?;
-        Ok(Some(Account::try_from(model).map_err(|e| {
-            Error::Database(DatabaseError::with_context(
-                DatabaseOperation::Update,
-                format!("Failed to convert updated model to Account: {}", e),
-                Some(TableName::AxumGateAccounts.to_string()),
-                Some(user_id),
-            ))
-        })?))
+            let mut db_account = db_account.into_active_model();
+            let user_id = account.user_id.clone();
+            db_account.user_id = ActiveValue::Set(account.user_id);
+            db_account.groups = ActiveValue::Set(account.groups.into_csv());
+            db_account.roles = ActiveValue::Set(account.roles.into_csv());
+
+            let model = db_account.update(&self.db).await.map_err(|e| {
+                RepoError::Database(DatabaseError::with_context(
+                    DatabaseOperation::Update,
+                    format!("Failed to update account: {}", e),
+                    Some(TableName::AxumGateAccounts.to_string()),
+                    Some(user_id.clone()),
+                ))
+            })?;
+
+            Ok(Some(model_to_account(model)?))
+        };
+        res.map_err(Into::into)
     }
 
     async fn query_all_accounts(&self) -> Result<Vec<Account<R, G>>> {
-        // Fetch all account models from the database and convert into domain `Account` instances.
-        let models = seaorm_account::Entity::find()
-            .all(&self.db)
-            .await
-            .map_err(|e| {
-                Error::Database(DatabaseError::with_context(
-                    DatabaseOperation::Query,
-                    format!("Failed to query all accounts: {}", e),
-                    Some(TableName::AxumGateAccounts.to_string()),
-                    None,
-                ))
-            })?;
+        let res: RepoResult<_> = {
+            let models = seaorm_account::Entity::find()
+                .order_by_asc(seaorm_account::Column::UserId)
+                .all(&self.db)
+                .await
+                .map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Query,
+                        format!("Failed to query all accounts: {}", e),
+                        Some(TableName::AxumGateAccounts.to_string()),
+                        None,
+                    ))
+                })?;
 
-        let mut out = Vec::with_capacity(models.len());
-        for m in models {
-            let dom = Account::try_from(m).map_err(|e| {
-                Error::Database(DatabaseError::with_context(
-                    DatabaseOperation::Query,
-                    format!("Failed to convert account model: {}", e),
-                    Some(TableName::AxumGateAccounts.to_string()),
-                    None,
-                ))
-            })?;
-            out.push(dom);
-        }
-
-        Ok(out)
+            let mut out = Vec::with_capacity(models.len());
+            for model in models {
+                out.push(model_to_account(model)?);
+            }
+            Ok(out)
+        };
+        res.map_err(Into::into)
     }
 }

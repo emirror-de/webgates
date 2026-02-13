@@ -39,7 +39,7 @@ use uuid::Uuid;
 /// ```rust
 /// use webgates::secrets::{Secret, SecretRepository};
 /// use webgates::hashing::argon2::Argon2Hasher;
-/** use webgates_repositories::memory::MemorySecretRepository;
+/// use webgates_repositories::memory::MemorySecretRepository;
 /// use uuid::Uuid;
 ///
 /// fn rotate_secret(

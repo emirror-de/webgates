@@ -16,7 +16,6 @@
 // Running
 // - Ensure webgates_SHARED_SECRET is set (a .env is provided in this example).
 // - From this example directory, run: cargo run
-use webgates::accounts::AccountInsertService;
 use webgates::authz::{AccessHierarchy, AccessPolicy};
 use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
 use webgates::cookie_template::CookieTemplate;
@@ -24,6 +23,7 @@ use webgates::prelude::{Account, Credentials};
 use webgates_axum::gate::Gate;
 use webgates_axum::route_handlers;
 use webgates_repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+use webgates_repositories::services::AccountInsertService;
 
 use std::sync::Arc;
 

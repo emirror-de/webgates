@@ -1,5 +1,7 @@
-use crate::errors::{Error, Result};
-use crate::errors::{RepositoriesError, RepositoryOperation, RepositoryType};
+use crate::errors::{
+    Error as RepoError, RepositoriesError, RepositoryOperation, RepositoryType,
+    Result as RepoResult,
+};
 use webgates::credentials::{Credentials, CredentialsVerifier};
 use webgates::hashing::HashingService;
 use webgates::hashing::argon2::Argon2Hasher;
@@ -54,7 +56,7 @@ use uuid::Uuid;
 /// # Creating from Existing Data
 /// ```rust
 /// use webgates::secrets::Secret; use webgates::hashing::argon2::Argon2Hasher;
-/** use webgates_repositories::memory::MemorySecretRepository;
+/// use webgates_repositories::memory::MemorySecretRepository;
 /// use uuid::Uuid;
 ///
 /// let secrets = vec![
@@ -75,7 +77,7 @@ pub struct MemorySecretRepository {
 
 impl MemorySecretRepository {
     /// Creates a new instance with [Argon2Hasher].
-    pub fn new_with_argon2_hasher() -> Result<Self> {
+    pub fn new_with_argon2_hasher() -> webgates::errors::Result<Self> {
         let hasher = Argon2Hasher::new_recommended()?;
         let dummy_hash = hasher.hash_value("dummy_password")?;
         Ok(Self {
@@ -86,8 +88,8 @@ impl MemorySecretRepository {
 }
 
 impl TryFrom<Vec<Secret>> for MemorySecretRepository {
-    type Error = crate::errors::Error;
-    fn try_from(value: Vec<Secret>) -> Result<Self> {
+    type Error = webgates::errors::Error;
+    fn try_from(value: Vec<Secret>) -> webgates::errors::Result<Self> {
         let mut store = HashMap::with_capacity(value.len());
         value.into_iter().for_each(|v| {
             store.insert(v.account_id, v);
@@ -99,47 +101,59 @@ impl TryFrom<Vec<Secret>> for MemorySecretRepository {
 }
 
 impl SecretRepository for MemorySecretRepository {
-    async fn store_secret(&self, secret: Secret) -> Result<bool> {
-        let already_present = {
-            let read = self.store.read().await;
-            read.contains_key(&secret.account_id)
+    async fn store_secret(&self, secret: Secret) -> webgates::errors::Result<bool> {
+        let res: RepoResult<_> = {
+            let already_present = {
+                let read = self.store.read().await;
+                read.contains_key(&secret.account_id)
+            };
+
+            if already_present {
+                return Err(RepoError::Repositories(RepositoriesError::operation_failed(
+                    RepositoryType::Secret,
+                    RepositoryOperation::Insert,
+                    "AccountID is already present",
+                    None,
+                    None,
+                ))
+                .into());
+            }
+
+            let mut write = self.store.write().await;
+            debug!("Got write lock on secret repository.");
+
+            if write.insert(secret.account_id, secret).is_some() {
+                return Err(RepoError::Repositories(
+                    RepositoriesError::operation_failed(
+                        RepositoryType::Secret,
+                        RepositoryOperation::Insert,
+                        "This should never occur because it is checked if the key is already present a few lines earlier",
+                        None,
+                        Some("store".to_string()),
+                    ),
+                )
+                .into());
+            };
+            Ok(true)
         };
-
-        if already_present {
-            return Err(Error::Repositories(RepositoriesError::operation_failed(
-                RepositoryType::Secret,
-                RepositoryOperation::Insert,
-                "AccountID is already present",
-                None,
-                None,
-            )));
-        }
-
-        let mut write = self.store.write().await;
-        debug!("Got write lock on secret repository.");
-
-        if write.insert(secret.account_id, secret).is_some() {
-            return Err(Error::Repositories(RepositoriesError::operation_failed(
-                RepositoryType::Secret,
-                RepositoryOperation::Insert,
-                "This should never occur because it is checked if the key is already present a few lines earlier",
-                None,
-                Some("store".to_string()),
-            )));
-        };
-        Ok(true)
+        res.map_err(Into::into)
     }
 
-    async fn delete_secret(&self, id: &Uuid) -> Result<Option<Secret>> {
-        // Atomically remove and return the secret (compensating actions can reinsert it)
-        let mut write = self.store.write().await;
-        Ok(write.remove(id))
+    async fn delete_secret(&self, id: &Uuid) -> webgates::errors::Result<Option<Secret>> {
+        let res: RepoResult<_> = {
+            let mut write = self.store.write().await;
+            Ok(write.remove(id))
+        };
+        res.map_err(Into::into)
     }
 
-    async fn update_secret(&self, secret: Secret) -> Result<()> {
-        let mut write = self.store.write().await;
-        write.insert(secret.account_id, secret);
-        Ok(())
+    async fn update_secret(&self, secret: Secret) -> webgates::errors::Result<()> {
+        let res: RepoResult<_> = {
+            let mut write = self.store.write().await;
+            write.insert(secret.account_id, secret);
+            Ok(())
+        };
+        res.map_err(Into::into)
     }
 }
 
@@ -147,40 +161,37 @@ impl CredentialsVerifier<Uuid> for MemorySecretRepository {
     async fn verify_credentials(
         &self,
         credentials: Credentials<Uuid>,
-    ) -> Result<VerificationResult> {
+    ) -> webgates::errors::Result<VerificationResult> {
         use subtle::Choice;
         use webgates::hashing::HashingService;
 
-        let read = self.store.read().await;
+        let res: RepoResult<_> = {
+            let read = self.store.read().await;
 
-        // Get stored secret or use precomputed dummy hash to ensure constant-time operation
-        let (stored_secret_str, user_exists_choice) = match read.get(&credentials.id) {
-            Some(stored_secret) => (stored_secret.secret.as_str(), Choice::from(1u8)),
-            None => (self.dummy_hash.as_str(), Choice::from(0u8)),
+            let (stored_secret_str, user_exists_choice) = match read.get(&credentials.id) {
+                Some(stored_secret) => (stored_secret.secret.as_str(), Choice::from(1u8)),
+                None => (self.dummy_hash.as_str(), Choice::from(0u8)),
+            };
+
+            let hasher = Argon2Hasher::new_recommended()?;
+            let hash_verification_result =
+                hasher.verify_value(&credentials.secret, stored_secret_str)?;
+
+            let hash_matches_choice = Choice::from(match hash_verification_result {
+                VerificationResult::Ok => 1u8,
+                VerificationResult::Unauthorized => 0u8,
+            });
+
+            let final_success_choice = user_exists_choice & hash_matches_choice;
+
+            let final_result = if bool::from(final_success_choice) {
+                VerificationResult::Ok
+            } else {
+                VerificationResult::Unauthorized
+            };
+
+            Ok(final_result)
         };
-
-        // ALWAYS perform Argon2 verification (constant time regardless of user existence)
-        let hasher = Argon2Hasher::new_recommended()?;
-        let hash_verification_result =
-            hasher.verify_value(&credentials.secret, stored_secret_str)?;
-
-        // Convert hash verification result to Choice for constant-time operations
-        let hash_matches_choice = Choice::from(match hash_verification_result {
-            VerificationResult::Ok => 1u8,
-            VerificationResult::Unauthorized => 0u8,
-        });
-
-        // Combine results using constant-time AND operation
-        // Success only if: user exists AND password hash matches
-        let final_success_choice = user_exists_choice & hash_matches_choice;
-
-        // Convert back to VerificationResult
-        let final_result = if bool::from(final_success_choice) {
-            VerificationResult::Ok
-        } else {
-            VerificationResult::Unauthorized
-        };
-
-        Ok(final_result)
+        res.map_err(Into::into)
     }
 }

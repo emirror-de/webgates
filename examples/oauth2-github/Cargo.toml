@@ -8,6 +8,7 @@ publish = false
 axum = { workspace = true }
 webgates = { path = "../../webgates" }
 webgates-axum = { path = "../../webgates-axum" }
+webgates-repositories = { path = "../../webgates-repositories" }
 dotenvy = "0.15"
 oauth2 = { workspace = true }
 reqwest = { workspace = true }

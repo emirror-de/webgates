@@ -1,4 +1,5 @@
-use crate::errors::Result;
+use crate::errors::Result as RepoResult;
+use webgates::errors::Result;
 use webgates::groups::{GroupEntity, GroupRepository};
 
 use std::collections::HashMap;
@@ -51,44 +52,58 @@ where
     T: Serialize + DeserializeOwned + GroupEntity + Eq + Clone + Send + Sync + 'static,
 {
     async fn store_group(&self, group: T) -> Result<bool> {
-        let id = group.group_id().to_string();
+        let res: RepoResult<_> = {
+            let id = group.group_id().to_string();
 
-        // Fast read check to avoid acquiring write lock unnecessarily
-        {
-            let read = self.store.read().await;
-            if read.contains_key(&id) {
-                return Ok(false);
+            {
+                let read = self.store.read().await;
+                if read.contains_key(&id) {
+                    return Ok(false);
+                }
             }
-        }
 
-        let mut write = self.store.write().await;
-        write.insert(id, group);
-        Ok(true)
+            let mut write = self.store.write().await;
+            write.insert(id, group);
+            Ok(true)
+        };
+        res.map_err(Into::into)
     }
 
     async fn delete_group(&self, id: &str) -> Result<Option<T>> {
-        let mut write = self.store.write().await;
-        Ok(write.remove(id))
+        let res: RepoResult<_> = {
+            let mut write = self.store.write().await;
+            Ok(write.remove(id))
+        };
+        res.map_err(Into::into)
     }
 
     async fn update_group(&self, group: T) -> Result<Option<T>> {
-        let id = group.group_id().to_string();
-        let mut write = self.store.write().await;
-        if write.contains_key(&id) {
-            write.insert(id.clone(), group.clone());
-            Ok(Some(group))
-        } else {
-            Ok(None)
-        }
+        let res: RepoResult<_> = {
+            let id = group.group_id().to_string();
+            let mut write = self.store.write().await;
+            if write.contains_key(&id) {
+                write.insert(id.clone(), group.clone());
+                Ok(Some(group))
+            } else {
+                Ok(None)
+            }
+        };
+        res.map_err(Into::into)
     }
 
     async fn query_group_by_id(&self, id: &str) -> Result<Option<T>> {
-        let read = self.store.read().await;
-        Ok(read.get(id).cloned())
+        let res: RepoResult<_> = {
+            let read = self.store.read().await;
+            Ok(read.get(id).cloned())
+        };
+        res.map_err(Into::into)
     }
 
     async fn query_all_groups(&self) -> Result<Vec<T>> {
-        let read = self.store.read().await;
-        Ok(read.values().cloned().collect())
+        let res: RepoResult<_> = {
+            let read = self.store.read().await;
+            Ok(read.values().cloned().collect())
+        };
+        res.map_err(Into::into)
     }
 }
