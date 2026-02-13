@@ -48,13 +48,11 @@ cookie = { workspace = true, optional = true }
 jsonwebtoken = { workspace = true }
 rand = { workspace = true, optional = true }
 roaring = { workspace = true, features = ["serde"] }
-
 serde = { workspace = true }
 serde_json = { workspace = true, optional = true }
 serde_with = { workspace = true, optional = true }
 strum = { workspace = true }
 subtle = { workspace = true, optional = true }
-
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true }
 tracing = { workspace = true, optional = true }
@@ -62,7 +60,6 @@ prometheus = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["serde", "v7", "js"] }
 
 [dev-dependencies]
-
 webgates-repositories = { path = "../webgates-repositories", features = ["repo-seaorm", "repo-surrealdb"] }
 surrealdb = { workspace = true, features = ["kv-mem"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
