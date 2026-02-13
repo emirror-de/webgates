@@ -21,16 +21,15 @@ core and `webgates-axum` for the Axum adapters.
 
 ## Basic usage
 
-```rust,ignore
+```rust
 use axum::{routing::get, Router};
 use std::sync::Arc;
 use webgates_axum::gate::Gate;
-use webgates::prelude::*;
-use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
+use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
 
 let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 
-let app = Router::new()
+let app = Router::<()>::new()
     .route("/admin", get(|| async { "ok" }))
     .layer(
         Gate::cookie("my-app", jwt)
