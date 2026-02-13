@@ -1,76 +1,70 @@
 # webgates-repositories
 
-Repository implementations and repository-facing services for the `webgates` authentication and authorization domain.
+Repository implementations and repository-facing services for the `webgates` authentication/authorization domain.
 
 - In-memory repositories for quick starts and tests
-- Optional SeaORM-backed repositories (`repo-seaorm`)
-- Optional SurrealDB-backed repositories (`repo-surrealdb`)
+- SeaORM-backed repositories (`repo-seaorm`)
+- SurrealDB-backed repositories (`repo-surrealdb`)
 - Optional audit logging hooks (`audit-logging`)
-- Shared `Result`/error types tailored to repository backends
-- Services such as account insert/delete, gated behind the `server` feature
+- Shared error stack tailored to repository backends
 
-## Crate layout
+## Install
 
-- `src/memory`: In-memory repositories (no extra features required)
-- `src/sea_orm`: SeaORM repositories and models (`repo-seaorm`)
-- `src/surrealdb`: SurrealDB repositories (`repo-surrealdb`)
-- `src/services`: Repository-facing services (enabled with `server`)
-- `src/errors.rs`: Repository-specific error stack (`Error`, `DatabaseError`, `RepositoriesError`, `ErrorSeverity`, `UserFriendlyError`, `Result<T>`)
+Pick the backends you need:
+
+```toml
+[dependencies]
+webgates = { version = "0.1" }
+webgates-repositories = { version = "0.1", features = ["repo-seaorm"] }
+# or
+webgates-repositories = { version = "0.1", features = ["repo-surrealdb"] }
+# in-memory requires no extra features
+```
+
+MSRV: 1.88
 
 ## Feature flags
 
 - `default = ["server"]`
-- `server`: Enables tokio/macro support and repository services
-- `repo-seaorm`: SeaORM-backed repositories (requires SeaORM + database driver)
+- `server`: enables tokio/macro support and repository services
+- `repo-seaorm`: SeaORM-backed repositories (bring the DB driver via SeaORM features)
 - `repo-surrealdb`: SurrealDB-backed repositories
-- `audit-logging`: Enables audit hooks with `tracing`
+- `audit-logging`: emit tracing events for repo operations
 
-## Add to your project
+## Quick starts
 
-```toml
-[dependencies]
-webgates = { version = "1" }
-webgates-repositories = { version = "1", features = ["repo-seaorm"] }
-# or
-webgates-repositories = { version = "1", features = ["repo-surrealdb"] }
-# in-memory backend needs no extra features
-```
-
-## Choosing a backend
-
-- **In-memory**: Development/tests, zero config.
-- **SeaORM (`repo-seaorm`)**: For relational databases supported by SeaORM; bring the appropriate driver via SeaORM features.
-- **SurrealDB (`repo-surrealdb`)**: For SurrealDB deployments; see BUSL notice below.
-
-## Basic usage (in-memory)
+### In-memory (zero config)
 
 ```rust
+use webgates::gate::Gate;
+use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
+use webgates::accounts::Account;
+use webgates::prelude::{Group, Role};
 use webgates_repositories::memory::{
     MemoryAccountRepository, MemorySecretRepository, MemoryPermissionMappingRepository,
 };
-use webgates::gate::Gate;
-use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions};
+use std::sync::Arc;
 
-let account_repo = MemoryAccountRepository::new();
-let secret_repo = MemorySecretRepository::new();
-let perms_repo = MemoryPermissionMappingRepository::new();
+type Claims = JwtClaims<Account<Role, Group>>;
+let codec = Arc::new(JsonWebToken::<Claims>::default());
 
-let codec = JsonWebToken::new(JsonWebTokenOptions::default());
-let gate = Gate::cookie("issuer", codec)
-    .with_account_repository(account_repo)
-    .with_secret_repository(secret_repo)
-    .with_permission_repository(perms_repo);
+let gate = Gate::cookie::<_, Role, Group>("issuer", Arc::clone(&codec))
+    .with_policy(webgates::authz::AccessPolicy::require_role(Role::Admin));
+
+let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher()?);
+let perms_repo = Arc::new(MemoryPermissionMappingRepository::new());
+
+// use the repos in your app (login handlers, services, etc.)
 ```
 
-## SeaORM backend (sketch)
+### SeaORM (sketch)
 
-1) Enable the feature and add the driver via SeaORM:
 ```toml
-webgates-repositories = { version = "1", features = ["repo-seaorm"] }
+webgates-repositories = { version = "0.1", features = ["repo-seaorm"] }
 sea-orm = { version = "2", features = ["sqlx-postgres", "runtime-tokio-rustls"] }
 ```
 
-2) Initialize the connection and repository:
 ```rust
 use sea_orm::Database;
 use webgates_repositories::sea_orm::SeaOrmRepository;
@@ -79,10 +73,10 @@ let db = Database::connect("postgres://...").await?;
 let repo = SeaOrmRepository::new(db);
 ```
 
-## SurrealDB backend (sketch)
+### SurrealDB (sketch)
 
 ```toml
-webgates-repositories = { version = "1", features = ["repo-surrealdb"] }
+webgates-repositories = { version = "0.1", features = ["repo-surrealdb"] }
 ```
 
 ```rust
@@ -95,29 +89,25 @@ db.use_ns("ns").use_db("db").await?;
 let repo = SurrealDbRepository::new(db);
 ```
 
-## Error handling
+## Errors
 
-All repository APIs return `webgates_repositories::errors::Result<T>` with a rich error stack (`Error`, `DatabaseError`, `RepositoriesError`, `ErrorSeverity`, and `UserFriendlyError`). Map or log errors at boundaries; avoid leaking internal details to clients.
+All repository APIs return `webgates_repositories::errors::Result<T>` with a rich error stack (`Error`, `DatabaseError`, `RepositoriesError`, `ErrorSeverity`, `UserFriendlyError`). Map or log errors at boundaries; avoid leaking internal details to clients.
+
+## Services
+
+`AccountInsertService` and `AccountDeleteService` (gated by `server`) provide convenience flows over the repository traits for provisioning/teardown.
 
 ## Audit logging
 
-Enable `audit-logging` to emit tracing spans/events for repository operations. Keep logs free of secrets/PII; prefer correlation IDs and high-level event labels.
-
-## Services (account insert/delete)
-
-`AccountInsertService` and `AccountDeleteService` live under `src/services` and are gated by the `server` feature. They operate over the repository traits to simplify provisioning and teardown flows.
+Enable `audit-logging` to emit tracing events for repository operations. Keep logs free of secrets/PII; use correlation IDs.
 
 ## Examples
 
-- `examples/sea-orm`: SeaORM-backed usage
-- `examples/surrealdb`: SurrealDB-backed usage
+- `examples/sea-orm`
+- `examples/surrealdb`
 - Workspace examples under `../examples` use the in-memory backend by default.
 
-## BUSL notice (SurrealDB)
+## License and notices
 
-Enabling `repo-surrealdb` pulls in SurrealDB, licensed under the Business Source License 1.1 (BUSL-1.1). BUSL restricts Production Use unless permitted by the licensor or after the Change Date. If you build or distribute binaries with this feature enabled, you must comply with BUSL and include required third-party notices.
-
-## MSRV and license
-
-- MSRV: 1.88
 - License: MIT
+- SurrealDB (when enabling `repo-surrealdb`): BUSL-1.1. Production use is restricted by BUSL; include required third-party notices and comply with SurrealDB licensing.

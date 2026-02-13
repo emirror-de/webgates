@@ -4,7 +4,7 @@
 #![deny(clippy::expect_used)]
 
 /*!
-# webgates (core)
+# webgates
 
 Domain models, codecs, hashing, and authorization logic for webgates.
 This crate is platform-agnostic and does **not** depend on any specific web
@@ -32,7 +32,7 @@ sibling `webgates-axum` crate.
 Use this crate for gate configuration and domain logic, and `webgates-axum` to
 adapt them into Axum layers.
 
-## Quick start (core)
+## Quick start
 
 ```rust
 use webgates::accounts::Account;
