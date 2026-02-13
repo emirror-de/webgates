@@ -118,8 +118,8 @@ You can extend this to look up roles/groups from your database or organization t
 
 ## Troubleshooting
 
-- “State mismatch” on callback
-  - Ensure you’re using the same domain/port as the configured callback URL.
+- “State mismatch” or “Missing state cookie” on callback
+  - Ensure you’re using the same domain/port as the configured callback URL, and that `APP_ADDR` matches the host/port in `GITHUB_REDIRECT_URL` (or the default generated redirect). A port mismatch will prevent the browser from sending the state cookie back.
   - Clear cookies and try again.
 
 - “OAuth2 token exchange failed”
