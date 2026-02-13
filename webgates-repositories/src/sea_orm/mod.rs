@@ -47,12 +47,12 @@ mod secret;
 ///
 /// # Usage
 /// ```rust
-/// # #[cfg(feature=\"repo-seaorm\")]
+/// # #[cfg(feature = "repo-seaorm")]
 /// # {
 /// use webgates_repositories::sea_orm::SeaOrmRepository;
 /// use sea_orm::Database;
-/// # #[tokio::test] async fn usage_sea_orm() -> anyhow::Result<()> {
-/// let db = Database::connect(\"sqlite::memory:\").await?;
+/// # #[tokio::test] async fn usage_sea_orm() -> Result<(), Box<dyn std::error::Error>> {
+/// let db = Database::connect("sqlite::memory:").await?;
 /// let repo = SeaOrmRepository::new(&db)?;
 /// # Ok(()) }
 /// # }

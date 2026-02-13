@@ -32,7 +32,7 @@ mod secret_repository;
 ///
 /// ```rust
 /// use webgates::secrets::Secret; use webgates::hashing::argon2::Argon2Hasher; use webgates::verification_result::VerificationResult;
-/// use webgates::accounts::AccountInsertService;
+/// use webgates_repositories::services::AccountInsertService;
 /// use uuid::Uuid;
 ///
 /// # tokio_test::block_on(async {

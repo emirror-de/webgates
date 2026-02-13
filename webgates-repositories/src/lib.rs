@@ -39,7 +39,7 @@ SeaORM (SQL) — requires `repo-seaorm`:
 
 ```rust
 # #[cfg(feature = "repo-seaorm")]
-# async fn example(db: sea_orm::DatabaseConnection) -> anyhow::Result<()> {
+# async fn example(db: sea_orm::DatabaseConnection) -> Result<(), Box<dyn std::error::Error>> {
 use std::sync::Arc;
 use webgates_repositories::sea_orm::SeaOrmRepository;
 

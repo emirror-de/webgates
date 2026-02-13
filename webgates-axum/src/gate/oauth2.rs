@@ -3,7 +3,7 @@
 //! Example: insert account before JWT using a repository (ensures stable `account_id` in cookie)
 //!
 //! ```rust
-//! use webgates::prelude::*;
+//! use webgates_axum::prelude::*;
 //! use webgates_repositories::memory::MemoryAccountRepository;
 //! use std::sync::Arc;
 //!
@@ -52,7 +52,7 @@
 //!
 //! ```rust
 //! use axum::{Router, routing::get};
-//! use webgates::prelude::*;
+//! use webgates_axum::prelude::*;
 //! use std::sync::Arc;
 //!
 //! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
@@ -90,7 +90,7 @@
 //!
 //! Example: customize state/PKCE cookies
 //! ```rust
-//! use webgates::prelude::*;
+//! use webgates_axum::prelude::*;
 //! use cookie::{SameSite, time::Duration};
 //!
 //! let gate = Gate::oauth2::<Role, Group>()
@@ -98,13 +98,13 @@
 //!     // Optional: custom names (multi-provider setups)
 //!     .with_cookie_names("my-oauth-state", "my-oauth-pkce")
 //!     // Optional: fine-tune state cookie (shorter TTL, SameSite)
-//!     .configure_state_cookie_template(|t| {
+//!     .configure_state_cookie_template(|t: CookieTemplate| {
 //!         t.same_site(SameSite::Lax)
 //!          .max_age(Duration::minutes(5))
 //!     })
 //!     .unwrap()
 //!     // Optional: fine-tune PKCE cookie similarly
-//!     .configure_pkce_cookie_template(|t| {
+//!     .configure_pkce_cookie_template(|t: CookieTemplate| {
 //!         t.same_site(SameSite::Lax)
 //!          .max_age(Duration::minutes(5))
 //!     })

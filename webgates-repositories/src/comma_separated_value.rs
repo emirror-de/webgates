@@ -11,7 +11,7 @@
 //! as comma-separated strings in SQL databases:
 //!
 //! ```rust
-//! use webgates::comma_separated_value::CommaSeparatedValue;
+//! use webgates_repositories::comma_separated_value::CommaSeparatedValue;
 //!
 //! // Define a local wrapper type (avoids orphan rule violations)
 //! #[derive(Debug, Clone)]

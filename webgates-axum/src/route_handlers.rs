@@ -9,8 +9,8 @@
 //!
 //! ```rust
 //! use axum::{routing::post, Router, Json, extract::State};
-//! use webgates::route_handlers::{login, logout};
-//! use webgates::prelude::Credentials;
+//! use webgates_axum::route_handlers::{login, logout};
+//! use webgates_axum::prelude::Credentials;
 //! use webgates::codecs::jwt::{RegisteredClaims, JsonWebToken, JwtClaims};
 //! use webgates::accounts::Account;
 //! use webgates::prelude::{Role, Group};

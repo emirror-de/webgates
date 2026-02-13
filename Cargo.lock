@@ -6118,6 +6118,7 @@ dependencies = [
  "tracing",
  "uuid",
  "webgates",
+ "webgates-repositories",
 ]
 
 [[package]]

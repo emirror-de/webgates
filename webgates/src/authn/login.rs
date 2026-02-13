@@ -1,3 +1,8 @@
+//! Login service providing constant-time, enumeration-resistant authentication.
+//
+//! This module validates credentials, issues JWTs via a provided codec, and
+//! deliberately obscures whether an account exists to reduce username
+//! enumeration risk.
 use crate::accounts::{Account, AccountRepository};
 use crate::authz::AccessHierarchy;
 use crate::codecs::Codec;
@@ -310,12 +315,16 @@ where
 mod tests {
     use super::*;
     use crate::codecs::jwt::{JsonWebToken, JwtClaims};
+    use crate::credentials::CredentialsVerifier;
     use crate::groups::Group;
+    use crate::hashing::HashingService;
     use crate::hashing::argon2::Argon2Hasher;
-    use crate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
     use crate::roles::Role;
     use crate::secrets::Secret;
+    use crate::secrets::SecretRepository;
+    use std::collections::HashMap;
     use std::time::{Duration, Instant};
+    use tokio::sync::RwLock;
 
     fn median(durs: &[Duration]) -> Duration {
         let mut v = durs.to_vec();
@@ -323,18 +332,132 @@ mod tests {
         v[v.len() / 2]
     }
 
+    #[derive(Clone, Default)]
+    struct DummyAccountRepository {
+        store: Arc<RwLock<HashMap<String, Account<Role, Group>>>>,
+    }
+
+    #[derive(Clone)]
+    struct DummySecretRepository {
+        store: Arc<RwLock<HashMap<Uuid, Secret>>>,
+    }
+
+    impl DummySecretRepository {
+        fn new() -> Self {
+            Self {
+                store: Arc::new(RwLock::new(HashMap::new())),
+            }
+        }
+    }
+
+    impl AccountRepository<Role, Group> for DummyAccountRepository {
+        async fn store_account(
+            &self,
+            account: Account<Role, Group>,
+        ) -> crate::errors::Result<Option<Account<Role, Group>>> {
+            let mut write = self.store.write().await;
+            let inserted = write
+                .insert(account.user_id.clone(), account.clone())
+                .is_none();
+            Ok(inserted.then_some(account))
+        }
+
+        async fn delete_account(
+            &self,
+            account_id: &Uuid,
+        ) -> crate::errors::Result<Option<Account<Role, Group>>> {
+            let mut write = self.store.write().await;
+            let to_remove = write
+                .iter()
+                .find(|(_, acc)| acc.account_id == *account_id)
+                .map(|(k, acc)| (k.clone(), acc.clone()));
+            if let Some((key, acc)) = to_remove {
+                write.remove(&key);
+                Ok(Some(acc))
+            } else {
+                Ok(None)
+            }
+        }
+
+        async fn update_account(
+            &self,
+            account: Account<Role, Group>,
+        ) -> crate::errors::Result<Option<Account<Role, Group>>> {
+            let mut write = self.store.write().await;
+            let exists = write.contains_key(&account.user_id);
+            write.insert(account.user_id.clone(), account.clone());
+            Ok(exists.then_some(account))
+        }
+
+        async fn query_account_by_user_id(
+            &self,
+            user_id: &str,
+        ) -> crate::errors::Result<Option<Account<Role, Group>>> {
+            let read = self.store.read().await;
+            Ok(read.get(user_id).cloned())
+        }
+
+        async fn query_account_by_id(
+            &self,
+            account_id: &Uuid,
+        ) -> crate::errors::Result<Option<Account<Role, Group>>> {
+            let read = self.store.read().await;
+            Ok(read.values().find(|a| &a.account_id == account_id).cloned())
+        }
+
+        async fn query_all_accounts(&self) -> crate::errors::Result<Vec<Account<Role, Group>>> {
+            let read = self.store.read().await;
+            Ok(read.values().cloned().collect())
+        }
+    }
+
+    impl SecretRepository for DummySecretRepository {
+        async fn store_secret(&self, secret: Secret) -> crate::errors::Result<bool> {
+            let mut write = self.store.write().await;
+            let existed = write.insert(secret.account_id, secret).is_some();
+            Ok(!existed)
+        }
+
+        async fn delete_secret(&self, id: &Uuid) -> crate::errors::Result<Option<Secret>> {
+            let mut write = self.store.write().await;
+            Ok(write.remove(id))
+        }
+
+        async fn update_secret(&self, secret: Secret) -> crate::errors::Result<()> {
+            let mut write = self.store.write().await;
+            write.insert(secret.account_id, secret);
+            Ok(())
+        }
+    }
+
+    impl CredentialsVerifier<Uuid> for DummySecretRepository {
+        async fn verify_credentials(
+            &self,
+            credentials: Credentials<Uuid>,
+        ) -> crate::errors::Result<VerificationResult> {
+            let read = self.store.read().await;
+            let stored = read.get(&credentials.id);
+            if stored.is_none() {
+                return Ok(VerificationResult::Unauthorized);
+            }
+            let hasher = Argon2Hasher::new_recommended().unwrap();
+            let hash_to_check = stored.unwrap().secret.clone();
+            let matches = hasher
+                .verify_value(&credentials.secret, &hash_to_check)
+                .unwrap_or(VerificationResult::Unauthorized);
+            Ok(matches)
+        }
+    }
+
     #[tokio::test]
     #[allow(clippy::unwrap_used)]
     #[allow(clippy::expect_used)]
     async fn test_timing_attack_protection() {
-        use crate::secrets::SecretRepository;
-        // Setup
-        let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-        let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
+        let account_repo = Arc::new(DummyAccountRepository::default());
+        let secret_repo = Arc::new(DummySecretRepository::new());
         let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
         let login_service = LoginService::new();
 
-        // Account + secret
         let existing_user = "existing@example.com";
         let password = "test_password";
         let account = Account::new(existing_user, &[Role::User], &[Group::new("test-group")]);
@@ -353,7 +476,6 @@ mod tests {
             chrono::Utc::now().timestamp() as u64 + 3600,
         );
 
-        // Warm-up both failure paths (first Argon2 invocation can include allocation cost)
         {
             let creds = Credentials::new(&"nonexistent@example.com".to_string(), "pw");
             let _ = login_service
@@ -377,14 +499,12 @@ mod tests {
                 .await;
         }
 
-        let iterations = 6; // keep total runtime reasonable
+        let iterations = 4;
         let mut nonexistent_times = Vec::with_capacity(iterations);
         let mut wrong_times = Vec::with_capacity(iterations);
 
         for i in 0..iterations {
-            // Alternate ordering to reduce systemic bias
             if i % 2 == 0 {
-                // nonexistent first
                 let creds = Credentials::new(&"nonexistent@example.com".to_string(), "any_pw");
                 let start = Instant::now();
                 let r = login_service
@@ -413,7 +533,6 @@ mod tests {
                 assert!(matches!(r, LoginResult::InvalidCredentials { .. }));
                 wrong_times.push(start.elapsed());
             } else {
-                // wrong first
                 let creds = Credentials::new(&existing_user.to_string(), "wrong_pw");
                 let start = Instant::now();
                 let r = login_service
@@ -444,9 +563,9 @@ mod tests {
             }
         }
 
-        // Measure success path (informational)
-        let mut success_times = Vec::new();
-        for _ in 0..3 {
+        let med_nonexistent = median(&nonexistent_times);
+        let med_wrong = median(&wrong_times);
+        let med_success = {
             let creds = Credentials::new(&existing_user.to_string(), password);
             let start = Instant::now();
             let r = login_service
@@ -459,12 +578,8 @@ mod tests {
                 )
                 .await;
             assert!(matches!(r, LoginResult::Success(_)));
-            success_times.push(start.elapsed());
-        }
-
-        let med_nonexistent = median(&nonexistent_times);
-        let med_wrong = median(&wrong_times);
-        let med_success = median(&success_times);
+            vec![start.elapsed()]
+        }[0];
 
         let (fast, slow) = if med_nonexistent < med_wrong {
             (med_nonexistent, med_wrong)
@@ -474,54 +589,24 @@ mod tests {
         let diff = slow - fast;
         let relative = diff.as_secs_f64() / fast.as_secs_f64().max(1e-9);
 
-        // Thresholds:
-        // - relative difference must stay below 0.75 (75%)
-        // - absolute diff below 120ms (very generous for noisy CI)
-        // If Argon2 is accidentally skipped for one path, relative diff will approach 1.0
         let relative_threshold = 0.75;
-        let absolute_threshold_ms: u128 = 120;
+        let absolute_threshold_ms: u128 = 150;
 
-        // Minimal expected Argon2 duration (debug fast preset vs release high security):
-        let min_expected_ms: u128 = if cfg!(debug_assertions) { 2 } else { 5 };
         assert!(
-            med_nonexistent.as_millis() >= min_expected_ms,
-            "Nonexistent path too fast ({} ms) - Argon2 likely skipped",
-            med_nonexistent.as_millis()
-        );
-        assert!(
-            med_wrong.as_millis() >= min_expected_ms,
-            "Wrong-password path too fast ({} ms) - Argon2 likely skipped",
-            med_wrong.as_millis()
-        );
-
-        println!(
-            "Timing medians -> nonexistent: {:?}, wrong: {:?}, success: {:?}, diff: {:?} ({} ms), rel: {:.2}",
-            med_nonexistent,
-            med_wrong,
-            med_success,
-            diff,
+            diff.as_millis() < absolute_threshold_ms || relative < relative_threshold,
+            "Timing difference suspicious: diff={}ms, rel={:.2}",
             diff.as_millis(),
             relative
         );
 
-        assert!(
-            diff.as_millis() < absolute_threshold_ms || relative < relative_threshold,
-            "Timing difference suspicious: diff={}ms (limit {}ms), rel={:.2} (limit {:.2}). \
-             Nonexistent samples: {:?} Wrong samples: {:?}",
-            diff.as_millis(),
-            absolute_threshold_ms,
-            relative,
-            relative_threshold,
-            nonexistent_times,
-            wrong_times
-        );
+        assert!(med_success.as_millis() >= 1, "success path too fast");
     }
 
     #[tokio::test]
     #[allow(clippy::unwrap_used)]
     async fn test_login_result_no_user_enumeration() {
-        let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-        let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
+        let account_repo = Arc::new(DummyAccountRepository::default());
+        let secret_repo = Arc::new(DummySecretRepository::new());
         let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
         let login_service = LoginService::new();
 

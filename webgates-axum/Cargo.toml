@@ -57,7 +57,8 @@ prometheus = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["serde", "v7"], optional = true }
 
 [dev-dependencies]
+axum = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tokio-test = "0.4.4"
 tower = { workspace = true }
-axum = { workspace = true }
+webgates-repositories = { path = "../webgates-repositories" }

@@ -36,15 +36,16 @@ adapt them into Axum layers.
 
 ```rust
 use webgates::accounts::Account;
-use webgates::authz::AccessPolicy;
+use webgates::authz::{AccessPolicy, AuthorizationService};
 use webgates::permissions::Permissions;
 use webgates::prelude::{Group, Role};
 
 let account = Account::new("user@example.com", &[Role::User], &[Group::new("team")])
     .with_permissions(Permissions::from_iter(["read:api"]));
 
-let policy = AccessPolicy::<Role, Group>::require_permission("read:api".into());
-assert!(policy.is_authorized(&account));
+let policy = AccessPolicy::<Role, Group>::require_permission("read:api");
+let authz = AuthorizationService::new(policy);
+assert!(authz.is_authorized(&account));
 ```
 */
 

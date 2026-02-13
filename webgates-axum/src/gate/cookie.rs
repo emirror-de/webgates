@@ -1,3 +1,7 @@
+#![deny(missing_docs)]
+#![deny(unsafe_code)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
 //! Cookie-based JWT authentication gate for browser apps (HTTP-only cookies).
 //!
 //! This module implements the cookie-backed gate returned by `Gate::cookie(...)`.
@@ -16,7 +20,7 @@
 //! ```rust
 //! # use axum::{routing::get, Router};
 //! # use std::sync::Arc;
-//! # use webgates::prelude::*;
+//! # use webgates_axum::prelude::*;
 //! # async fn admin() {}
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin);
@@ -32,7 +36,7 @@
 //! # Optional user context (never blocks):
 //! ```rust
 //! # use std::sync::Arc;
-//! # use webgates::prelude::*;
+//! # use webgates_axum::prelude::*;
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt)
 //!     .allow_anonymous_with_optional_user(); // inserts Option<Account>, Option<RegisteredClaims>
@@ -41,7 +45,7 @@
 //! # Convenience for “any authenticated user”:
 //! ```rust
 //! # use std::sync::Arc;
-//! # use webgates::prelude::*;
+//! # use webgates_axum::prelude::*;
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt)
 //!     .require_login(); // baseline role + all supervisors
@@ -50,7 +54,7 @@
 //! # Cookie template configuration
 //! ```rust
 //! # use std::sync::Arc;
-//! # use webgates::prelude::*;
+//! # use webgates_axum::prelude::*;
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt)
 //!     .configure_cookie_template(|tpl| {

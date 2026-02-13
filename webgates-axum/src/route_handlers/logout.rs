@@ -17,7 +17,7 @@ use axum_extra::extract::CookieJar;
 ///
 /// # Example
 /// ```rust
-/// use webgates::route_handlers::logout;
+/// use webgates_axum::route_handlers::logout;
 /// use axum_extra::extract::CookieJar;
 /// use webgates::cookie_template::CookieTemplate;
 ///

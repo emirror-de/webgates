@@ -31,23 +31,19 @@
 //!
 //! # Integration with Authentication
 //!
-//! Credentials integrate seamlessly with webgates's authentication system:
+//! Credentials are consumed by the crate's authentication services (e.g., [`LoginService`](crate::authn::LoginService))
+//! together with a credential verifier implementation. A typical flow:
 //!
 //! ```rust
-//! use axum::{Json, extract::State, http::StatusCode};
-//! use webgates::prelude::Credentials;
-//! use webgates_axum::route_handlers::login;
-//! use axum_extra::extract::CookieJar;
+//! use webgates::authn::LoginService;
+//! use webgates::prelude::{Credentials, Group, Role};
 //!
-//! async fn login_endpoint(
-//!     cookie_jar: CookieJar,
-//!     Json(credentials): Json<Credentials<String>>,
-//!     // State with repositories and JWT codec...
-//! ) -> Result<CookieJar, StatusCode> {
-//!     // Use the pre-built login handler
-//!     // login(cookie_jar, credentials, claims, secret_repo, account_repo, codec, template).await
-//!     # Ok(cookie_jar)
-//! }
+//! let login_service = LoginService::<Role, Group>::new();
+//! let credentials = Credentials::new(&"user@example.com".to_string(), "password123");
+//!
+//! // Pass `login_service` and `credentials` to your authentication flow
+//! // (see `LoginService::authenticate` for required parameters)
+//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 #[cfg(feature = "server")]
@@ -101,13 +97,13 @@ mod credentials_verifier;
 ///
 /// # Timing Attack Protection
 ///
-/// When used with the built-in [`login`](crate::route_handlers::login) handler or [`LoginService`](crate::authn::LoginService),
-/// credentials are processed using constant-time operations to prevent timing-based
-/// user enumeration attacks:
+/// When used with authentication flows that perform constant-time verification
+/// (e.g., implementations of [`LoginService`](crate::authn::LoginService)),
+/// credentials are processed to reduce timing-based user enumeration risks:
 ///
-/// - Authentication takes consistent time regardless of whether the user exists
-/// - Password verification always occurs, even for non-existent users
-/// - Error responses don't distinguish between "user not found" and "wrong password"
+/// - Authentication duration is kept consistent regardless of identifier existence
+/// - Password verification still occurs for missing accounts to avoid early exits
+/// - Error responses avoid distinguishing between missing users and invalid secrets
 ///
 /// # JSON Serialization
 ///
@@ -148,28 +144,20 @@ mod credentials_verifier;
 /// let custom_creds = Credentials::new(&user_id, "password");
 /// ```
 ///
-/// # Integration with axum Extractors
+/// # Framework-Agnostic Extraction
+///
+/// Any HTTP framework that supports `serde` can deserialize credentials from request bodies:
 ///
 /// ```rust
-/// use axum::{Json, extract::State, http::StatusCode};
+/// use serde_json;
 /// use webgates::prelude::Credentials;
 ///
-/// // Extract credentials from JSON request body
-/// async fn login_endpoint(
-///     Json(credentials): Json<Credentials<String>>,
-/// ) -> Result<String, StatusCode> {
-///     // Process credentials...
-///     Ok("Login successful".to_string())
-/// }
+/// // JSON payload from an HTTP request body
+/// let body = r#"{"id":"user@example.com","secret":"password"}"#;
+/// let credentials: Credentials<String> = serde_json::from_str(body)?;
 ///
-/// // Extract credentials from form data
-/// use axum::extract::Form;
-/// async fn form_login(
-///     Form(credentials): Form<Credentials<String>>,
-/// ) -> Result<String, StatusCode> {
-///     // Process form-submitted credentials...
-///     Ok("Login successful".to_string())
-/// }
+/// // Pass `credentials` into your chosen authentication service
+/// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Credentials<Id> {
