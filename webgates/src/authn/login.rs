@@ -340,12 +340,16 @@ mod tests {
     #[derive(Clone)]
     struct DummySecretRepository {
         store: Arc<RwLock<HashMap<Uuid, Secret>>>,
+        dummy_hash: String,
     }
 
     impl DummySecretRepository {
         fn new() -> Self {
+            let hasher = Argon2Hasher::new_recommended().unwrap();
+            let dummy_hash = hasher.hash_value("dummy_password").unwrap();
             Self {
                 store: Arc::new(RwLock::new(HashMap::new())),
+                dummy_hash,
             }
         }
     }
@@ -436,16 +440,20 @@ mod tests {
             credentials: Credentials<Uuid>,
         ) -> crate::errors::Result<VerificationResult> {
             let read = self.store.read().await;
-            let stored = read.get(&credentials.id);
-            if stored.is_none() {
-                return Ok(VerificationResult::Unauthorized);
-            }
+            let (hash_to_check, user_exists) = match read.get(&credentials.id) {
+                Some(stored) => (stored.secret.clone(), true),
+                None => (self.dummy_hash.clone(), false),
+            };
             let hasher = Argon2Hasher::new_recommended().unwrap();
-            let hash_to_check = stored.unwrap().secret.clone();
             let matches = hasher
                 .verify_value(&credentials.secret, &hash_to_check)
                 .unwrap_or(VerificationResult::Unauthorized);
-            Ok(matches)
+            let is_ok = matches == VerificationResult::Ok && user_exists;
+            Ok(if is_ok {
+                VerificationResult::Ok
+            } else {
+                VerificationResult::Unauthorized
+            })
         }
     }
 
