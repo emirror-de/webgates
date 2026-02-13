@@ -77,11 +77,6 @@ pub mod services;
 #[cfg(feature = "repo-surrealdb")]
 pub mod surrealdb;
 
-pub use errors::{
-    DatabaseError, DatabaseOperation, Error, RepositoriesError, RepositoryOperation,
-    RepositoryType, Result,
-};
-
 /// Stable table names used by the storage backends.
 #[cfg(any(feature = "repo-surrealdb", feature = "repo-seaorm"))]
 #[derive(strum::Display, Clone, Copy, Debug, PartialEq, Eq, Hash)]
