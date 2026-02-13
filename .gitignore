@@ -4,3 +4,6 @@ result*
 .direnv
 
 .rules
+
+# Ignored secrets within examples
+examples/oauth2-github/.env
