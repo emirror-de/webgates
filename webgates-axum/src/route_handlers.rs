@@ -77,11 +77,9 @@
 //!
 //! # Security Features
 //!
-//! The login handler includes built-in timing attack protection:
-//! - Constant-time credential verification using the `subtle` crate
-//! - Always performs password hashing, even for non-existent users
-//! - Unified error responses prevent user enumeration attacks
-//! - Applied consistently across all storage backend implementations
+//! Security properties (constant-time verification, dummy hashing, enumeration resistance)
+//! are provided by the core `webgates` login service and credential verification backends.
+//! This adapter simply wires HTTP requests to those services without adding cryptographic logic.
 pub use self::login::login;
 pub use self::logout::logout;
 

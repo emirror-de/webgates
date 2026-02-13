@@ -1,8 +1,15 @@
 //! Login service providing constant-time, enumeration-resistant authentication.
-//
+//!
 //! This module validates credentials, issues JWTs via a provided codec, and
 //! deliberately obscures whether an account exists to reduce username
 //! enumeration risk.
+//!
+//! # Security Features
+//!
+//! - Constant-time credential verification using `subtle::Choice` to combine user-exists and hash-match decisions
+//! - Dummy UUID hashing for missing accounts to equalize timing between "user not found" and "wrong password"
+//! - Unified invalid-credentials responses to mitigate user enumeration
+//! - Stateless service; cryptographic operations live in credential verifiers and repositories
 use crate::accounts::{Account, AccountRepository};
 use crate::authz::AccessHierarchy;
 use crate::codecs::Codec;
