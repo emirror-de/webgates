@@ -24,7 +24,7 @@ where
         RepoError::Database(DatabaseError::with_context(
             DatabaseOperation::Query,
             format!("Failed to parse roles csv: {}", e),
-            Some(TableName::AxumGateAccounts.to_string()),
+            Some(TableName::WebgatesAccounts.to_string()),
             Some(model.user_id.clone()),
         ))
     })?;
@@ -32,7 +32,7 @@ where
         RepoError::Database(DatabaseError::with_context(
             DatabaseOperation::Query,
             format!("Failed to parse groups csv: {}", e),
-            Some(TableName::AxumGateAccounts.to_string()),
+            Some(TableName::WebgatesAccounts.to_string()),
             Some(model.user_id.clone()),
         ))
     })?;
@@ -68,7 +68,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query account by user_id: {}", e),
-                        Some(TableName::AxumGateAccounts.to_string()),
+                        Some(TableName::WebgatesAccounts.to_string()),
                         Some(user_id.to_string()),
                     ))
                 })?;
@@ -91,7 +91,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query account by account_id: {}", e),
-                        Some(TableName::AxumGateAccounts.to_string()),
+                        Some(TableName::WebgatesAccounts.to_string()),
                         Some(account_id.to_string()),
                     ))
                 })?;
@@ -113,7 +113,7 @@ where
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Insert,
                     format!("Failed to insert account: {}", e),
-                    Some(TableName::AxumGateAccounts.to_string()),
+                    Some(TableName::WebgatesAccounts.to_string()),
                     None,
                 ))
             })?;
@@ -133,7 +133,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query account for deletion: {}", e),
-                        Some(TableName::AxumGateAccounts.to_string()),
+                        Some(TableName::WebgatesAccounts.to_string()),
                         Some(account_id.to_string()),
                     ))
                 })?
@@ -148,7 +148,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Delete,
                         format!("Failed to delete account: {}", e),
-                        Some(TableName::AxumGateAccounts.to_string()),
+                        Some(TableName::WebgatesAccounts.to_string()),
                         Some(account_id.to_string()),
                     ))
                 })?;
@@ -168,7 +168,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query account for update: {}", e),
-                        Some(TableName::AxumGateAccounts.to_string()),
+                        Some(TableName::WebgatesAccounts.to_string()),
                         Some(account.user_id.clone()),
                     ))
                 })?
@@ -186,7 +186,7 @@ where
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Update,
                     format!("Failed to update account: {}", e),
-                    Some(TableName::AxumGateAccounts.to_string()),
+                    Some(TableName::WebgatesAccounts.to_string()),
                     Some(user_id.clone()),
                 ))
             })?;
@@ -206,7 +206,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query all accounts: {}", e),
-                        Some(TableName::AxumGateAccounts.to_string()),
+                        Some(TableName::WebgatesAccounts.to_string()),
                         None,
                     ))
                 })?;

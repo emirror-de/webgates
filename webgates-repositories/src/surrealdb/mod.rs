@@ -37,10 +37,10 @@ pub struct DatabaseScope {
 impl Default for DatabaseScope {
     fn default() -> Self {
         Self {
-            accounts: TableName::AxumGateAccounts.to_string(),
-            credentials: TableName::AxumGateCredentials.to_string(),
-            permission_mappings: TableName::AxumGatePermissionMappings.to_string(),
-            groups: TableName::AxumGateGroups.to_string(),
+            accounts: TableName::WebgatesAccounts.to_string(),
+            credentials: TableName::WebgatesCredentials.to_string(),
+            permission_mappings: TableName::WebgatesPermissionMappings.to_string(),
+            groups: TableName::WebgatesGroups.to_string(),
             namespace: "axumGate".to_string(),
             database: "axumGate".to_string(),
         }

@@ -24,7 +24,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                 return Err(RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Insert,
                     format!("Invalid permission mapping: {}", e),
-                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    Some(TableName::WebgatesPermissionMappings.to_string()),
                     None,
                 ))
                 .into());
@@ -43,7 +43,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Insert,
                         format!("Failed to execute insert: {}", e),
-                        Some(TableName::AxumGatePermissionMappings.to_string()),
+                        Some(TableName::WebgatesPermissionMappings.to_string()),
                         None,
                     ))
                 })?;
@@ -60,7 +60,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                             "Failed to query permission mapping by id after insert: {}",
                             e
                         ),
-                        Some(TableName::AxumGatePermissionMappings.to_string()),
+                        Some(TableName::WebgatesPermissionMappings.to_string()),
                         Some(pid.clone()),
                     ))
                 })?;
@@ -71,7 +71,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                         RepoError::Database(DatabaseError::with_context(
                             DatabaseOperation::Insert,
                             format!("Failed to convert stored permission mapping: {}", e),
-                            Some(TableName::AxumGatePermissionMappings.to_string()),
+                            Some(TableName::WebgatesPermissionMappings.to_string()),
                             None,
                         ))
                     })?;
@@ -93,7 +93,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Connect,
                     format!("Failed to begin transaction for delete: {}", e),
-                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    Some(TableName::WebgatesPermissionMappings.to_string()),
                     Some(id_str.clone()),
                 ))
             })?;
@@ -106,7 +106,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query permission mapping by id: {}", e),
-                        Some(TableName::AxumGatePermissionMappings.to_string()),
+                        Some(TableName::WebgatesPermissionMappings.to_string()),
                         Some(id_str.clone()),
                     ))
                 })?;
@@ -118,7 +118,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                         RepoError::Database(DatabaseError::with_context(
                             DatabaseOperation::Delete,
                             format!("Failed to rollback transaction: {}", e),
-                            Some(TableName::AxumGatePermissionMappings.to_string()),
+                            Some(TableName::WebgatesPermissionMappings.to_string()),
                             Some(id_str.clone()),
                         ))
                     })?;
@@ -133,7 +133,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Delete,
                         format!("Failed to delete permission mapping by id: {}", e),
-                        Some(TableName::AxumGatePermissionMappings.to_string()),
+                        Some(TableName::WebgatesPermissionMappings.to_string()),
                         Some(id_str.clone()),
                     ))
                 })?;
@@ -142,7 +142,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Delete,
                     format!("Failed to commit transaction for delete: {}", e),
-                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    Some(TableName::WebgatesPermissionMappings.to_string()),
                     Some(id_str.clone()),
                 ))
             })?;
@@ -151,7 +151,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Delete,
                     format!("Failed to convert deleted permission mapping: {}", e),
-                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    Some(TableName::WebgatesPermissionMappings.to_string()),
                     None,
                 ))
             })?;
@@ -173,7 +173,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Connect,
                     format!("Failed to begin transaction: {}", e),
-                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    Some(TableName::WebgatesPermissionMappings.to_string()),
                     None,
                 ))
             })?;
@@ -186,7 +186,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query permission mapping by string: {}", e),
-                        Some(TableName::AxumGatePermissionMappings.to_string()),
+                        Some(TableName::WebgatesPermissionMappings.to_string()),
                         None,
                     ))
                 })?;
@@ -198,7 +198,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                         RepoError::Database(DatabaseError::with_context(
                             DatabaseOperation::Delete,
                             format!("Failed to rollback transaction: {}", e),
-                            Some(TableName::AxumGatePermissionMappings.to_string()),
+                            Some(TableName::WebgatesPermissionMappings.to_string()),
                             None,
                         ))
                     })?;
@@ -213,7 +213,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Delete,
                         format!("Failed to delete permission mapping by string: {}", e),
-                        Some(TableName::AxumGatePermissionMappings.to_string()),
+                        Some(TableName::WebgatesPermissionMappings.to_string()),
                         Some(normalized.clone()),
                     ))
                 })?;
@@ -222,7 +222,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Delete,
                     format!("Failed to commit transaction: {}", e),
-                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    Some(TableName::WebgatesPermissionMappings.to_string()),
                     Some(normalized.clone()),
                 ))
             })?;
@@ -231,7 +231,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Delete,
                     format!("Failed to convert deleted permission mapping: {}", e),
-                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    Some(TableName::WebgatesPermissionMappings.to_string()),
                     None,
                 ))
             })?;
@@ -251,7 +251,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query permission mapping by id: {}", e),
-                        Some(TableName::AxumGatePermissionMappings.to_string()),
+                        Some(TableName::WebgatesPermissionMappings.to_string()),
                         Some(id_str.clone()),
                     ))
                 })?;
@@ -262,7 +262,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                         RepoError::Database(DatabaseError::with_context(
                             DatabaseOperation::Query,
                             format!("Failed to convert model to permission mapping: {}", e),
-                            Some(TableName::AxumGatePermissionMappings.to_string()),
+                            Some(TableName::WebgatesPermissionMappings.to_string()),
                             Some(id_str.clone()),
                         ))
                     })?;
@@ -291,7 +291,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query permission mapping by string: {}", e),
-                        Some(TableName::AxumGatePermissionMappings.to_string()),
+                        Some(TableName::WebgatesPermissionMappings.to_string()),
                         None,
                     ))
                 })?;
@@ -302,7 +302,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                         RepoError::Database(DatabaseError::with_context(
                             DatabaseOperation::Query,
                             format!("Failed to convert model to permission mapping: {}", e),
-                            Some(TableName::AxumGatePermissionMappings.to_string()),
+                            Some(TableName::WebgatesPermissionMappings.to_string()),
                             None,
                         ))
                     })?;
@@ -324,7 +324,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to list permission mappings: {}", e),
-                        Some(TableName::AxumGatePermissionMappings.to_string()),
+                        Some(TableName::WebgatesPermissionMappings.to_string()),
                         None,
                     ))
                 })?;
@@ -335,7 +335,7 @@ impl PermissionMappingRepository for SeaOrmRepository {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to convert model to permission mapping: {}", e),
-                        Some(TableName::AxumGatePermissionMappings.to_string()),
+                        Some(TableName::WebgatesPermissionMappings.to_string()),
                         None,
                     ))
                 })?;
@@ -358,7 +358,7 @@ impl PermissionMappingRepositoryBulk for SeaOrmRepository {
                     return Err(RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Insert,
                         format!("Invalid permission mapping in bulk store: {}", e),
-                        Some(TableName::AxumGatePermissionMappings.to_string()),
+                        Some(TableName::WebgatesPermissionMappings.to_string()),
                         None,
                     ))
                     .into());
@@ -370,7 +370,7 @@ impl PermissionMappingRepositoryBulk for SeaOrmRepository {
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Connect,
                     format!("Failed to begin transaction for bulk store: {}", e),
-                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    Some(TableName::WebgatesPermissionMappings.to_string()),
                     None,
                 ))
             })?;
@@ -386,7 +386,7 @@ impl PermissionMappingRepositoryBulk for SeaOrmRepository {
                         RepoError::Database(DatabaseError::with_context(
                             DatabaseOperation::Query,
                             format!("Failed to query permission mapping in bulk store: {}", e),
-                            Some(TableName::AxumGatePermissionMappings.to_string()),
+                            Some(TableName::WebgatesPermissionMappings.to_string()),
                             Some(id_str.clone()),
                         ))
                     })?;
@@ -400,7 +400,7 @@ impl PermissionMappingRepositoryBulk for SeaOrmRepository {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Insert,
                         format!("Failed to insert permission mapping in bulk store: {}", e),
-                        Some(TableName::AxumGatePermissionMappings.to_string()),
+                        Some(TableName::WebgatesPermissionMappings.to_string()),
                         Some(id_str.clone()),
                     ))
                 })?;
@@ -412,7 +412,7 @@ impl PermissionMappingRepositoryBulk for SeaOrmRepository {
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Insert,
                     format!("Failed to commit bulk store transaction: {}", e),
-                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    Some(TableName::WebgatesPermissionMappings.to_string()),
                     None,
                 ))
             })?;

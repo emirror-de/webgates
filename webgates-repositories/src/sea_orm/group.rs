@@ -30,7 +30,7 @@ where
                         Err(RepoError::Database(DatabaseError::with_context(
                             DatabaseOperation::Insert,
                             format!("Failed to insert group: {}", e),
-                            Some(TableName::AxumGateGroups.to_string()),
+                            Some(TableName::WebgatesGroups.to_string()),
                             None,
                         )))
                     }
@@ -50,7 +50,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query group for deletion: {}", e),
-                        Some(TableName::AxumGateGroups.to_string()),
+                        Some(TableName::WebgatesGroups.to_string()),
                         Some(id.to_string()),
                     ))
                 })?;
@@ -67,7 +67,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Delete,
                         format!("Failed to delete group: {}", e),
-                        Some(TableName::AxumGateGroups.to_string()),
+                        Some(TableName::WebgatesGroups.to_string()),
                         Some(id.to_string()),
                     ))
                 })?;
@@ -76,7 +76,7 @@ where
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Delete,
                     format!("Failed to deserialize deleted group: {}", e),
-                    Some(TableName::AxumGateGroups.to_string()),
+                    Some(TableName::WebgatesGroups.to_string()),
                     Some(id.to_string()),
                 ))
             })?;
@@ -96,7 +96,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query group for update: {}", e),
-                        Some(TableName::AxumGateGroups.to_string()),
+                        Some(TableName::WebgatesGroups.to_string()),
                         Some(gid.clone()),
                     ))
                 })?;
@@ -114,7 +114,7 @@ where
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Update,
                     format!("Failed to update group: {}", e),
-                    Some(TableName::AxumGateGroups.to_string()),
+                    Some(TableName::WebgatesGroups.to_string()),
                     Some(gid.clone()),
                 ))
             })?;
@@ -123,7 +123,7 @@ where
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Update,
                     format!("Failed to deserialize updated group: {}", e),
-                    Some(TableName::AxumGateGroups.to_string()),
+                    Some(TableName::WebgatesGroups.to_string()),
                     Some(gid.clone()),
                 ))
             })?;
@@ -142,7 +142,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query group by id: {}", e),
-                        Some(TableName::AxumGateGroups.to_string()),
+                        Some(TableName::WebgatesGroups.to_string()),
                         Some(id.to_string()),
                     ))
                 })?;
@@ -156,7 +156,7 @@ where
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Query,
                     format!("Failed to deserialize group payload: {}", e),
-                    Some(TableName::AxumGateGroups.to_string()),
+                    Some(TableName::WebgatesGroups.to_string()),
                     Some(id.to_string()),
                 ))
             })?;
@@ -175,7 +175,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query all groups: {}", e),
-                        Some(TableName::AxumGateGroups.to_string()),
+                        Some(TableName::WebgatesGroups.to_string()),
                         None,
                     ))
                 })?;
@@ -186,7 +186,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to deserialize group payload: {}", e),
-                        Some(TableName::AxumGateGroups.to_string()),
+                        Some(TableName::WebgatesGroups.to_string()),
                         None,
                     ))
                 })?;

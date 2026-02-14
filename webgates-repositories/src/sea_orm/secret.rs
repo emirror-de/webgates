@@ -25,7 +25,7 @@ impl SecretRepository for SeaOrmRepository {
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Insert,
                     format!("Failed to store secret: {}", e),
-                    Some(TableName::AxumGateCredentials.to_string()),
+                    Some(TableName::WebgatesCredentials.to_string()),
                     Some(account_id.to_string()),
                 ))
             })?;
@@ -45,7 +45,7 @@ impl SecretRepository for SeaOrmRepository {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query secret for deletion: {}", e),
-                        Some(TableName::AxumGateCredentials.to_string()),
+                        Some(TableName::WebgatesCredentials.to_string()),
                         Some(account_id.to_string()),
                     ))
                 })?
@@ -60,7 +60,7 @@ impl SecretRepository for SeaOrmRepository {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Delete,
                         format!("Failed to delete secret: {}", e),
-                        Some(TableName::AxumGateCredentials.to_string()),
+                        Some(TableName::WebgatesCredentials.to_string()),
                         Some(account_id.to_string()),
                     ))
                 })?;
@@ -84,7 +84,7 @@ impl SecretRepository for SeaOrmRepository {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query secret for update: {}", e),
-                        Some(TableName::AxumGateCredentials.to_string()),
+                        Some(TableName::WebgatesCredentials.to_string()),
                         Some(account_id.to_string()),
                     ))
                 })?
@@ -92,7 +92,7 @@ impl SecretRepository for SeaOrmRepository {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Update,
                         "Secret not found for update".to_string(),
-                        Some(TableName::AxumGateCredentials.to_string()),
+                        Some(TableName::WebgatesCredentials.to_string()),
                         Some(account_id.to_string()),
                     ))
                 })?;
@@ -102,7 +102,7 @@ impl SecretRepository for SeaOrmRepository {
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Update,
                     format!("Failed to update secret: {}", e),
-                    Some(TableName::AxumGateCredentials.to_string()),
+                    Some(TableName::WebgatesCredentials.to_string()),
                     Some(account_id.to_string()),
                 ))
             })?;
@@ -128,7 +128,7 @@ impl CredentialsVerifier<Uuid> for SeaOrmRepository {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query credentials for verification: {}", e),
-                        Some(TableName::AxumGateCredentials.to_string()),
+                        Some(TableName::WebgatesCredentials.to_string()),
                         Some(credentials.id.to_string()),
                     ))
                 })?;

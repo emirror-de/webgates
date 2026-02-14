@@ -82,11 +82,11 @@ pub mod surrealdb;
 #[strum(serialize_all = "snake_case")]
 pub enum TableName {
     /// Account storage table name.
-    AxumGateAccounts,
+    WebgatesAccounts,
     /// Credentials storage table name.
-    AxumGateCredentials,
+    WebgatesCredentials,
     /// Permission mappings storage table name.
-    AxumGatePermissionMappings,
+    WebgatesPermissionMappings,
     /// Groups storage table name (used by group repository implementations).
-    AxumGateGroups,
+    WebgatesGroups,
 }
