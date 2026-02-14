@@ -20,6 +20,15 @@ use serde::{Deserialize, Serialize};
 pub mod errors;
 use errors::{OAuth2CookieKind, OAuth2Error, Result as OAuth2Result};
 
+/// Alias for the resulting token exchange future.
+type OAuth2TokenExchangeFuture = Pin<
+    Box<
+        dyn Future<
+                Output = OAuth2Result<StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>>,
+            > + Send,
+    >,
+>;
+
 /// Type alias for an async account mapper function.
 type AccountMapperFn<R, G> = Arc<
     dyn for<'a> Fn(
@@ -63,18 +72,7 @@ pub struct TokenRequest {
 /// Trait abstracting token exchange to keep the core free of HTTP clients.
 pub trait TokenExchanger: Send + Sync {
     /// Exchange an authorization code for a token response.
-    fn exchange_code(
-        &self,
-        request: TokenRequest,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                    Output = OAuth2Result<
-                        StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>,
-                    >,
-                > + Send,
-        >,
-    >;
+    fn exchange_code(&self, request: TokenRequest) -> OAuth2TokenExchangeFuture;
 }
 
 /// Prepared login data: redirect target and cookies to set.
