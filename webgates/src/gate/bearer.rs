@@ -23,11 +23,8 @@
 //!
 //! ```rust
 //! use std::sync::Arc;
+//! use webgates::prelude::{Account, Group, Role, JsonWebToken, JwtClaims};
 //! use webgates::gate::bearer::{BearerGate, BearerGateAdapter, JwtBearerRuntime, StaticTokenRuntime};
-//! use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
-//! use webgates::accounts::Account;
-//! use webgates::roles::Role;
-//! use webgates::groups::Group;
 //!
 //! /// Adapter producing a JWT bearer runtime evaluator.
 //! struct JwtRuntimeAdapter;

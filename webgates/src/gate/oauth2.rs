@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! OAuth2 gate configuration and runtime.
 //!
 //! This module implements the OAuth2 Authorization Code + PKCE flow builder
@@ -20,13 +21,9 @@
 //! use std::sync::Arc;
 //! use std::future::Future;
 //! use std::pin::Pin;
+//! use webgates::prelude::{Account, Group, Role, JsonWebToken, JwtClaims};
 //! use webgates::gate::oauth2::{OAuth2Gate, OAuth2Runtime, TokenRequest, TokenExchanger, CallbackInput};
 //! use webgates::cookie_template::CookieTemplate;
-//! use webgates::codecs::jwt::JsonWebToken;
-//! use webgates::codecs::jwt::JwtClaims;
-//! use webgates::accounts::Account;
-//! use webgates::roles::Role;
-//! use webgates::groups::Group;
 //!
 //! // A trivial TokenExchanger that would call the provider's token endpoint.
 //! // Integration code should implement this abstraction with an HTTP client.
@@ -39,8 +36,9 @@
 //!         // Placeholder: real implementation would perform an HTTP POST to the
 //!         // provider's token endpoint and return the parsed token response.
 //!         Box::pin(async move {
-//!             Err(webgates::gate::oauth2::errors::OAuth2Error::Provider(
-//!                 "dummy exchanger".into(),
+//!             Err(webgates::gate::oauth2::errors::OAuth2Error::provider_error(
+//!                 "dummy exchanger".to_string(),
+//!                 None,
 //!             ))
 //!         })
 //!     }

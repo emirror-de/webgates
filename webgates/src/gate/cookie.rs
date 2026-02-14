@@ -29,11 +29,8 @@ core crate.
 use std::sync::Arc;
 
 // Local crate types used by the gate
-use crate::accounts::Account;
-use crate::codecs::jwt::{JsonWebToken, JwtClaims};
-use crate::gate::cookie::{CookieGate, CookieGateAdapter, CookieGateRuntime, CookieEvaluation};
-use crate::groups::Group;
-use crate::roles::Role;
+use webgates::prelude::{Account, Group, Role, JsonWebToken, JwtClaims};
+use webgates::gate::cookie::{CookieGate, CookieGateAdapter, CookieGateRuntime, CookieEvaluation};
 
 /// A trivial adapter that turns a configured `CookieGate` into the corresponding
 /// `CookieGateRuntime`. In a real integration this adapter could instead produce
@@ -43,8 +40,8 @@ struct RuntimeAdapter;
 impl<C, R, G> CookieGateAdapter<C, R, G> for RuntimeAdapter
 where
     // The runtime requires a codec that decodes JwtClaims<Account<R, G>>
-    C: crate::codecs::Codec<Payload = JwtClaims<Account<R, G>>>,
-    R: crate::authz::AccessHierarchy + Eq + std::fmt::Display + Clone,
+    C: webgates::codecs::Codec<Payload = JwtClaims<Account<R, G>>>,
+    R: webgates::authz::AccessHierarchy + Eq + std::fmt::Display + Clone,
     G: Eq + Clone,
 {
     // We choose the runtime evaluator as the adapter output
@@ -81,7 +78,7 @@ fn example_usage() {
         CookieEvaluation::Authorized { account, registered_claims } => {
             // AuthN + AuthZ succeeded — proceed with `account` context
             tracing::info!("authorized account {}", account.account_id);
-            let _exp = registered_claims.exp; // example usage
+            let _exp = registered_claims.expiration_time; // example usage
         }
         CookieEvaluation::OptionalAuthorized { account, registered_claims } => {
             // Optional mode: we have a valid token but the gate is non-blocking
