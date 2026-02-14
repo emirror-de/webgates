@@ -20,24 +20,13 @@ features = [
 ]
 
 [features]
-default = ["server"]
-
-server = [
-    "webgates/server",
-    "dep:tokio",
-]
-
-audit-logging = [
-]
-
+default = []
+audit-logging = []
 repo-surrealdb = [
-    "server",
     "dep:surrealdb",
     "dep:argon2",
 ]
-
 repo-seaorm = [
-    "server",
     "dep:sea-orm",
     "dep:sea-query",
     "dep:argon2",
@@ -49,7 +38,7 @@ webgates = { path = "../webgates", default-features = true, features = ["server"
 strum = { workspace = true }
 thiserror = { workspace = true }
 argon2 = { workspace = true, features = ["std"], optional = true }
-tokio = { workspace = true, optional = true, features = ["rt-multi-thread", "macros"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 sea-orm = { workspace = true, optional = true }
 sea-query = { workspace = true, optional = true }
 surrealdb = { workspace = true, optional = true }
@@ -60,5 +49,4 @@ serde_json = { workspace = true, optional = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tokio-test = "0.4.4"

@@ -72,7 +72,6 @@ pub mod errors;
 pub mod memory;
 #[cfg(feature = "repo-seaorm")]
 pub mod sea_orm;
-#[cfg(feature = "server")]
 pub mod services;
 #[cfg(feature = "repo-surrealdb")]
 pub mod surrealdb;
