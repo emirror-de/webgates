@@ -1,3 +1,4 @@
+//! Error types and result aliases for repository implementations.
 use std::collections::hash_map::DefaultHasher;
 use std::fmt;
 use std::hash::{Hash, Hasher};

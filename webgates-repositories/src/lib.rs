@@ -67,7 +67,6 @@ let repo = Arc::new(SurrealDbRepository::new(db, DatabaseScope::default())?);
 
 #[cfg(feature = "repo-seaorm")]
 pub mod comma_separated_value;
-/// Error types and result aliases for repository implementations.
 pub mod errors;
 pub mod memory;
 #[cfg(feature = "repo-seaorm")]
