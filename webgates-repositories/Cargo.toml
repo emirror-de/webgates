@@ -18,7 +18,7 @@ features = ["repo-surrealdb", "repo-seaorm"]
 
 [features]
 default = []
-audit-logging = []
+audit-logging = ["webgates/audit-logging"]
 repo-surrealdb = ["dep:surrealdb", "dep:argon2"]
 repo-seaorm = [
     "dep:sea-orm",
