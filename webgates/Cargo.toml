@@ -42,7 +42,7 @@ repo-surrealdb = []
 repo-seaorm = []
 
 [dependencies]
-const-crypto = { workspace = true }
+const-crypto = "0.3"
 argon2 = { workspace = true, features = ["std"], optional = true }
 chrono = { workspace = true, optional = true }
 cookie = { workspace = true, optional = true }
@@ -52,7 +52,7 @@ rand = { workspace = true, optional = true }
 roaring = { workspace = true, features = ["serde"] }
 serde = { workspace = true }
 serde_json = { workspace = true, optional = true }
-serde_with = { workspace = true, optional = true }
+serde_with = { version = "3", optional = true }
 strum = { workspace = true }
 subtle = { workspace = true, optional = true }
 thiserror = { workspace = true }

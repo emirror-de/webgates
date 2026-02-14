@@ -5,7 +5,7 @@ edition = "2024"
 description = "Example demonstrating the optional permission mapping registry pattern"
 
 [dependencies]
-anyhow = { workspace = true }
+anyhow = "1"
 webgates = { path = "../../webgates" }
 webgates-axum = { path = "../../webgates-axum" }
 webgates-repositories = { path = "../../webgates-repositories" }

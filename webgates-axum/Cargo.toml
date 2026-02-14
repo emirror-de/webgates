@@ -23,7 +23,7 @@ axum = { workspace = true }
 axum-extra = { workspace = true }
 chrono = { workspace = true }
 cookie = { workspace = true }
-http = { workspace = true }
+http = "1"
 jsonwebtoken = { workspace = true }
 oauth2 = { workspace = true }
 reqwest = { workspace = true }
