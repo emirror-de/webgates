@@ -14,7 +14,7 @@ keywords = ["auth", "jwt", "rbac"]
 categories = ["authentication"]
 
 [package.metadata.docs.rs]
-features = ["repo-surrealdb", "repo-seaorm"]
+features = ["audit-logging", "repo-surrealdb", "repo-seaorm"]
 
 [features]
 default = []
