@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 //! Framework-agnostic gate entry points that delegate to bearer, cookie, and OAuth2 modules.
 
 use std::fmt::Display;

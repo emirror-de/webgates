@@ -2,7 +2,6 @@
 #![deny(unsafe_code)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
-#![allow(dead_code)]
 //! Axum adapter for the framework-agnostic OAuth2 gate runtime.
 //!
 //! This layer builds routes for `/login` and `/callback`, delegates all OAuth2

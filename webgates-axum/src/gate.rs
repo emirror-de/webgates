@@ -2,7 +2,6 @@
 #![deny(unsafe_code)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
-#![allow(dead_code)]
 //! Axum gate entry points bridging core gate configuration to axum adapters.
 //!
 //! The core crate owns framework-agnostic gate configuration. This module
