@@ -62,21 +62,19 @@ pub mod authz;
 pub mod codecs;
 #[cfg(feature = "server")]
 pub mod cookie_template;
-#[cfg(feature = "server")]
-pub mod gate;
-
 pub mod credentials;
 #[cfg(feature = "server")]
 pub mod errors;
 pub mod errors_core;
 #[cfg(feature = "server")]
 pub(crate) mod errors_integration;
+#[cfg(feature = "server")]
+pub mod gate;
 pub mod groups;
 #[cfg(feature = "server")]
 pub mod hashing;
 pub mod permissions;
 pub mod prelude;
-
 pub mod roles;
 #[cfg(feature = "server")]
 pub mod secrets;
