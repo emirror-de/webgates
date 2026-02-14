@@ -110,13 +110,15 @@ impl SecretRepository for MemorySecretRepository {
             };
 
             if already_present {
-                return Err(RepoError::Repositories(RepositoriesError::operation_failed(
-                    RepositoryType::Secret,
-                    RepositoryOperation::Insert,
-                    "AccountID is already present",
-                    None,
-                    None,
-                )));
+                return Err(RepoError::Repositories(
+                    RepositoriesError::operation_failed(
+                        RepositoryType::Secret,
+                        RepositoryOperation::Insert,
+                        "AccountID is already present",
+                        None,
+                        None,
+                    ),
+                ));
             }
 
             let mut write = self.store.write().await;

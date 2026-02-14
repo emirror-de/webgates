@@ -93,7 +93,8 @@ where
                 })?;
             Ok(db_account)
         };
-        res}
+        res
+    }
 
     async fn delete_account(&self, account_id: &Uuid) -> Result<Option<Account<R, G>>> {
         let res: Result<_> = {

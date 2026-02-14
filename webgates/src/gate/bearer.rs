@@ -301,12 +301,12 @@ where
             if let Some(token) = token
                 && let JwtValidationResult::Valid(jwt) =
                     self.jwt_validation_service.validate_token(token)
-                {
-                    return BearerEvaluation::JwtOptionalAuthorized {
-                        account: jwt.custom_claims,
-                        registered_claims: jwt.registered_claims,
-                    };
-                }
+            {
+                return BearerEvaluation::JwtOptionalAuthorized {
+                    account: jwt.custom_claims,
+                    registered_claims: jwt.registered_claims,
+                };
+            }
             return BearerEvaluation::JwtOptionalAnonymous;
         }
 
@@ -378,9 +378,10 @@ where
         }
 
         if let Some(token) = token
-            && token == self.token {
-                return BearerEvaluation::StaticAuthorized;
-            }
+            && token == self.token
+        {
+            return BearerEvaluation::StaticAuthorized;
+        }
         BearerEvaluation::StaticDenied
     }
 }

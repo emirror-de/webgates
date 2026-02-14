@@ -1,11 +1,11 @@
-use webgates::credentials::Credentials;
-use webgates::credentials::CredentialsVerifier;
 use webgates::accounts::{Account, AccountRepository};
 use webgates::authn::{LoginResult, LoginService};
 use webgates::authz::AccessHierarchy;
 use webgates::codecs::Codec;
 use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
 use webgates::cookie_template::CookieTemplate;
+use webgates::credentials::Credentials;
+use webgates::credentials::CredentialsVerifier;
 
 use std::sync::Arc;
 

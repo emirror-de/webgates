@@ -283,7 +283,8 @@ where
                 })
                 .transpose()
         };
-        res}
+        res
+    }
 
     async fn list_all_mappings(&self) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {

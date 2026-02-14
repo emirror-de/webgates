@@ -77,13 +77,15 @@ impl PermissionMappingRepository for MemoryPermissionMappingRepository {
     async fn store_mapping(&self, mapping: PermissionMapping) -> Result<Option<PermissionMapping>> {
         let res: Result<_> = {
             if let Err(e) = mapping.validate() {
-                return Err(RepoError::Repositories(RepositoriesError::operation_failed(
-                    RepositoryType::PermissionMapping,
-                    RepositoryOperation::Insert,
-                    format!("Invalid permission mapping: {}", e),
-                    None,
-                    Some("store".to_string()),
-                )));
+                return Err(RepoError::Repositories(
+                    RepositoriesError::operation_failed(
+                        RepositoryType::PermissionMapping,
+                        RepositoryOperation::Insert,
+                        format!("Invalid permission mapping: {}", e),
+                        None,
+                        Some("store".to_string()),
+                    ),
+                ));
             }
 
             let id = mapping.permission_id();
@@ -191,13 +193,15 @@ impl PermissionMappingRepositoryBulk for MemoryPermissionMappingRepository {
         let res: Result<_> = {
             for mapping in &mappings {
                 if let Err(e) = mapping.validate() {
-                    return Err(RepoError::Repositories(RepositoriesError::operation_failed(
-                        RepositoryType::PermissionMapping,
-                        RepositoryOperation::Insert,
-                        format!("Invalid permission mapping in bulk store: {}", e),
-                        None,
-                        Some("store_mappings".to_string()),
-                    )));
+                    return Err(RepoError::Repositories(
+                        RepositoriesError::operation_failed(
+                            RepositoryType::PermissionMapping,
+                            RepositoryOperation::Insert,
+                            format!("Invalid permission mapping in bulk store: {}", e),
+                            None,
+                            Some("store_mappings".to_string()),
+                        ),
+                    ));
                 }
             }
 
@@ -256,5 +260,6 @@ impl PermissionMappingRepositoryBulk for MemoryPermissionMappingRepository {
 
             Ok(out)
         };
-        res}
+        res
+    }
 }
