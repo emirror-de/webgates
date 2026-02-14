@@ -8,7 +8,6 @@ use crate::codecs::Codec;
 
 pub mod bearer;
 pub mod cookie;
-/// OAuth2 gate configuration and runtime.
 pub mod oauth2;
 
 /// Entry point for constructing gate configurations.

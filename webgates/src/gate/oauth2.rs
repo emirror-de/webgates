@@ -1,3 +1,4 @@
+//! OAuth2 gate configuration and runtime.
 use std::fmt::Display;
 use std::future::Future;
 use std::marker::PhantomData;
