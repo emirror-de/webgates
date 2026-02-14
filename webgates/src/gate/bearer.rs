@@ -8,6 +8,84 @@
 //! The design mirrors the previous Axum-specific gate but keeps the core free of
 //! `tower`/`http` dependencies. Adapters can map the configuration into their own
 //! middleware types via the `BearerGateAdapter` trait.
+//!
+//! # Example — Implementing simple in-crate `BearerGateAdapter`s
+//!
+//! The core crate exposes `BearerGate`, runtime evaluators (`JwtBearerRuntime` and
+//! `StaticTokenRuntime`), and the `BearerGateAdapter` trait. Integration code can
+//! implement `BearerGateAdapter` to convert a configured `BearerGate` into a
+//! framework- or application-specific artifact.
+//!
+//! The examples below demonstrate minimal, in-crate adapters that return the
+//! appropriate runtime evaluators. This keeps the example focused on types within
+//! the current crate and shows how adapters can reuse the runtime evaluation
+//! without reimplementing validation logic.
+//!
+//! ```rust
+//! use std::sync::Arc;
+//! use webgates::gate::bearer::{BearerGate, BearerGateAdapter, JwtBearerRuntime, StaticTokenRuntime};
+//! use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
+//! use webgates::accounts::Account;
+//! use webgates::roles::Role;
+//! use webgates::groups::Group;
+//!
+//! /// Adapter producing a JWT bearer runtime evaluator.
+//! struct JwtRuntimeAdapter;
+//!
+//! impl<C, R, G> BearerGateAdapter<C, R, G, webgates::gate::bearer::JwtConfig<R, G>> for JwtRuntimeAdapter
+//! where
+//!     C: webgates::codecs::Codec<Payload = JwtClaims<Account<R, G>>>,
+//!     R: webgates::authz::AccessHierarchy + Eq + std::fmt::Display + Clone,
+//!     G: Eq + Clone,
+//! {
+//!     type Output = JwtBearerRuntime<C, R, G>;
+//!
+//!     fn adapt(&self, gate: BearerGate<C, R, G, webgates::gate::bearer::JwtConfig<R, G>>) -> Self::Output {
+//!         // Build and return the runtime evaluator derived from the gate.
+//!         gate.runtime()
+//!     }
+//! }
+//!
+//! /// Adapter producing a static-token runtime evaluator.
+//! struct StaticRuntimeAdapter;
+//!
+//! impl<C, R, G> BearerGateAdapter<C, R, G, webgates::gate::bearer::StaticTokenConfig> for StaticRuntimeAdapter
+//! where
+//!     C: webgates::codecs::Codec,
+//!     R: webgates::authz::AccessHierarchy + Eq + std::fmt::Display + Clone,
+//!     G: Eq + Clone,
+//! {
+//!     type Output = StaticTokenRuntime<R, G>;
+//!
+//!     fn adapt(&self, gate: BearerGate<C, R, G, webgates::gate::bearer::StaticTokenConfig>) -> Self::Output {
+//!         gate.runtime()
+//!     }
+//! }
+//!
+//! // Usage sketch:
+//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let jwt_gate = BearerGate::new_with_codec("issuer", Arc::clone(&codec)).require_login();
+//! let jwt_runtime = jwt_gate.adapt_with(JwtRuntimeAdapter);
+//! let eval = jwt_runtime.evaluate(Some("eyJ..."));
+//! match eval {
+//!     webgates::gate::bearer::BearerEvaluation::JwtAuthorized { account, .. } => {
+//!         // authorized — use `account`
+//!     }
+//!     webgates::gate::bearer::BearerEvaluation::JwtMissingToken => {
+//!         // treat as unauthorized (e.g., return 401)
+//!     }
+//!     _ => { /* handle other outcomes */ }
+//! }
+//! ```
+//!
+//! ## JWT validation
+//!
+//! The codec used by JWT mode (for example, `JsonWebToken`) performs
+//! cryptographic validation (signature, expiry, issuer) via the underlying
+//! `jsonwebtoken`-based implementation. Adapters and middleware SHOULD NOT
+//! re-validate signatures themselves but rely on the runtime's evaluation and
+//! map `BearerEvaluation` variants to framework-specific responses (e.g.,
+//! 401/403) or request extensions.
 
 use std::fmt::Display;
 use std::sync::Arc;

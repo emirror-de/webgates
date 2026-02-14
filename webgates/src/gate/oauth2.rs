@@ -1,4 +1,103 @@
 //! OAuth2 gate configuration and runtime.
+//!
+//! This module implements the OAuth2 Authorization Code + PKCE flow builder
+//! and the runtime that performs login preparation and callback evaluation.
+//! It is intentionally framework-agnostic: adapters or integration crates map
+//! the runtime outcomes into transport-specific responses (HTTP redirects,
+//! cookies to set/clear, JSON bodies, etc.).
+//!
+//! # Example — in-crate OAuth2 wiring and adapter sketch
+//!
+//! The core crate exposes `OAuth2Gate` (builder) and `OAuth2Runtime` (evaluator).
+//! Integration code can prepare login redirects and evaluate callbacks using
+//! these types without coupling the core to any HTTP framework. The example
+//! below remains inside the crate boundaries and demonstrates:
+//! - building a gate and converting it into a runtime, and
+//! - a minimal `TokenExchanger` implementation sketch that could be used by a
+//!   runtime during callback evaluation.
+//!
+//! ```rust
+//! use std::sync::Arc;
+//! use std::future::Future;
+//! use std::pin::Pin;
+//! use webgates::gate::oauth2::{OAuth2Gate, OAuth2Runtime, TokenRequest, TokenExchanger, CallbackInput};
+//! use webgates::cookie_template::CookieTemplate;
+//! use webgates::codecs::jwt::JsonWebToken;
+//! use webgates::codecs::jwt::JwtClaims;
+//! use webgates::accounts::Account;
+//! use webgates::roles::Role;
+//! use webgates::groups::Group;
+//!
+//! // A trivial TokenExchanger that would call the provider's token endpoint.
+//! // Integration code should implement this abstraction with an HTTP client.
+//! struct DummyExchanger;
+//! impl TokenExchanger for DummyExchanger {
+//!     fn exchange_code(
+//!         &self,
+//!         _request: TokenRequest,
+//!     ) -> Pin<Box<dyn Future<Output = Result<oauth2::StandardTokenResponse<oauth2::EmptyExtraTokenFields, oauth2::basic::BasicTokenType>, webgates::gate::oauth2::errors::OAuth2Error>> + Send>> {
+//!         // Placeholder: real implementation would perform an HTTP POST to the
+//!         // provider's token endpoint and return the parsed token response.
+//!         Box::pin(async move {
+//!             Err(webgates::gate::oauth2::errors::OAuth2Error::Provider(
+//!                 "dummy exchanger".into(),
+//!             ))
+//!         })
+//!     }
+//! }
+//!
+//! async fn example() {
+//!     // Configure cookie templates used for state/pkce/auth cookies.
+//!     let state_tpl = CookieTemplate::recommended();
+//!     let pkce_tpl = CookieTemplate::recommended();
+//!     let auth_tpl = CookieTemplate::recommended();
+//!
+//!     // Build a minimal gate; real usage must set auth/token URLs and client creds.
+//!     let gate = OAuth2Gate::<Role, Group>::default()
+//!         .with_cookie_template(auth_tpl)
+//!         .with_pkce_cookie_template(pkce_tpl)
+//!         .with_state_cookie_template(state_tpl)
+//!         .with_post_login_redirect("/".to_string());
+//!
+//!     // Convert builder into a runtime (validates configured templates and required fields).
+//!     let runtime = match gate.build() {
+//!         Ok(rt) => rt,
+//!         Err(e) => {
+//!             // handle misconfiguration
+//!             tracing::error!(error = %e, "oauth2 gate misconfigured");
+//!             return;
+//!         }
+//!     };
+//!
+//!     // Prepare a login: get redirect URL and cookies to set (state/pkce)
+//!     let login = match runtime.prepare_login() {
+//!         Ok(p) => p,
+//!         Err(e) => {
+//!             tracing::error!(error = %e, "prepare_login failed");
+//!             return;
+//!         }
+//!     };
+//!
+//!     // In a real adapter: set `login.state_cookie` and `login.pkce_cookie` and
+//!     // redirect the user to `login.redirect_url`.
+//!
+//!     // Later, in the callback handler the adapter should construct a
+//!     // `CallbackInput` (including cookies received) and call `evaluate_callback`
+//!     // with an implementation of `TokenExchanger` to perform the provider token
+//!     // exchange. The returned `CallbackOutcome` is then mapped into framework
+//!     // responses (redirect + set/clear cookies, error pages, etc.).
+//! }
+//! ```
+//!
+//! ## JWT validation
+//!
+//! `OAuth2Runtime::evaluate_callback` performs the provider token
+//! exchange and constructs a first-party JWT using the configured encoder.
+//! The jwt encoder uses the configured codec in this crate (typically backed
+//! by the `jsonwebtoken` crate). Adapters should not re-validate signatures or
+//! re-implement cryptographic checks; they should rely on the runtime's
+//! outcome and map results to transport-specific responses.
+
 use std::fmt::Display;
 use std::future::Future;
 use std::marker::PhantomData;

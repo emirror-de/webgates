@@ -118,7 +118,9 @@ For more complex wiring you can construct a middleware type here and return it
 from `adapt`, keeping all gate configuration and runtime semantics inside the
 core crate.
 
-Note: JWT validation (signature verification and standard claim checks) is
+## JWT validation
+
+JWT validation (signature verification and standard claim checks) is
 already performed by the configured codec (which itself uses the `jsonwebtoken`
 crate under the hood). Adapters and middleware SHOULD NOT re-validate tokens —
 they should rely on the runtime's outcome (`CookieEvaluation`) and map it to
