@@ -53,8 +53,10 @@
 //! }
 //! ```
 
-use std::fmt;
 use thiserror::Error;
+
+// Core error interfaces (trait + severity)
+pub use crate::errors_core::{ErrorSeverity, UserFriendlyError};
 
 // Category-based error re-exports for ergonomic imports.
 pub use crate::authn::errors::{AuthenticationError, AuthnError};
@@ -63,76 +65,6 @@ pub use crate::codecs::errors::{CodecOperation, CodecsError, JwtError, JwtOperat
 pub use crate::hashing::errors::{HashingError, HashingOperation};
 pub use crate::permissions::errors::PermissionsError;
 pub use crate::secrets::errors::SecretError;
-
-/// Trait providing user-friendly error messaging at multiple levels.
-///
-/// This trait ensures all errors provide appropriate messages for different
-/// audiences while maintaining security and consistency.
-/// Provides a consistent, multi-level error messaging interface across the crate.
-///
-/// Implementors must supply user-safe text via `user_message` and richer context
-/// for logs and support via `developer_message` and `support_code`. The `severity`,
-/// `suggested_actions`, and `is_retryable` methods help downstream handling and UX.
-/// See each method for audience and usage guidance.
-pub trait UserFriendlyError: fmt::Display + fmt::Debug {
-    /// User-facing message that is clear, actionable, and non-technical.
-    ///
-    /// This message should:
-    /// - Use plain language that any user can understand
-    /// - Provide actionable guidance when possible
-    /// - Never leak sensitive information
-    /// - Be empathetic and helpful in tone
-    ///
-    /// # Examples
-    /// - "We're experiencing technical difficulties. Please try again in a moment."
-    /// - "Your session has expired. Please sign in again to continue."
-    /// - "There's an issue with your account. Please contact our support team."
-    fn user_message(&self) -> String;
-
-    /// Technical message with detailed information for developers and logs.
-    ///
-    /// This message should:
-    /// - Include precise technical details
-    /// - Provide context for debugging
-    /// - Include relevant identifiers and parameters
-    /// - Be structured for parsing by monitoring tools
-    fn developer_message(&self) -> String;
-
-    /// Unique support reference code for customer service and troubleshooting.
-    ///
-    /// This code should:
-    /// - Be unique and easily communicable
-    /// - Allow support teams to identify the exact error
-    /// - Not contain sensitive information
-    /// - Be consistent across error instances
-    fn support_code(&self) -> String;
-
-    /// Error severity level for proper handling and alerting.
-    fn severity(&self) -> ErrorSeverity;
-
-    /// Suggested user actions for resolving the error.
-    fn suggested_actions(&self) -> Vec<String> {
-        Vec::new()
-    }
-
-    /// Whether this error should be retryable by the user.
-    fn is_retryable(&self) -> bool {
-        false
-    }
-}
-
-/// Error severity levels for proper categorization and handling.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ErrorSeverity {
-    /// Critical system error requiring immediate attention
-    Critical,
-    /// Error that prevents normal operation
-    Error,
-    /// Warning that may indicate a problem
-    Warning,
-    /// Informational message about an expected condition
-    Info,
-}
 
 /// Result type alias using our comprehensive Error type.
 ///
@@ -266,32 +198,6 @@ impl UserFriendlyError for Error {
             Error::Hashing(err) => err.is_retryable(),
             Error::Secrets(err) => err.is_retryable(),
         }
-    }
-}
-
-// External library error conversions
-impl From<argon2::Error> for Error {
-    fn from(err: argon2::Error) -> Self {
-        Error::Hashing(HashingError::with_context(
-            HashingOperation::Hash,
-            format!("Argon2 error: {}", err),
-            Some("Argon2id".to_string()),
-            None,
-        ))
-    }
-}
-
-// Map cookie template builder validation errors into the crate-wide Error type.
-// We categorize these as codec/format issues since they reflect invalid configuration
-// for building a Cookie (shape/format contract violation).
-impl From<crate::cookie_template::CookieTemplateBuilderError> for Error {
-    fn from(err: crate::cookie_template::CookieTemplateBuilderError) -> Self {
-        Error::Codecs(CodecsError::codec_with_format(
-            CodecOperation::Encode,
-            format!("Invalid cookie template configuration: {}", err),
-            Some("cookie::CookieBuilder".to_string()),
-            Some("Invalid cookie settings".to_string()),
-        ))
     }
 }
 

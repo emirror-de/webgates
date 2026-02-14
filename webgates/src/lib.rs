@@ -2,7 +2,6 @@
 #![deny(unsafe_code)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
-
 /*!
 # webgates
 
@@ -69,6 +68,9 @@ pub mod gate;
 pub mod credentials;
 #[cfg(feature = "server")]
 pub mod errors;
+pub mod errors_core;
+#[cfg(feature = "server")]
+pub(crate) mod errors_integration;
 pub mod groups;
 #[cfg(feature = "server")]
 pub mod hashing;

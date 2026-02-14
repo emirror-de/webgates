@@ -20,7 +20,7 @@
 //! assert_eq!(err.severity(), webgates::errors::ErrorSeverity::Critical);
 //! ```
 
-use crate::errors::{ErrorSeverity, UserFriendlyError};
+use crate::errors_core::{ErrorSeverity, UserFriendlyError};
 use thiserror::Error;
 
 /// Authorization-category native errors.

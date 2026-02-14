@@ -15,7 +15,7 @@
 //! - A local `Result<T>` alias is provided for gate-internal use
 //! - Adapters can map these variants to framework-specific error handling
 
-use crate::errors::{ErrorSeverity, UserFriendlyError};
+use crate::errors_core::{ErrorSeverity, UserFriendlyError};
 use std::fmt;
 use thiserror::Error;
 

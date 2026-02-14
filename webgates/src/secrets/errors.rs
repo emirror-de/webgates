@@ -24,7 +24,7 @@
 //! );
 //! ```
 
-use crate::errors::{ErrorSeverity, UserFriendlyError};
+use crate::errors_core::{ErrorSeverity, UserFriendlyError};
 use crate::hashing::HashingOperation;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

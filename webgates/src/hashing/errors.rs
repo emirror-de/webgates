@@ -42,7 +42,7 @@
 //! assert!(err.is_retryable());
 //! ```
 
-use crate::errors::{ErrorSeverity, UserFriendlyError};
+use crate::errors_core::{ErrorSeverity, UserFriendlyError};
 use std::collections::hash_map::DefaultHasher;
 use std::fmt;
 use std::hash::{Hash, Hasher};

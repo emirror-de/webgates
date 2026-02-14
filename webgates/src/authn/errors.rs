@@ -31,7 +31,7 @@
 //! let _ = AuthnError::invalid_credentials(Some("signin".into()));
 //! ```
 
-use crate::errors::{ErrorSeverity, UserFriendlyError};
+use crate::errors_core::{ErrorSeverity, UserFriendlyError};
 
 use thiserror::Error;
 
