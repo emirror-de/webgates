@@ -1,16 +1,129 @@
-//! Framework-agnostic cookie gate configuration.
-//!
-//! This module defines the cookie-backed gate builder without any dependency on
-//! web frameworks or middleware stacks. Integration crates (e.g., `webgates-axum`)
-//! adapt this configuration into concrete middleware/layers for their transport.
-//!
-//! - Strict mode (default): enforces the access policy; adapters should reject
-//!   unauthorized requests.
-//! - Optional mode (`allow_anonymous_with_optional_user`): adapters should skip
-//!   authZ/authN enforcement and merely inject optional context if present.
-//!
-//! The cookie template is validated eagerly by `configure_cookie_template` and
-//! lazily by adapters when applying `with_cookie_template`.
+/*! Framework-agnostic cookie gate configuration.
+
+This module defines the cookie-backed gate builder without any dependency on
+web frameworks or middleware stacks. Integration crates adapt this configuration
+into concrete middleware/layers for their transport.
+
+- Strict mode (default): enforces the access policy; adapters should reject
+  unauthorized requests.
+- Optional mode (`allow_anonymous_with_optional_user`): adapters should skip
+  authZ/authN enforcement and merely inject optional context if present.
+
+The cookie template is validated eagerly by `configure_cookie_template` and
+lazily by adapters when applying `with_cookie_template`.
+
+# Example — Implementing a simple in-crate `CookieGateAdapter`
+
+The core crate exposes `CookieGate`, its `CookieGateRuntime` evaluator and the
+`CookieGateAdapter` trait. Integration code can implement `CookieGateAdapter`
+to convert a configured `CookieGate` into a framework- or application-specific
+artifact.
+
+The example below demonstrates a minimal, framework-agnostic adapter that
+adapts a `CookieGate` into its `CookieGateRuntime`. This is useful for systems
+that want to perform cookie/JWT evaluation in a custom place (for example, in
+a bespoke middleware pipeline) while keeping the gate configuration in the
+core crate.
+
+```rust
+use std::sync::Arc;
+
+// Local crate types used by the gate
+use crate::accounts::Account;
+use crate::codecs::jwt::{JsonWebToken, JwtClaims};
+use crate::gate::cookie::{CookieGate, CookieGateAdapter, CookieGateRuntime, CookieEvaluation};
+use crate::groups::Group;
+use crate::roles::Role;
+
+/// A trivial adapter that turns a configured `CookieGate` into the corresponding
+/// `CookieGateRuntime`. In a real integration this adapter could instead produce
+/// a middleware layer, a closure-based handler, or any framework-specific type.
+struct RuntimeAdapter;
+
+impl<C, R, G> CookieGateAdapter<C, R, G> for RuntimeAdapter
+where
+    // The runtime requires a codec that decodes JwtClaims<Account<R, G>>
+    C: crate::codecs::Codec<Payload = JwtClaims<Account<R, G>>>,
+    R: crate::authz::AccessHierarchy + Eq + std::fmt::Display + Clone,
+    G: Eq + Clone,
+{
+    // We choose the runtime evaluator as the adapter output
+    type Output = CookieGateRuntime<C, R, G>;
+
+    fn adapt(&self, gate: CookieGate<C, R, G>) -> Self::Output {
+        // Build the runtime from the configured gate and return it.
+        // Adapters that create framework middleware would construct and return
+        // the middleware layer here instead.
+        gate.runtime()
+    }
+}
+
+fn example_usage() {
+    // Create a codec (placeholder default implementation provided in this crate)
+    let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> =
+        Arc::new(JsonWebToken::default());
+
+    // Configure a gate (deny-all by default)
+    let gate = CookieGate::new_with_codec("my-issuer", Arc::clone(&jwt_codec))
+        .require_login();
+
+    // Adapt the gate into a runtime evaluator using our adapter
+    let runtime: CookieGateRuntime<_, Role, Group> = gate.adapt_with(RuntimeAdapter);
+
+    // Evaluate an incoming (optional) token string
+    // In a real middleware you'd extract the cookie value from the HTTP request.
+    let token: Option<&str> = Some("eyJ..."); // example token string
+
+    let result = runtime.evaluate(token);
+
+    // Map the evaluation to application behaviour
+    match result {
+        CookieEvaluation::Authorized { account, registered_claims } => {
+            // AuthN + AuthZ succeeded — proceed with `account` context
+            tracing::info!("authorized account {}", account.account_id);
+            let _exp = registered_claims.exp; // example usage
+        }
+        CookieEvaluation::OptionalAuthorized { account, registered_claims } => {
+            // Optional mode: we have a valid token but the gate is non-blocking
+            let _ = (account, registered_claims);
+        }
+        CookieEvaluation::OptionalAnonymous => {
+            // Optional mode: no token present
+        }
+        CookieEvaluation::MissingToken => {
+            // Strict mode: absent token -> treat as unauthorized (e.g., return 401)
+        }
+        CookieEvaluation::InvalidToken | CookieEvaluation::InvalidIssuer { .. } => {
+            // Token problems -> return 401
+        }
+        CookieEvaluation::PolicyDenied { account_id } => {
+            // AuthN succeeded but AuthZ failed -> return 403
+            tracing::warn!("authorization denied for account {}", account_id);
+        }
+        CookieEvaluation::DenyAllPolicy => {
+            // Gate configured to deny all access
+        }
+    }
+}
+```
+
+This example is intentionally small and focused on the core crate. Real adapters
+typically:
+
+- convert the `CookieEvaluation` into framework responses (401/403),
+- inject decoded account/claims into request extensions, or
+- wire metrics and logging for auth events.
+
+For more complex wiring you can construct a middleware type here and return it
+from `adapt`, keeping all gate configuration and runtime semantics inside the
+core crate.
+
+Note: JWT validation (signature verification and standard claim checks) is
+already performed by the configured codec (which itself uses the `jsonwebtoken`
+crate under the hood). Adapters and middleware SHOULD NOT re-validate tokens —
+they should rely on the runtime's outcome (`CookieEvaluation`) and map it to
+framework-specific behaviour (e.g., 401/403 or request extensions).
+*/
 
 use std::fmt::Display;
 use std::sync::Arc;
