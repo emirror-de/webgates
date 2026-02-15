@@ -430,6 +430,8 @@ where
                 unauthorized_future
             }
             webgates::gate::bearer::BearerEvaluation::JwtPolicyDenied { account_id } => {
+                #[cfg(not(feature = "audit-logging"))]
+                let _ = account_id;
                 #[cfg(feature = "audit-logging")]
                 audit::denied(Some(&account_id), "policy_denied");
                 unauthorized_future
