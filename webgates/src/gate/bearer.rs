@@ -515,3 +515,67 @@ where
         A::adapt(self, gate)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::accounts::Account;
+    use crate::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
+    use crate::groups::Group;
+    use crate::roles::Role;
+    use chrono::Utc;
+
+    #[test]
+    fn jwt_runtime_authorizes_when_policy_allows() {
+        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let gate = BearerGate::<_, Role, Group, JwtConfig<Role, Group>>::new_with_codec(
+            "issuer",
+            Arc::clone(&codec),
+        )
+        .require_login();
+
+        let account = Account::<Role, Group>::new("user", &[Role::User], &[]);
+        let exp = Utc::now().timestamp() as u64 + 60;
+        let claims = JwtClaims::new(account.clone(), RegisteredClaims::new("issuer", exp));
+        let token = String::from_utf8(codec.encode(&claims).expect("encode jwt")).unwrap();
+
+        let runtime = gate.runtime();
+        let result = runtime.evaluate(Some(&token));
+
+        match result {
+            BearerEvaluation::JwtAuthorized {
+                account: acc,
+                registered_claims,
+            } => {
+                assert_eq!(acc.user_id, account.user_id);
+                assert_eq!(registered_claims.issuer, "issuer");
+            }
+            other => panic!("expected JwtAuthorized, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn static_runtime_matches_token() {
+        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let gate = BearerGate::<_, Role, Group, JwtConfig<Role, Group>>::new_with_codec(
+            "issuer",
+            Arc::clone(&codec),
+        )
+        .with_static_token("secret-token");
+
+        let runtime = gate.runtime();
+
+        assert!(matches!(
+            runtime.evaluate(Some("secret-token")),
+            BearerEvaluation::StaticAuthorized
+        ));
+        assert!(matches!(
+            runtime.evaluate(Some("wrong-token")),
+            BearerEvaluation::StaticDenied
+        ));
+        assert!(matches!(
+            runtime.evaluate(None),
+            BearerEvaluation::StaticDenied
+        ));
+    }
+}
