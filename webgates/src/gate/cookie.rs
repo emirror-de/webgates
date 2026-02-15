@@ -30,6 +30,7 @@ use std::sync::Arc;
 
 // Local crate types used by the gate
 use webgates::prelude::{Account, Group, Role, JsonWebToken, JwtClaims};
+use webgates::gate::GateExt;
 use webgates::gate::cookie::{CookieGate, CookieGateAdapter, CookieGateRuntime, CookieEvaluation};
 
 /// A trivial adapter that turns a configured `CookieGate` into the corresponding
