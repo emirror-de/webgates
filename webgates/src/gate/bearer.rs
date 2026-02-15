@@ -519,6 +519,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[allow(clippy::unwrap_used)]
+    #[allow(clippy::expect_used)]
     use super::*;
     use crate::accounts::Account;
     use crate::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
