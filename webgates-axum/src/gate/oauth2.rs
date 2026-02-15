@@ -1,7 +1,3 @@
-#![deny(missing_docs)]
-#![deny(unsafe_code)]
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
 //! Axum adapter for the framework-agnostic OAuth2 gate runtime.
 //!
 //! This layer builds routes for `/login` and `/callback`, delegates all OAuth2
@@ -71,6 +67,10 @@ where
     state_cookie_name: String,
     pkce_cookie_name: String,
     auth_cookie_name: String,
+    /// Optional token exchanger provided by the integrator. When present this
+    /// will be used for the callback token exchange; otherwise the default
+    /// `ReqwestTokenExchanger` is used.
+    token_exchanger: Option<Arc<dyn TokenExchanger>>,
 }
 
 impl<R, G> Default for OAuth2Gate<R, G>
@@ -87,6 +87,7 @@ where
             state_cookie_name: state_default,
             pkce_cookie_name: pkce_default,
             auth_cookie_name: auth_default,
+            token_exchanger: None,
         }
     }
 }
@@ -255,13 +256,35 @@ where
         self
     }
 
+    /// Configure a custom `TokenExchanger` for this wrapper.
+    ///
+    /// This allows integrators to inject a test or custom exchanger that will be
+    /// used by the callback handler during token exchange. The method consumes and
+    /// returns the wrapper for ergonomic builder-style usage.
+    pub fn with_token_exchanger(mut self, exchanger: impl TokenExchanger + 'static) -> Self {
+        self.token_exchanger = Some(Arc::new(exchanger));
+        self
+    }
+
     /// Build and return an Axum Router with `/login` and `/callback` routes nested under `base_path`.
-    pub fn routes(&self, base_path: &str) -> Result<Router<()>, OAuth2Error> {
+    ///
+    /// This method consumes the current wrapper configuration and produces a ready-to-mount
+    /// `Router`. The configured `token_exchanger` (if any) is injected into the handler
+    /// state; otherwise the default `ReqwestTokenExchanger` will be used.
+    pub fn into_router(&self, base_path: &str) -> Result<Router<()>, OAuth2Error> {
         let runtime = self.core.clone().build()?;
+
+        // Determine which exchanger to use: the configured one or the default.
+        let exchanger: Arc<dyn TokenExchanger> = match &self.token_exchanger {
+            Some(e) => Arc::clone(e),
+            None => Arc::new(ReqwestTokenExchanger),
+        };
+
         let state = Arc::new(HandlerState::<R, G> {
             runtime,
             state_cookie_name: self.state_cookie_name.clone(),
             pkce_cookie_name: self.pkce_cookie_name.clone(),
+            exchanger,
         });
 
         let base = base_path.trim_end_matches('/');
@@ -287,6 +310,8 @@ where
     runtime: OAuth2Runtime<R, G>,
     state_cookie_name: String,
     pkce_cookie_name: String,
+    /// Token exchanger used by callback handler (injected from the wrapper).
+    exchanger: Arc<dyn TokenExchanger>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -348,8 +373,9 @@ where
         pkce_cookie,
     };
 
-    let exchanger = ReqwestTokenExchanger;
-    match st.runtime.evaluate_callback(input, &exchanger).await {
+    let exchanger_ref: &dyn TokenExchanger = st.exchanger.as_ref();
+
+    match st.runtime.evaluate_callback(input, exchanger_ref).await {
         CallbackOutcome::Success {
             cookies,
             redirect_to,

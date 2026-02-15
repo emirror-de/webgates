@@ -87,6 +87,7 @@
 use std::fmt::Display;
 use std::sync::Arc;
 
+use super::GateExt;
 use crate::accounts::Account;
 use crate::authz::{AccessHierarchy, AccessPolicy, AuthorizationService};
 use crate::codecs::Codec;
@@ -493,17 +494,24 @@ where
     }
 }
 
-impl<C, R, G, M> BearerGate<C, R, G, M>
+impl<C, R, Gt, M> GateExt for super::bearer::BearerGate<C, R, Gt, M>
 where
     C: Codec,
     R: AccessHierarchy + Eq + Display,
-    G: Eq,
+    Gt: Eq,
 {
-    /// Convert this gate into a framework-specific layer using the provided adapter.
-    pub fn adapt_with<A>(self, adapter: A) -> A::Output
-    where
-        A: BearerGateAdapter<C, R, G, M>,
-    {
-        adapter.adapt(self)
+}
+
+impl<C, R, Gt, M2, A> crate::gate::adapter::GateAdapter<BearerGate<C, R, Gt, M2>> for A
+where
+    A: BearerGateAdapter<C, R, Gt, M2>,
+    C: Codec,
+    R: AccessHierarchy + Eq + Display,
+    Gt: Eq,
+{
+    type Output = A::Output;
+
+    fn adapt(&self, gate: BearerGate<C, R, Gt, M2>) -> Self::Output {
+        A::adapt(self, gate)
     }
 }

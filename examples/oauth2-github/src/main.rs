@@ -202,7 +202,7 @@ async fn main() {
 
     // Mount OAuth2 routes at /auth/login and /auth/callback
     let auth_router = oauth2_gate
-        .routes("/auth")
+        .into_router("/auth")
         .expect("valid GitHub OAuth2 configuration");
 
     // A protected route that requires any authenticated user (baseline + supervisors)

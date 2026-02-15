@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 //! OAuth2 gate configuration and runtime.
 //!
 //! This module implements the OAuth2 Authorization Code + PKCE flow builder
@@ -102,6 +101,7 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use super::GateExt;
 use crate::accounts::{Account, AccountRepository};
 use crate::authz::AccessHierarchy;
 use crate::codecs::Codec;
@@ -117,6 +117,34 @@ use serde::{Deserialize, Serialize};
 
 pub mod errors;
 use errors::{OAuth2CookieKind, OAuth2Error, Result as OAuth2Result};
+
+/// Adapter trait so integration crates can adapt a core `OAuth2Gate` into a
+/// framework-specific wrapper or router. Follows the pattern used by cookie & bearer.
+pub trait OAuth2GateAdapter<R, G>
+where
+    R: AccessHierarchy + Eq + Display + Send + Sync + 'static,
+    G: Eq + Clone + Send + Sync + 'static,
+{
+    /// Framework-specific output type produced by the adapter (e.g., a wrapper that can produce routes).
+    type Output;
+
+    /// Convert a core `OAuth2Gate<R, G>` into a framework-specific artifact.
+    fn adapt(&self, gate: OAuth2Gate<R, G>) -> Self::Output;
+}
+
+// Bridge to the generic GateAdapter so callers can call `adapt_with`.
+impl<R, G, A> crate::gate::adapter::GateAdapter<OAuth2Gate<R, G>> for A
+where
+    A: OAuth2GateAdapter<R, G>,
+    R: AccessHierarchy + Eq + Display + Send + Sync + 'static,
+    G: Eq + Clone + Send + Sync + 'static,
+{
+    type Output = A::Output;
+
+    fn adapt(&self, gate: OAuth2Gate<R, G>) -> Self::Output {
+        A::adapt(self, gate)
+    }
+}
 
 /// Alias for the resulting token exchange future.
 type OAuth2TokenExchangeFuture = Pin<
@@ -247,6 +275,122 @@ where
     jwt_encoder: Option<AccountEncoderFn<R, G>>,
 
     _phantom: PhantomData<(R, G)>,
+}
+
+/// Public, cloneable config exported for adapters. This type contains the
+/// validated fields required to construct an adapter-side wrapper without
+/// exposing the internal builder implementation details.
+#[derive(Clone)]
+pub struct OAuth2Config<R, G>
+where
+    R: AccessHierarchy + Eq + Display + Send + Sync + 'static,
+    G: Eq + Clone + Send + Sync + 'static,
+{
+    /// Provider authorization endpoint (the URL used to initiate the auth redirect).
+    /// Example: "https://provider.example.com/oauth2/authorize"
+    pub auth_url: String,
+
+    /// Provider token endpoint used to exchange the authorization code for tokens.
+    /// Example: "https://provider.example.com/oauth2/token"
+    pub token_url: String,
+
+    /// OAuth2 client identifier registered with the provider.
+    pub client_id: String,
+
+    /// Optional OAuth2 client secret for confidential clients. Keep None for public
+    /// (browser) clients or when client authentication is not required.
+    pub client_secret: Option<String>,
+
+    /// Redirect URL that the provider will call after user authorization.
+    /// Must match the redirect URL registered with the provider.
+    pub redirect_url: String,
+
+    /// Scopes requested from the provider (e.g., ["openid", "profile", "email"]).
+    /// The wrapper/adapters use these to build the authorization request.
+    pub scopes: Vec<String>,
+
+    /// Cookie template used for the CSRF state cookie created before redirect.
+    /// Adapters should use this template to set and validate the `state` cookie.
+    pub state_cookie_template: CookieTemplate,
+
+    /// Cookie template used for the PKCE verifier cookie created before redirect.
+    /// Adapters should use this template to set and validate the PKCE verifier.
+    pub pkce_cookie_template: CookieTemplate,
+
+    /// Cookie template used to create the first-party auth cookie (e.g., JWT)
+    /// after successful callback and session issuance.
+    pub auth_cookie_template: CookieTemplate,
+
+    /// Optional post-login redirect (application URL to send users to after sign-in).
+    /// If present, adapter wrappers may redirect users to this path after successful login.
+    pub post_login_redirect: Option<String>,
+
+    /// Optional async mapper that converts a provider `StandardTokenResponse` into
+    /// a domain `Account<R, G>`. This runs before persistence/issuance and may
+    /// perform userinfo requests or other enrichment.
+    pub mapper: Option<AccountMapperFn<R, G>>,
+
+    /// Optional persistence hook invoked before issuing a first-party JWT.
+    /// The inserter should persist or load the account idempotently and return
+    /// the `Account` to be encoded into the session token.
+    pub account_inserter: Option<AccountPersistFn<R, G>>,
+
+    /// Optional encoder closure used to produce a first-party JWT string from an `Account`.
+    /// Adapters that prefer codec-based encoding can call the wrapper's
+    /// `with_jwt_codec(issuer, codec, ttl)` convenience instead.
+    pub jwt_encoder: Option<AccountEncoderFn<R, G>>,
+}
+
+/// Consume the builder, validate it, and produce an `OAuth2Config` that is safe
+/// for adapters to consume. This mirrors the validation performed by `build`
+/// but returns the full, cloneable config instead of a runtime.
+impl<R, G> OAuth2Gate<R, G>
+where
+    R: AccessHierarchy + Eq + Display + Send + Sync + 'static,
+    G: Eq + Clone + Send + Sync + 'static,
+{
+    /// Validate and convert this builder into a public `OAuth2Config`.
+    pub fn into_config(self) -> Result<OAuth2Config<R, G>, OAuth2Error> {
+        let auth_url = self
+            .auth_url
+            .ok_or_else(|| OAuth2Error::missing("auth_url"))?;
+        let token_url = self
+            .token_url
+            .ok_or_else(|| OAuth2Error::missing("token_url"))?;
+        let client_id = self
+            .client_id
+            .ok_or_else(|| OAuth2Error::missing("client_id"))?;
+        let redirect_url = self
+            .redirect_url
+            .ok_or_else(|| OAuth2Error::missing("redirect_url"))?;
+
+        // Validate cookie templates the same way `build` does.
+        self.state_cookie_template
+            .validate()
+            .map_err(|e| OAuth2Error::cookie_invalid(OAuth2CookieKind::State, e.to_string()))?;
+        self.pkce_cookie_template
+            .validate()
+            .map_err(|e| OAuth2Error::cookie_invalid(OAuth2CookieKind::Pkce, e.to_string()))?;
+        self.auth_cookie_template
+            .validate()
+            .map_err(|e| OAuth2Error::cookie_invalid(OAuth2CookieKind::Auth, e.to_string()))?;
+
+        Ok(OAuth2Config {
+            auth_url,
+            token_url,
+            client_id,
+            client_secret: self.client_secret,
+            redirect_url,
+            scopes: self.scopes,
+            state_cookie_template: self.state_cookie_template,
+            pkce_cookie_template: self.pkce_cookie_template,
+            auth_cookie_template: self.auth_cookie_template,
+            post_login_redirect: self.post_login_redirect,
+            mapper: self.mapper,
+            account_inserter: self.account_inserter,
+            jwt_encoder: self.jwt_encoder,
+        })
+    }
 }
 
 impl<R, G> Default for OAuth2Gate<R, G>
@@ -591,10 +735,11 @@ where
     }
 
     /// Evaluate callback with provided input and token exchanger.
-    pub async fn evaluate_callback<E>(&self, input: CallbackInput, exchanger: &E) -> CallbackOutcome
-    where
-        E: TokenExchanger,
-    {
+    pub async fn evaluate_callback(
+        &self,
+        input: CallbackInput,
+        exchanger: &dyn TokenExchanger,
+    ) -> CallbackOutcome {
         // prepare removal cookies
         let mut cookies: Vec<Cookie<'static>> = Vec::new();
         cookies.push(self.state_cookie_template.build_removal());
@@ -730,4 +875,11 @@ pub struct ProviderTokenResponse {
     pub id_token: Option<String>,
     /// Scopes granted.
     pub scopes: Option<Vec<String>>,
+}
+
+impl<R, G> GateExt for OAuth2Gate<R, G>
+where
+    R: AccessHierarchy + Eq + Display + Send + Sync + 'static,
+    G: Eq + Clone + Send + Sync + 'static,
+{
 }

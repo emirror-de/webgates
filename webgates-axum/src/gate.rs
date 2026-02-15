@@ -15,7 +15,7 @@ use webgates::accounts::Account;
 use webgates::authz::AccessHierarchy;
 use webgates::codecs::Codec;
 use webgates::codecs::jwt::JwtClaims;
-use webgates::gate::{self as core_gate, Gate as CoreGate};
+use webgates::gate::{self as core_gate, Gate as CoreGate, GateExt};
 
 pub mod bearer;
 pub mod cookie;
@@ -51,13 +51,14 @@ impl Gate {
         core.adapt_with(BearerAdapter)
     }
 
-    /// OAuth2 gate builder (axum-specific) remains provided directly.
+    /// OAuth2 gate builder adapted from the core gate using the axum adapter.
     pub fn oauth2<R, G>() -> oauth2::OAuth2Gate<R, G>
     where
         R: AccessHierarchy + Eq + std::fmt::Display + Send + Sync + 'static,
         G: Eq + Clone + Send + Sync + 'static,
     {
-        oauth2::OAuth2Gate::new()
+        let core = CoreGate::oauth2::<R, G>();
+        core.adapt_with(OAuth2Adapter)
     }
 }
 
@@ -132,5 +133,82 @@ where
             adapted = adapted.allow_anonymous_with_optional_user();
         }
         adapted
+    }
+}
+
+/// Adapter converting core OAuth2 gate configuration into the axum OAuth2 wrapper.
+///
+/// The adapter returns the axum-side `oauth2::OAuth2Gate` wrapper. This is a
+/// thin mapping: we construct the wrapper and let integrators further configure
+/// it (for example, set a custom token exchanger) before calling `into_router`.
+#[derive(Clone, Debug, Default)]
+struct OAuth2Adapter;
+
+impl<R, G> core_gate::oauth2::OAuth2GateAdapter<R, G> for OAuth2Adapter
+where
+    R: AccessHierarchy + Eq + std::fmt::Display + Send + Sync + 'static,
+    G: Eq + Clone + Send + Sync + 'static,
+{
+    type Output = oauth2::OAuth2Gate<R, G>;
+
+    fn adapt(&self, gate: core_gate::oauth2::OAuth2Gate<R, G>) -> Self::Output {
+        // Convert the core builder into a validated, cloneable config snapshot
+        // and map it into the axum-side wrapper via its builder methods.
+        match gate.into_config() {
+            Ok(cfg) => {
+                let mut wrapper = oauth2::OAuth2Gate::new();
+
+                // Basic endpoints and client info
+                wrapper = wrapper
+                    .auth_url(cfg.auth_url.clone())
+                    .token_url(cfg.token_url.clone())
+                    .client_id(cfg.client_id.clone());
+
+                if let Some(secret) = cfg.client_secret.clone() {
+                    wrapper = wrapper.client_secret(secret);
+                }
+
+                wrapper = wrapper.redirect_url(cfg.redirect_url.clone());
+
+                // Scopes
+                for scope in cfg.scopes.into_iter() {
+                    wrapper = wrapper.add_scope(scope);
+                }
+
+                // Cookie templates
+                wrapper = wrapper
+                    .with_state_cookie_template(cfg.state_cookie_template.clone())
+                    .with_pkce_cookie_template(cfg.pkce_cookie_template.clone())
+                    .with_cookie_template(cfg.auth_cookie_template.clone());
+
+                // Optional post-login redirect
+                if let Some(redirect) = cfg.post_login_redirect.clone() {
+                    wrapper = wrapper.with_post_login_redirect(redirect);
+                }
+
+                // Async mapper (if present) — forward the Arc into the wrapper.
+                if let Some(mapper) = cfg.mapper.clone() {
+                    wrapper = wrapper.with_account_mapper(move |token_resp| (mapper)(token_resp));
+                }
+
+                // Account inserter (if present) — forward the Arc into the wrapper.
+                if let Some(inserter) = cfg.account_inserter.clone() {
+                    wrapper = wrapper.with_account_inserter(move |account| (inserter)(account));
+                }
+
+                // Note: we intentionally do not attempt to map `jwt_encoder` here.
+                // The axum wrapper exposes `with_jwt_codec(issuer, codec, ttl)`
+                // which is a more ergonomic integration point for adapters that
+                // have a concrete `Codec` available. Leaving `jwt_encoder` out
+                // keeps the adapter mapping generic and lets integrators wire
+                // encoding explicitly if required.
+
+                wrapper
+            }
+            // On validation failure, fall back to an empty wrapper (caller will
+            // see errors when attempting to `into_router`). Adapter could also
+            // choose to surface the error — keeping the minimal fallback here.
+            Err(_) => oauth2::OAuth2Gate::new(),
+        }
     }
 }

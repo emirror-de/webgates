@@ -3,9 +3,11 @@
 use std::fmt::Display;
 use std::sync::Arc;
 
+use self::adapter::GateAdapter;
 use crate::authz::AccessHierarchy;
 use crate::codecs::Codec;
 
+pub mod adapter;
 pub mod bearer;
 pub mod cookie;
 pub mod oauth2;
@@ -45,5 +47,30 @@ impl Gate {
         G: Eq + Clone + Send + Sync + 'static,
     {
         oauth2::OAuth2Gate::new()
+    }
+}
+
+/// Extension trait for gate types that provides a default `adapt_with`
+/// convenience method.
+///
+/// Implement this trait for concrete gate types (the trait has a default
+/// implementation so the impl bodies are intentionally empty). The default
+/// forwards to the provided `GateAdapter<G>`.
+///
+/// Example:
+/// ```ignore
+/// let gate = CookieGate::new_with_codec(...);
+/// let runtime = gate.adapt_with(MyAdapter);
+/// ```
+pub trait GateExt: Sized {
+    /// Adapt this gate into a framework-specific artifact using `adapter`.
+    ///
+    /// The adapter type must implement `GateAdapter<Self>`. This default method
+    /// simply calls `adapter.adapt(self)`.
+    fn adapt_with<A>(self, adapter: A) -> A::Output
+    where
+        A: GateAdapter<Self>,
+    {
+        adapter.adapt(self)
     }
 }

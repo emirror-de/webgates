@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn cookie_template_error_maps_to_codec_error() {
         // Construct a minimal invalid builder error via Display formatting.
-        let builder_err = crate::cookie_template::CookieTemplateBuilderError::MissingName;
+        let builder_err = crate::cookie_template::CookieTemplateBuilderError::InsecureNoneSameSite;
         let mapped = Error::from(builder_err);
         match mapped {
             Error::Codecs(c) => {

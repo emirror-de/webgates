@@ -127,6 +127,7 @@ framework-specific behaviour (e.g., 401/403 or request extensions).
 use std::fmt::Display;
 use std::sync::Arc;
 
+use super::GateExt;
 use crate::accounts::Account;
 use crate::authz::{AccessHierarchy, AccessPolicy, AuthorizationService};
 use crate::codecs::Codec;
@@ -241,14 +242,6 @@ where
     pub fn installs_optional_extensions(&self) -> bool {
         self.install_optional_extensions
     }
-
-    /// Adapt this gate into a framework-specific layer using the provided adapter.
-    pub fn adapt_with<A>(self, adapter: A) -> A::Output
-    where
-        A: CookieGateAdapter<C, R, G>,
-    {
-        adapter.adapt(self)
-    }
 }
 
 /// Adapter trait to convert a framework-agnostic `CookieGate` into a concrete
@@ -264,6 +257,28 @@ where
 
     /// Convert a framework-agnostic `CookieGate` into the framework-specific middleware/layer.
     fn adapt(&self, gate: CookieGate<C, R, G>) -> Self::Output;
+}
+
+impl<C, R, Gt> GateExt for super::cookie::CookieGate<C, R, Gt>
+where
+    C: Codec,
+    R: AccessHierarchy + Eq + Display,
+    Gt: Eq,
+{
+}
+
+impl<C, R, Gt, A> crate::gate::adapter::GateAdapter<CookieGate<C, R, Gt>> for A
+where
+    A: CookieGateAdapter<C, R, Gt>,
+    C: Codec,
+    R: AccessHierarchy + Eq + Display,
+    Gt: Eq,
+{
+    type Output = A::Output;
+
+    fn adapt(&self, gate: CookieGate<C, R, Gt>) -> Self::Output {
+        A::adapt(self, gate)
+    }
 }
 
 /// Outcome of evaluating a cookie gate token independent of any HTTP framework.
