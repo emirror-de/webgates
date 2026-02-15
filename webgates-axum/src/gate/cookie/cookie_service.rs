@@ -185,9 +185,7 @@ where
                 registered_claims,
             } => {
                 #[cfg(feature = "audit-logging")]
-                {
-                    audit::authorized(&account.account_id, None);
-                }
+                audit::authorized(&account.account_id, None);
                 req.extensions_mut().insert(account);
                 req.extensions_mut().insert(registered_claims);
                 let inner = self.inner.call(req);
@@ -195,30 +193,22 @@ where
             }
             CookieEvaluation::DenyAllPolicy => {
                 #[cfg(feature = "audit-logging")]
-                {
-                    audit::denied(None, "policy_denies_all");
-                }
+                audit::denied(None, "policy_denies_all");
                 unauthorized_future
             }
             CookieEvaluation::MissingToken => {
                 #[cfg(feature = "audit-logging")]
-                {
-                    audit::denied(None, "missing_cookie");
-                }
+                audit::denied(None, "missing_cookie");
                 unauthorized_future
             }
             CookieEvaluation::InvalidToken => {
                 #[cfg(feature = "audit-logging")]
-                {
-                    audit::jwt_invalid_token("validation_failed");
-                }
+                audit::jwt_invalid_token("validation_failed");
                 unauthorized_future
             }
             CookieEvaluation::InvalidIssuer { expected, actual } => {
                 #[cfg(feature = "audit-logging")]
-                {
-                    audit::jwt_invalid_issuer(&expected, &actual);
-                }
+                audit::jwt_invalid_issuer(&expected, &actual);
                 warn!(
                     "JWT issuer validation failed. Expected: '{}', Actual: '{}'",
                     expected, actual
@@ -229,9 +219,7 @@ where
                 #[cfg(not(feature = "audit-logging"))]
                 let _ = account_id;
                 #[cfg(feature = "audit-logging")]
-                {
-                    audit::denied(Some(&account_id), "policy_denied");
-                }
+                audit::denied(Some(&account_id), "policy_denied");
                 unauthorized_future
             }
         }
