@@ -11,11 +11,18 @@ If you need Axum middleware and route handlers, depend on `webgates-axum`. Repos
 
 ## Install
 
-Core only:
+Core only (no server features):
 
 ```toml
 [dependencies]
-webgates = { version = "0.1" }
+webgates = "0.1"
+```
+
+Server-enabled (runtime, Gate builders, codecs — opt-in):
+
+```toml
+[dependencies]
+webgates = { version = "0.1", features = ["server"] }
 ```
 
 Minimum supported Rust version: 1.88.
@@ -35,6 +42,8 @@ Minimum supported Rust version: 1.88.
   - `accounts`, `roles`, `groups`, `permissions`, credential hashing (Argon2), deterministic permission IDs, collision validation helpers.
 
 ## Quick start (framework-agnostic gate configuration)
+
+Note: The example below uses server-oriented APIs (`Gate`, `codecs`) that are feature-gated. Enable the `server` feature in your Cargo.toml (see the Install section) when using these pieces.
 
 ```rust
 use std::sync::Arc;
@@ -56,12 +65,12 @@ Adapt this gate in your framework by implementing the adapter traits in `gate::c
 
 ## Features
 
-- `default = ["server"]`
-- `server`: brings tokio, serde_json, subtle, tracing, etc.
+- `default = []` (no features enabled by default)
+- `server`: opt-in feature that brings runtime and server-oriented dependencies (tokio, cookie, serde_json, subtle, tracing, oauth2, argon2, etc.). Required for `Gate`, `codecs`, and other server integrations.
 - `audit-logging`: structured audit events (`tracing`)
 - `prometheus`: metrics for audit (implies `audit-logging`)
-- `insecure-fast-hash`: faster Argon2 for development only
-- `wasm`: build core types for WASM (no server deps)
+- `insecure-fast-hash`: faster Argon2 configuration intended for development only
+- `wasm`: build core types for WASM (omits server dependencies)
 
 ## Security checklist
 

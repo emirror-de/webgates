@@ -22,33 +22,46 @@ Feature highlights (available across the workspace):
 - In-memory and optional database-backed repositories (SeaORM, SurrealDB)
 - Feature-gated audit logging and Prometheus metrics
 
+Note on feature defaults:
+- Crates in this workspace intentionally ship with no enabled default features. Enable the specific features you need (for example, enable the `server` feature on `webgates` to pull in runtime- and HTTP-related modules such as `gate`, `codecs`, and `cookie_template`). This keeps dependencies minimal when you only need core domain types.
+
 ## Install
 
-The workspace crates are intended to be consumed depending on the use case and required features. The most common usage is to depend on the Axum integration crate which re-exports the core APIs when appropriate:
+Pick only the crates and features you need. Crates are split by concern so that runtime and HTTP dependencies are opt-in.
 
-```toml
-[dependencies]
-axum = "0.8"
-tokio = { version = "1", features = ["full"] }
-serde = { version = "1", features = ["derive"] }
-webgates-axum = { version = "0.1" }
-```
-
-If you only need domain logic (no server integration), depend on the core crate:
-
+Core-only (domain types, no server/runtime dependencies):
 ```toml
 [dependencies]
 webgates = "0.1"
 ```
 
-Repository/backends are provided by the `webgates-repositories` crate and are feature-gated. Common optional features across the workspace:
-- `repo-surrealdb` — SurrealDB repositories
-- `repo-seaorm` — SeaORM repositories
-- `audit-logging` — structured audit events
-- `prometheus` — Prometheus metrics (depends on `audit-logging`)
-- `insecure-fast-hash` — development-only faster Argon2 preset
+Axum integration (recommended when you need middleware and route handlers):
+```toml
+[dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+webgates-axum = "0.1"
+```
 
-Note: Feature names and exact crate versions are listed in each crate's `Cargo.toml` and documentation on docs.rs.
+Server-enabled core (if you want `Gate` and the JWT codec from the core crate directly):
+```toml
+[dependencies]
+webgates = { version = "0.1", features = ["server"] }
+```
+
+Repository/backends and optional features:
+- Use `webgates-repositories` for persistence backends (in-memory, SeaORM, SurrealDB). Backend support is feature-gated in that crate.
+- Enable only the features you need to avoid pulling in large transitive dependencies.
+
+Common optional features across the workspace (examples):
+- `repo-surrealdb` — SurrealDB repositories (opt-in)
+- `repo-seaorm` — SeaORM repositories (opt-in)
+- `audit-logging` — structured audit events (`tracing`) (opt-in)
+- `prometheus` — Prometheus metrics (opt-in; depends on `audit-logging`)
+- `insecure-fast-hash` — development-only faster Argon2 preset (intended only for tests/dev)
+
+Note: Feature names and exact crate versions are listed in each crate's `Cargo.toml` and in the crate docs on docs.rs.
 
 ## Core concepts
 
@@ -98,9 +111,9 @@ JWT operations use the `rust_crypto` backend where applicable (see crate documen
 - License: MIT
 
 SurrealDB (BUSL-1.1) notice:
-- Enabling the optional feature that pulls in SurrealDB (`repo-surrealdb` / `storage-surrealdb`) includes SurrealDB which is licensed under the Business Source License 1.1 (BUSL). That license places restrictions on Production Use until the project's Change Date unless you obtain a commercial license or otherwise comply with the BUSL terms.
-- The SurrealDB feature is off by default. If you enable it for builds or distributions, ensure you comply with SurrealDB's BUSL terms and include required third-party notices.
-- For fully open-source distributions, prefer the in-memory or SeaORM-backed repositories.
+- Enabling the optional SurrealDB-backed repository feature (`repo-surrealdb`) pulls in SurrealDB, which is distributed under the Business Source License 1.1 (BUSL). That license may impose restrictions on Production Use until its Change Date. If you enable this feature for development, CI, or distribution, review SurrealDB's license terms and comply with any obligations (including required notices).
+- The SurrealDB-backed repositories are opt-in and off by default. Prefer in-memory or SeaORM-backed repositories for fully open-source deployments where BUSL implications are a concern.
+- When enabling `repo-surrealdb` in your project, document the choice in your release and ensure your legal/compliance process accepts the license terms.
 
 Subtle and other third-party license notices:
 - Some dependencies carry additional notices (see the repository `NOTICE` file when redistributing).

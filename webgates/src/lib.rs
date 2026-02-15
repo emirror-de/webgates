@@ -5,47 +5,79 @@
 /*!
 # webgates
 
-Domain models, codecs, hashing, and authorization logic for webgates.
-This crate is platform-agnostic and does **not** depend on any specific web
-framework. Gate configurations (cookie/bearer) live here; framework adapters
-(e.g., Axum middleware, route handlers, OAuth2 routing) are provided by the
-sibling `webgates-axum` crate.
+Core domain models, codecs, hashing, and authorization logic for the webgates
+project. This crate is platform-agnostic by design and exposes the types and
+services you need to build authentication and authorization layers (gates).
+Framework-specific adapters (for example, Axum middleware and route handlers)
+are provided by the sibling crate `webgates-axum`.
 
 ## What’s here
 
 - Accounts, roles, groups, and permissions domain types
 - Authorization policies and validation helpers
 - JWT codecs and registered claim types
-- Password hashing (Argon2) and credential verification
-- Result and error helpers for downstream libraries
-- Error taxonomy with user-friendly messaging
+- Password hashing (Argon2) and credential verification helpers
+- Result and error helpers and a user-friendly error taxonomy
 - Utilities for permission validation and deterministic hashing
 
-## What lives in `webgates-axum`
+## Feature gating and adapters
 
-- Axum adapters for the gates (tower layers)
-- OAuth2 flow helpers and route builders
-- Axum route handlers (login/logout)
-- HTTP cookie writer helpers
+Many server- and framework-oriented pieces in this crate are gated behind the
+optional `server` feature. The following modules require the `server` feature:
 
-Use this crate for gate configuration and domain logic, and `webgates-axum` to
-adapt them into Axum layers.
+- `gate` (Gate builders)
+- `codecs` (JWT codec implementations)
+- `authn`, `cookie_template`, `hashing`, `secrets`, `verification_result`
+- Integration error helpers and other runtime utilities
 
-## Quick start
+The crate intentionally ships with no default features enabled. Enable the
+`server` feature in your `Cargo.toml` to pull in runtime and server-facing
+dependencies when you need them (for example, when creating Gate builders or
+using the provided JWT codecs). If you only need the domain types (accounts,
+roles, groups, permissions) and zero runtime dependencies, omit the `server`
+feature.
+
+If you plan to use Axum adapters (middleware, route handlers, OAuth helpers),
+depend on `webgates-axum` which re-exports and adapts the core APIs into Axum
+tower layers.
+
+## Quick start (feature-aware)
+
+The short example below shows core usage. Note the `server` feature is required
+for `Gate` and the `codecs` module — enable it in your `Cargo.toml` when using
+those APIs.
 
 ```rust
 use webgates::accounts::Account;
-use webgates::authz::{AccessPolicy, AuthorizationService};
-use webgates::permissions::Permissions;
+use webgates::authz::AccessPolicy;
 use webgates::prelude::{Group, Role};
 
-let account = Account::new("user@example.com", &[Role::User], &[Group::new("team")])
-    .with_permissions(Permissions::from_iter(["read:api"]));
+// The `codecs` module and `Gate` are feature-gated behind `server`.
+// The following example requires `features = ["server"]` for this crate.
+#[cfg(feature = "server")]
+{
+    use std::sync::Arc;
+    use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
+    use webgates::gate::Gate;
 
-let policy = AccessPolicy::<Role, Group>::require_permission("read:api");
-let authz = AuthorizationService::new(policy);
-assert!(authz.is_authorized(&account));
+    type AppClaims = JwtClaims<Account<Role, Group>>;
+    let codec = Arc::new(JsonWebToken::<AppClaims>::default());
+
+    let gate = Gate::cookie::<_, Role, Group>("my-app", Arc::clone(&codec))
+        .require_login() // baseline role + supervisors
+        .with_policy(AccessPolicy::require_permission("admin:read"));
+}
 ```
+
+Adapt this crate into your web framework with the adapters from `webgates-axum`,
+or implement your own thin adapter if you integrate with a different framework.
+
+## Notes
+
+- Prefer enabling only the features you need. The `server` feature pulls in
+  async/runtime and HTTP-related dependencies.
+- For repository-backed storage and optional persistence features, see the
+  separate `webgates-repositories` crate.
 */
 
 pub use cookie;

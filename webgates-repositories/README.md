@@ -25,11 +25,14 @@ MSRV: 1.88
 
 ## Feature flags
 
-- `default = ["server"]`
-- `server`: enables tokio/macro support and repository services
-- `repo-seaorm`: SeaORM-backed repositories (bring the DB driver via SeaORM features)
-- `repo-surrealdb`: SurrealDB-backed repositories
-- `audit-logging`: emit tracing events for repo operations
+- `default = []` (no default features enabled)
+- `repo-surrealdb`: SurrealDB-backed repository implementations (opt-in).
+- `repo-seaorm`: SeaORM-backed repository implementations (opt-in).
+- `audit-logging`: emit tracing events for repository operations (opt-in; integrates with `webgates` audit logging).
+
+Notes:
+- Enable only the features you need to avoid pulling in large transitive dependencies.
+- See `Cargo.toml` for the exact feature definitions and dependency implications.
 
 ## Quick starts
 
@@ -95,7 +98,7 @@ All repository APIs return `webgates_repositories::errors::Result<T>` with a ric
 
 ## Services
 
-`AccountInsertService` and `AccountDeleteService` (gated by `server`) provide convenience flows over the repository traits for provisioning/teardown.
+`AccountInsertService` and `AccountDeleteService` provide convenience flows over the repository traits for provisioning and teardown. These services are asynchronous and intended to be used on an async runtime (for example, Tokio). Enable the repository backend features (`repo-seaorm`, `repo-surrealdb`) as appropriate for your persistence layer.
 
 ## Audit logging
 

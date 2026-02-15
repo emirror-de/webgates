@@ -4,14 +4,31 @@ Axum integration for the `webgates` core. Provides middleware (cookie/bearer gat
 
 ## Install
 
+Pick only the crates and features you need. The workspace crates intentionally enable no default features — enable the specific features you require (for example, enable the `server` feature on `webgates` to access Gate builders and the JWT codec implementation).
+
+Core-only (no server features; minimal dependencies):
+
 ```toml
 [dependencies]
-webgates = { version = "0.1" }
-webgates-axum = { version = "0.1" }
-# Optional backends
-webgates-repositories = { version = "0.1", features = ["repo-seaorm"] }
-# or
-webgates-repositories = { version = "0.1", features = ["repo-surrealdb"] }
+webgates = "0.1"
+webgates-axum = "0.1"
+```
+
+Axum integration (recommended when you need middleware and route handlers):
+
+```toml
+[dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+webgates-axum = "0.1"
+```
+
+If you want to use the `Gate` builders and codecs provided by the `webgates` core crate directly, enable the core's `server` feature:
+
+```toml
+[dependencies]
+webgates = { version = "0.1", features = ["server"] }
 ```
 
 MSRV: 1.88
@@ -53,16 +70,17 @@ let app = Router::new()
 
 ## Features
 
-- `audit-logging`: propagate audit logging from core
-- `prometheus`: emit Prometheus metrics for auth events
-- Inherits core features transitively (`webgates`)
+- `audit-logging`: propagate audit logging from the core crate (opt-in)
+- `prometheus`: emit Prometheus metrics for auth events (opt-in; depends on `audit-logging`)
+- This crate depends on the `webgates` core crate. Feature flags are opt-in and the core crate itself has no default features; enable the core's `server` feature when you need server-facing APIs (Gate builders, codecs) from `webgates`.
 
 ## Repository backends
 
-Use `webgates-repositories` if you need persistence:
-- In-memory: zero config.
-- SeaORM (`repo-seaorm`): relational databases (add the DB driver via SeaORM features).
-- SurrealDB (`repo-surrealdb`): SurrealDB-backed (BUSL-1.1; comply with licensing).
+Use `webgates-repositories` if you need persistence. Backend features are opt-in — enable only the backends you need.
+
+- In-memory: zero config (good for tests and examples).
+- SeaORM (`repo-seaorm`): relational databases (bring the DB driver via SeaORM feature flags).
+- SurrealDB (`repo-surrealdb`): SurrealDB-backed (opt-in; SurrealDB is licensed under BUSL-1.1 — review and comply with the license before enabling in production).
 
 ## Security checklist
 
