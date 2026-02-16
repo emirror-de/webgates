@@ -64,11 +64,100 @@ jobs:
                   # Core crate (all features)
                   cargo clippy -p webgates --all-targets --all-features -- -D warnings
                   # Core crate (wasm only; no server deps)
-                  cargo clippy -p webgates --all-targets --no-default-features --features wasm -- -D warnings
+                  cargo clippy -p webgates --all-targets --features wasm -- -D warnings
                   # Repository crate (all repo/backend features)
                   cargo clippy -p webgates-repositories --all-targets --all-features -- -D warnings
                   # Axum integration crate
                   cargo clippy -p webgates-axum --all-targets --all-features -- -D warnings
+
+    feature-matrix:
+        name: Feature matrix tests (per-crate, per-feature + all-features)
+        needs: [clippy]
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    # webgates crate: default, per-feature, and all-features
+                    - pkg: webgates
+                      cmd: cargo test -p webgates
+                      desc: webgates-default
+                    - pkg: webgates
+                      cmd: cargo test -p webgates --all-features
+                      desc: webgates-all-features
+                    - pkg: webgates
+                      cmd: cargo test -p webgates --features wasm
+                      desc: webgates-wasm
+                    - pkg: webgates
+                      cmd: cargo test -p webgates --features server
+                      desc: webgates-server
+                    - pkg: webgates
+                      cmd: cargo test -p webgates --features insecure-fast-hash
+                      desc: webgates-insecure-fast-hash
+                    - pkg: webgates
+                      cmd: cargo test -p webgates --features audit-logging
+                      desc: webgates-audit-logging
+                    - pkg: webgates
+                      cmd: cargo test -p webgates --features prometheus
+                      desc: webgates-prometheus
+                    - pkg: webgates
+                      cmd: cargo test -p webgates --features repo-surrealdb
+                      desc: webgates-repo-surrealdb
+                    - pkg: webgates
+                      cmd: cargo test -p webgates --features repo-seaorm
+                      desc: webgates-repo-seaorm
+
+                    # webgates-repositories crate: default, per-feature, and all-features
+                    - pkg: webgates-repositories
+                      cmd: cargo test -p webgates-repositories
+                      desc: repositories-default
+                    - pkg: webgates-repositories
+                      cmd: cargo test -p webgates-repositories --all-features
+                      desc: repositories-all-features
+                    - pkg: webgates-repositories
+                      cmd: cargo test -p webgates-repositories --features repo-surrealdb
+                      desc: repositories-repo-surrealdb
+                    - pkg: webgates-repositories
+                      cmd: cargo test -p webgates-repositories --features repo-seaorm
+                      desc: repositories-repo-seaorm
+
+                    # webgates-axum crate: default and all-features
+                    - pkg: webgates-axum
+                      cmd: cargo test -p webgates-axum
+                      desc: axum-default
+                    - pkg: webgates-axum
+                      cmd: cargo test -p webgates-axum --all-features
+                      desc: axum-all-features
+
+                    # Workspace-level checks: all-features together
+                    - pkg: workspace
+                      cmd: cargo test --workspace --all-features
+                      desc: workspace-all-features
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install Rust (stable)
+              uses: dtolnay/rust-toolchain@stable
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: Rust version
+              run: |
+                  rustc --version
+                  cargo --version
+            - name: Run matrix item
+              run: |
+                  echo "Running: ${{ matrix.desc }}"
+                  echo "Command: ${{ matrix.cmd }}"
+                  eval "${{ matrix.cmd }}"
 
     test-core:
         name: Core test matrix
@@ -82,7 +171,7 @@ jobs:
                       cmd: cargo test --workspace
 
                     - name: wasm
-                      cmd: cargo test -p webgates --no-default-features --features wasm
+                      cmd: cargo test -p webgates --features wasm
 
                     - name: insecure_fast_hash
                       cmd: cargo test -p webgates --features insecure-fast-hash
