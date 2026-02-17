@@ -80,6 +80,7 @@ or implement your own thin adapter if you integrate with a different framework.
   separate `webgates-repositories` crate.
 */
 
+#[cfg(feature = "server")]
 pub use cookie;
 pub use jsonwebtoken;
 pub use uuid;

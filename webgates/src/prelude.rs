@@ -4,7 +4,9 @@
 //! For axum integration, use the `webgates-axum` crate.
 
 pub use crate::accounts::Account;
+#[cfg(feature = "server")]
 pub use crate::authz::AccessPolicy;
+#[cfg(feature = "server")]
 pub use crate::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
 #[cfg(feature = "server")]
 pub use crate::cookie_template::CookieTemplate;
