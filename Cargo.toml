@@ -38,8 +38,6 @@ subtle = ">=2.6.1"
 surrealdb = { version = "2", features = ["kv-mem"] }
 thiserror = "2"
 tokio = { version = "1", default-features = false }
-tower = { version = "0.5", features = ["limit", "util", "timeout", "buffer", "load-shed"] }
-tower-http = { version = "0.6", features = ["trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["std", "env-filter"] }
 uuid = { version = "1" }
