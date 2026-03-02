@@ -13,7 +13,7 @@ name = "consumer_node"
 path = "src/bin/consumer_node.rs"
 
 [dependencies]
-axum = { workspace = true }
+axum = "0.8"
 chrono = { workspace = true }
 dotenvy = { workspace = true }
 roaring = { workspace = true }

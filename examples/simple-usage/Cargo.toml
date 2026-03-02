@@ -5,8 +5,8 @@ edition = "2024"
 license = "MIT"
 
 [dependencies]
-axum = { workspace = true }
-axum-extra = { workspace = true }
+axum = "0.8"
+axum-extra = "0.12.5"
 chrono = { workspace = true }
 serde = { workspace = true }
 tokio = { workspace = true }

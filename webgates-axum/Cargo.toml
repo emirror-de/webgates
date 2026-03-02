@@ -39,8 +39,6 @@ uuid = { workspace = true, features = ["serde", "v7"] }
 webgates = { path = "../webgates", features = ["server"] }
 
 [dev-dependencies]
-axum = { workspace = true }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+axum = "0.8"
 tokio-test = "0.4.4"
-tower = { workspace = true }
 webgates-repositories = { path = "../webgates-repositories" }
