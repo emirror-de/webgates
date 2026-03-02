@@ -18,8 +18,8 @@ audit-logging = ["webgates/audit-logging"]
 prometheus = ["audit-logging", "webgates/prometheus", "dep:prometheus"]
 
 [dependencies]
-axum = { workspace = true }
-axum-extra = { workspace = true }
+axum = "0.8"
+axum-extra = { version = "0.12", features = ["cookie"] }
 chrono = { workspace = true }
 cookie = { workspace = true }
 http = "1"
