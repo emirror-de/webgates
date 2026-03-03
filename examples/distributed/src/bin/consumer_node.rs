@@ -1,7 +1,7 @@
 use distributed::{ApiPermission, AppPermissions, PermissionHelper, RepositoryPermission};
 
 use webgates::prelude::*;
-use webgates_axum::gate::Gate;
+use webgates_axum::prelude::*;
 
 use std::sync::Arc;
 

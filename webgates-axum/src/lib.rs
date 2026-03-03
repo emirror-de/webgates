@@ -42,14 +42,8 @@ let app = Router::<()>::new()
 /// Re-export external crates that are part of the public API surface.
 pub use axum;
 pub use axum_extra;
-pub use cookie;
-pub use jsonwebtoken;
-pub use uuid;
 
-/// Prelude for convenient imports (core prelude + Gate).
-pub mod prelude {
-    pub use crate::gate::Gate;
-}
+pub mod prelude;
 
 /// Gate builders and middleware for Axum.
 pub mod gate;
