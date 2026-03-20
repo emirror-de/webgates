@@ -22,6 +22,10 @@ use webgates_core::errors_core::Result as CoreResult;
 use webgates_core::verification_result::VerificationResult;
 use webgates_secrets::Secret;
 
+/// SurrealDB persistence record for a stored account secret.
+///
+/// This type is the serialized adapter-layer representation used by
+/// `webgates-repositories` when storing secrets in SurrealDB.
 #[derive(Clone, Debug, Serialize, Deserialize, SurrealValue)]
 pub struct SecretRecord {
     account_id: Uuid,

@@ -1,3 +1,9 @@
+//! SurrealDB-backed account repository adapter.
+//!
+//! This module defines the SurrealDB persistence shapes used for accounts and
+//! the conversions between persisted records and the domain-level `Account`
+//! type used by the repository boundary.
+
 use super::SurrealDbRepository;
 use crate::TableName;
 use crate::account_repository::AccountRepository;
@@ -12,6 +18,10 @@ use webgates_core::accounts::Account;
 use webgates_core::authz::AccessHierarchy;
 use webgates_core::permissions::{PermissionId, Permissions};
 
+/// SurrealDB persistence record for a stored account.
+///
+/// This type captures the serialized account payload as it is written to and
+/// read from the SurrealDB account table.
 #[derive(Clone, Debug, Serialize, Deserialize, SurrealValue)]
 pub struct SurrealAccountRecord {
     account_id: Uuid,
@@ -21,6 +31,10 @@ pub struct SurrealAccountRecord {
     permissions: PersistedPermissions,
 }
 
+/// SurrealDB-friendly representation of an account's granted permissions.
+///
+/// Permission ids are stored as signed 64-bit integers to match the persisted
+/// SurrealDB representation used by this repository adapter.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, SurrealValue)]
 pub struct PersistedPermissions {
     permission_ids: Vec<i64>,

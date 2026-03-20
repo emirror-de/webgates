@@ -18,10 +18,10 @@ use webgates_secrets::hashing::{
     errors::{HashingError, HashingOperation},
 };
 
-mod account;
-mod group;
-mod permission_mapping;
-mod secret;
+pub mod account;
+pub mod group;
+pub mod permission_mapping;
+pub mod secret;
 
 /// Scope configuration (namespace, database, table names) used by `SurrealDbRepository`.
 ///

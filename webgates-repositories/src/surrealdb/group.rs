@@ -1,3 +1,8 @@
+//! SurrealDB-backed group repository adapter.
+//!
+//! This module defines the SurrealDB persistence shape for groups and the
+//! adapter implementation of `GroupRepository` for `SurrealDbRepository`.
+
 use super::SurrealDbRepository;
 use crate::TableName;
 use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result as RepoResult};
@@ -8,6 +13,11 @@ use surrealdb::Connection;
 use surrealdb_types::{RecordId, SurrealValue};
 use webgates_core::groups::GroupEntity;
 
+/// SurrealDB persistence record for a stored group.
+///
+/// This adapter keeps the serialized group payload together with its stable
+/// `group_id` record key so other crates can share the same persistence shape
+/// when reading from or writing to SurrealDB.
 #[derive(Clone, Debug, Serialize, Deserialize, SurrealValue)]
 pub struct SurrealGroupRecord {
     group_id: String,

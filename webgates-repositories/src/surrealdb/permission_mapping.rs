@@ -1,3 +1,9 @@
+//! SurrealDB-backed permission mapping repository.
+//!
+//! This module keeps the SurrealDB persistence shape for `PermissionMapping`
+//! values at the repository adapter boundary and provides the repository
+//! operations used to store, query, and remove permission mappings.
+
 use super::SurrealDbRepository;
 use crate::TableName;
 use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result as RepoResult};
