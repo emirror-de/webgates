@@ -40,8 +40,8 @@ pub struct PersistedPermissions {
     permission_ids: Vec<i64>,
 }
 
-impl PersistedPermissions {
-    fn from_permissions(permissions: &Permissions) -> Self {
+impl From<&Permissions> for PersistedPermissions {
+    fn from(permissions: &Permissions) -> Self {
         let permission_ids = permissions
             .iter()
             .map(|permission_id| permission_id as i64)
@@ -49,9 +49,11 @@ impl PersistedPermissions {
 
         Self { permission_ids }
     }
+}
 
-    fn into_permissions(self) -> Permissions {
-        self.permission_ids.into_iter().fold(
+impl From<PersistedPermissions> for Permissions {
+    fn from(value: PersistedPermissions) -> Self {
+        value.permission_ids.into_iter().fold(
             Permissions::new(),
             |mut permissions, permission_id| {
                 permissions.grant(PermissionId::from_u64(permission_id as u64));
@@ -99,56 +101,92 @@ where
     })
 }
 
-fn account_to_record<R, G>(account: Account<R, G>, table_name: &str) -> Result<SurrealAccountRecord>
+impl<R, G> TryFrom<Account<R, G>> for SurrealAccountRecord
 where
     R: AccessHierarchy + Eq + Serialize,
     G: Eq + Clone + Serialize,
 {
-    let record_id = account.account_id.to_string();
-    let roles = account
-        .roles
-        .into_iter()
-        .map(|role| serialize_adapter_value(role, "roles", table_name, &record_id))
-        .collect::<Result<Vec<_>>>()?;
-    let groups = account
-        .groups
-        .into_iter()
-        .map(|group| serialize_adapter_value(group, "groups", table_name, &record_id))
-        .collect::<Result<Vec<_>>>()?;
+    type Error = RepoError;
 
-    Ok(SurrealAccountRecord {
-        account_id: account.account_id,
-        user_id: account.user_id,
-        roles,
-        groups,
-        permissions: PersistedPermissions::from_permissions(&account.permissions),
-    })
+    fn try_from(account: Account<R, G>) -> Result<Self> {
+        let record_id = account.account_id.to_string();
+        let roles = account
+            .roles
+            .into_iter()
+            .map(|role| {
+                serialize_adapter_value(
+                    role,
+                    "roles",
+                    &TableName::WebgatesAccounts.to_string(),
+                    &record_id,
+                )
+            })
+            .collect::<Result<Vec<_>>>()?;
+        let groups = account
+            .groups
+            .into_iter()
+            .map(|group| {
+                serialize_adapter_value(
+                    group,
+                    "groups",
+                    &TableName::WebgatesAccounts.to_string(),
+                    &record_id,
+                )
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(Self {
+            account_id: account.account_id,
+            user_id: account.user_id,
+            roles,
+            groups,
+            permissions: PersistedPermissions::from(&account.permissions),
+        })
+    }
 }
 
-fn record_to_account<R, G>(record: SurrealAccountRecord, table_name: &str) -> Result<Account<R, G>>
+impl<R, G> TryFrom<SurrealAccountRecord> for Account<R, G>
 where
     R: AccessHierarchy + Eq + DeserializeOwned,
     G: Eq + Clone + DeserializeOwned,
 {
-    let record_id = record.account_id.to_string();
-    let roles = record
-        .roles
-        .into_iter()
-        .map(|role| deserialize_adapter_value(role, "roles", table_name, &record_id))
-        .collect::<Result<Vec<_>>>()?;
-    let groups = record
-        .groups
-        .into_iter()
-        .map(|group| deserialize_adapter_value(group, "groups", table_name, &record_id))
-        .collect::<Result<Vec<_>>>()?;
+    type Error = RepoError;
 
-    Ok(Account {
-        account_id: record.account_id,
-        user_id: record.user_id,
-        roles,
-        groups,
-        permissions: record.permissions.into_permissions(),
-    })
+    fn try_from(record: SurrealAccountRecord) -> Result<Self> {
+        let record_id = record.account_id.to_string();
+        let roles = record
+            .roles
+            .into_iter()
+            .map(|role| {
+                deserialize_adapter_value(
+                    role,
+                    "roles",
+                    &TableName::WebgatesAccounts.to_string(),
+                    &record_id,
+                )
+            })
+            .collect::<Result<Vec<_>>>()?;
+        let groups = record
+            .groups
+            .into_iter()
+            .map(|group| {
+                deserialize_adapter_value(
+                    group,
+                    "groups",
+                    &TableName::WebgatesAccounts.to_string(),
+                    &record_id,
+                )
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(Self {
+            account_id: record.account_id,
+            user_id: record.user_id,
+            roles,
+            groups,
+            permissions: Permissions::from(record.permissions),
+        })
+    }
 }
 
 impl<R, G, S> AccountRepository<R, G> for SurrealDbRepository<S>
@@ -212,13 +250,7 @@ where
                     ))
                 })?;
 
-            match account {
-                Some(account) => Ok(Some(record_to_account(
-                    account,
-                    &self.scope_settings.accounts,
-                )?)),
-                None => Ok(None),
-            }
+            account.map(Account::try_from).transpose()
         };
         res
     }
@@ -238,13 +270,7 @@ where
                     ))
                 })?;
 
-            match db_account {
-                Some(account) => Ok(Some(record_to_account(
-                    account,
-                    &self.scope_settings.accounts,
-                )?)),
-                None => Ok(None),
-            }
+            db_account.map(Account::try_from).transpose()
         };
         res
     }
@@ -253,7 +279,7 @@ where
         let res: Result<_> = {
             self.use_ns_db().await?;
 
-            let record = account_to_record(account, &self.scope_settings.accounts)?;
+            let record = SurrealAccountRecord::try_from(account)?;
             let account_id = record.account_id;
             let user_id = record.user_id.clone();
 
@@ -319,13 +345,7 @@ where
                     ))
                 })?;
 
-            match db_account {
-                Some(account) => Ok(Some(record_to_account(
-                    account,
-                    &self.scope_settings.accounts,
-                )?)),
-                None => Ok(None),
-            }
+            db_account.map(Account::try_from).transpose()
         };
         res
     }
@@ -345,13 +365,7 @@ where
                     ))
                 })?;
 
-            match db_account {
-                Some(account) => Ok(Some(record_to_account(
-                    account,
-                    &self.scope_settings.accounts,
-                )?)),
-                None => Ok(None),
-            }
+            db_account.map(Account::try_from).transpose()
         };
         res
     }
@@ -360,7 +374,7 @@ where
         let res: Result<_> = {
             self.use_ns_db().await?;
 
-            let record = account_to_record(account, &self.scope_settings.accounts)?;
+            let record = SurrealAccountRecord::try_from(account)?;
             let record_account_id = record.account_id;
             let record_id = account_record_id(&self.scope_settings.accounts, record_account_id);
             let db_account: Option<SurrealAccountRecord> = self
@@ -377,13 +391,7 @@ where
                     ))
                 })?;
 
-            match db_account {
-                Some(account) => Ok(Some(record_to_account(
-                    account,
-                    &self.scope_settings.accounts,
-                )?)),
-                None => Ok(None),
-            }
+            db_account.map(Account::try_from).transpose()
         };
         res
     }
@@ -405,10 +413,7 @@ where
                     ))
                 })?;
 
-            db_accounts
-                .into_iter()
-                .map(|account| record_to_account(account, &self.scope_settings.accounts))
-                .collect::<Result<Vec<_>>>()
+            db_accounts.into_iter().map(Account::try_from).collect()
         };
         res
     }
@@ -423,7 +428,7 @@ fn account_record_id(table_name: &str, account_id: Uuid) -> RecordId {
 
 #[cfg(test)]
 mod tests {
-    use super::{PersistedPermissions, SurrealAccountRecord, account_to_record, record_to_account};
+    use super::{PersistedPermissions, SurrealAccountRecord};
     use serde::{Deserialize, Serialize};
     use serde_json::json;
     use uuid::Uuid;
@@ -451,8 +456,8 @@ mod tests {
             .with("write:account")
             .build();
 
-        let persisted = PersistedPermissions::from_permissions(&permissions);
-        let restored = persisted.into_permissions();
+        let persisted = PersistedPermissions::from(&permissions);
+        let restored = Permissions::from(persisted);
 
         assert!(restored.has("read:account"));
         assert!(restored.has("write:account"));
@@ -472,7 +477,7 @@ mod tests {
                 .map(|permission_id| permission_id as i64)
                 .collect(),
         };
-        let restored = persisted.into_permissions();
+        let restored = Permissions::from(persisted);
 
         assert!(restored.has("read:account"));
         assert!(restored.has("write:account"));
@@ -490,12 +495,11 @@ mod tests {
         account.grant_permission("read:account");
         account.grant_permission("write:account");
 
-        let record = account_to_record(account.clone(), "webgates_accounts").unwrap();
+        let record = SurrealAccountRecord::try_from(account.clone()).unwrap();
         assert_eq!(record.roles, vec![json!("Admin")]);
         assert_eq!(record.groups, vec![json!("engineering")]);
 
-        let restored =
-            record_to_account::<StructuredRole, Group>(record, "webgates_accounts").unwrap();
+        let restored = Account::<StructuredRole, Group>::try_from(record).unwrap();
 
         assert_eq!(restored, account);
     }
@@ -512,7 +516,7 @@ mod tests {
             },
         };
 
-        let error = record_to_account::<StructuredRole, Group>(record, "webgates_accounts")
+        let error = Account::<StructuredRole, Group>::try_from(record)
             .expect_err("invalid role payload should fail");
 
         assert!(
@@ -533,8 +537,8 @@ mod tests {
         account.account_id = Uuid::now_v7();
         account.grant_permission("read:account");
 
-        let record = account_to_record(account.clone(), "webgates_accounts").unwrap();
-        let restored = record_to_account::<Role, Group>(record, "webgates_accounts").unwrap();
+        let record = SurrealAccountRecord::try_from(account.clone()).unwrap();
+        let restored = Account::<Role, Group>::try_from(record).unwrap();
 
         assert_eq!(restored, account);
     }
