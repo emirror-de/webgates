@@ -32,12 +32,16 @@ pub struct SecretRecord {
     secret: String,
 }
 
+impl SecretRecord {
+    /// Creates a new SurrealDB secret persistence record.
+    pub fn new(account_id: Uuid, secret: String) -> Self {
+        Self { account_id, secret }
+    }
+}
+
 impl From<Secret> for SecretRecord {
     fn from(value: Secret) -> Self {
-        Self {
-            account_id: value.account_id,
-            secret: value.secret,
-        }
+        Self::new(value.account_id, value.secret)
     }
 }
 

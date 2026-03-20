@@ -31,6 +31,25 @@ pub struct SurrealAccountRecord {
     permissions: PersistedPermissions,
 }
 
+impl SurrealAccountRecord {
+    /// Creates a new SurrealDB account persistence record.
+    pub fn new(
+        account_id: Uuid,
+        user_id: String,
+        roles: Vec<Value>,
+        groups: Vec<Value>,
+        permissions: PersistedPermissions,
+    ) -> Self {
+        Self {
+            account_id,
+            user_id,
+            roles,
+            groups,
+            permissions,
+        }
+    }
+}
+
 /// SurrealDB-friendly representation of an account's granted permissions.
 ///
 /// Permission ids are stored as signed 64-bit integers to match the persisted
@@ -135,13 +154,13 @@ where
             })
             .collect::<Result<Vec<_>>>()?;
 
-        Ok(Self {
-            account_id: account.account_id,
-            user_id: account.user_id,
+        Ok(Self::new(
+            account.account_id,
+            account.user_id,
             roles,
             groups,
-            permissions: PersistedPermissions::from(&account.permissions),
-        })
+            PersistedPermissions::from(&account.permissions),
+        ))
     }
 }
 

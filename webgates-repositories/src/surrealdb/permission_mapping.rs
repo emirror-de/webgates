@@ -37,8 +37,17 @@ pub struct SurrealPermissionMapping {
 }
 
 impl SurrealPermissionMapping {
+    /// Build a SurrealPermissionMapping from explicit persisted field values.
+    pub fn new(id: RecordId, normalized_string: String, permission_id: String) -> Self {
+        Self {
+            id,
+            normalized_string,
+            permission_id,
+        }
+    }
+
     /// Build a SurrealPermissionMapping with a concrete RecordId for the given table.
-    fn with_record_id(table: String, m: &PermissionMapping) -> Self {
+    pub fn with_record_id(table: String, m: &PermissionMapping) -> Self {
         Self {
             id: RecordId::new(table.clone(), m.permission_id().as_u64().to_string()),
             normalized_string: m.normalized_string().to_string(),

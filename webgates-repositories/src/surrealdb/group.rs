@@ -24,6 +24,13 @@ pub struct SurrealGroupRecord {
     payload: Value,
 }
 
+impl SurrealGroupRecord {
+    /// Creates a new SurrealDB group persistence record.
+    pub fn new(group_id: String, payload: Value) -> Self {
+        Self { group_id, payload }
+    }
+}
+
 fn group_to_record<T>(group: T, table_name: &str) -> RepoResult<SurrealGroupRecord>
 where
     T: Serialize + GroupEntity,
@@ -38,7 +45,7 @@ where
         ))
     })?;
 
-    Ok(SurrealGroupRecord { group_id, payload })
+    Ok(SurrealGroupRecord::new(group_id, payload))
 }
 
 fn record_to_group<T>(record: SurrealGroupRecord, table_name: &str) -> RepoResult<T>
