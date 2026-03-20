@@ -13,7 +13,7 @@ use webgates_core::authz::AccessHierarchy;
 use webgates_core::permissions::{PermissionId, Permissions};
 
 #[derive(Clone, Debug, Serialize, Deserialize, SurrealValue)]
-struct SurrealAccountRecord {
+pub struct SurrealAccountRecord {
     account_id: Uuid,
     user_id: String,
     roles: Vec<Value>,
@@ -22,7 +22,7 @@ struct SurrealAccountRecord {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, SurrealValue)]
-struct PersistedPermissions {
+pub struct PersistedPermissions {
     permission_ids: Vec<i64>,
 }
 

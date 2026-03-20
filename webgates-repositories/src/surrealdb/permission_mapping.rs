@@ -22,7 +22,7 @@ use webgates_core::permissions::{PermissionId, PermissionMapping};
 /// (stringified). The `normalized_string` is stored as a regular field and
 /// can be queried when reversing from human-readable permission names to ids.
 #[derive(Clone, Debug, Serialize, Deserialize, SurrealValue)]
-struct SurrealPermissionMapping {
+pub struct SurrealPermissionMapping {
     /// Explicit record id allows creating multiple records in a single
     /// CREATE/UPSERT ... CONTENT query by providing per-item record keys.
     id: RecordId,

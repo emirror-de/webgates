@@ -23,7 +23,7 @@ use webgates_core::verification_result::VerificationResult;
 use webgates_secrets::Secret;
 
 #[derive(Clone, Debug, Serialize, Deserialize, SurrealValue)]
-struct SecretRecord {
+pub struct SecretRecord {
     account_id: Uuid,
     secret: String,
 }

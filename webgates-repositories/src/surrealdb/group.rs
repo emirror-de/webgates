@@ -9,7 +9,7 @@ use surrealdb_types::{RecordId, SurrealValue};
 use webgates_core::groups::GroupEntity;
 
 #[derive(Clone, Debug, Serialize, Deserialize, SurrealValue)]
-struct SurrealGroupRecord {
+pub struct SurrealGroupRecord {
     group_id: String,
     payload: Value,
 }
