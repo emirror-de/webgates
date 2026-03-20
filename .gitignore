@@ -4,6 +4,7 @@ result*
 .direnv
 
 .rules
+.ai-workspace
 
 # Ignored secrets within examples
 examples/oauth2-github/.env
