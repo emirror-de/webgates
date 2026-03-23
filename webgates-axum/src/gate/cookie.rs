@@ -20,8 +20,12 @@
 //! ```rust
 //! # use axum::{routing::get, Router};
 //! # use std::sync::Arc;
-//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
-//! use webgates_axum::prelude::*;
+//! use webgates::accounts::Account;
+//! use webgates::authz::AccessPolicy;
+//! use webgates::groups::Group;
+//! use webgates::roles::Role;
+//! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
+//! use webgates_axum::gate::Gate;
 //! # async fn admin() {}
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin);
@@ -37,8 +41,11 @@
 //! # Optional user context (never blocks):
 //! ```rust
 //! use std::sync::Arc;
-//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
-//! use webgates_axum::prelude::*;
+//! use webgates::accounts::Account;
+//! use webgates::groups::Group;
+//! use webgates::roles::Role;
+//! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
+//! use webgates_axum::gate::Gate;
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt)
 //!     .allow_anonymous_with_optional_user(); // inserts Option<Account>, Option<RegisteredClaims>
@@ -47,8 +54,11 @@
 //! # Convenience for “any authenticated user”:
 //! ```rust
 //! use std::sync::Arc;
-//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
-//! use webgates_axum::prelude::*;
+//! use webgates::accounts::Account;
+//! use webgates::groups::Group;
+//! use webgates::roles::Role;
+//! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
+//! use webgates_axum::gate::Gate;
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt)
 //!     .require_login(); // baseline role + all supervisors
@@ -57,11 +67,15 @@
 //! # Cookie template configuration
 //! ```rust
 //! use std::sync::Arc;
-//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
-//! use webgates_axum::prelude::*;
+//! use webgates::accounts::Account;
+//! use webgates::groups::Group;
+//! use webgates::roles::Role;
+//! use webgates::cookie_template::CookieTemplate;
+//! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
+//! use webgates_axum::gate::Gate;
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt)
-//!     .configure_cookie_template(|tpl| {
+//!     .configure_cookie_template(|tpl: CookieTemplate| {
 //!         tpl.name("auth-token")
 //!            .persistent(cookie::time::Duration::hours(24))
 //!     })?;
@@ -171,10 +185,12 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use webgates::authz::AccessPolicy;
     /// # use webgates::accounts::Account;
+    /// # use webgates::authz::AccessPolicy;
+    /// # use webgates::groups::Group;
+    /// # use webgates::roles::Role;
     /// # use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
-    /// # use webgates::prelude::{Role, Group, Gate};
+    /// # use webgates::gate::Gate;
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     /// let gate = Gate::cookie("my-app", jwt_codec)
@@ -197,10 +213,13 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use webgates::authz::AccessPolicy;
     /// # use webgates::accounts::Account;
+    /// # use webgates::authz::AccessPolicy;
+    /// # use webgates::groups::Group;
+    /// # use webgates::roles::Role;
     /// # use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
-    /// # use webgates::prelude::{Role, Group, Gate, CookieTemplate};
+    /// # use webgates::gate::Gate;
+    /// # use webgates::cookie_template::CookieTemplate;
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     /// let cookie_template = CookieTemplate::recommended();
@@ -241,15 +260,18 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use webgates::authz::AccessPolicy;
     /// # use webgates::accounts::Account;
+    /// # use webgates::authz::AccessPolicy;
+    /// # use webgates::groups::Group;
+    /// # use webgates::roles::Role;
     /// # use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
-    /// # use webgates::prelude::{Role, Group, Gate, CookieTemplate};
+    /// # use webgates::gate::Gate;
+    /// # use webgates::cookie_template::CookieTemplate;
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     /// let gate = Gate::cookie("my-app", jwt_codec)
     ///     .with_policy(AccessPolicy::<Role, Group>::deny_all())
-    ///     .configure_cookie_template(|tpl| {
+    ///     .configure_cookie_template(|tpl: CookieTemplate| {
     ///         tpl.name("auth-token")
     ///            .persistent(cookie::time::Duration::hours(12))
     ///     });
@@ -327,10 +349,11 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use webgates::authz::AccessPolicy;
     /// # use webgates::accounts::Account;
-    /// # use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
-    /// # use webgates::prelude::{Role, Group, Gate};
+    /// # use webgates::groups::Group;
+    /// # use webgates::roles::Role;
+    /// # use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
+    /// # use webgates::gate::Gate;
     /// # use std::sync::Arc;
     /// let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     /// let gate = Gate::cookie::<_, Role, Group>("my-app", jwt_codec).require_login();
@@ -370,15 +393,17 @@ mod tests {
         assert!(!gate.policy.denies_all());
         assert!(gate.policy.has_requirements());
 
-        // Should have one role requirement for User with supervisor access
-        let role_requirements = gate.policy.role_requirements();
+        let (role_requirements, group_requirements, permission_requirements) =
+            gate.policy.clone().into_components();
         assert_eq!(role_requirements.len(), 1);
-        assert_eq!(role_requirements[0].role, Role::User);
-        assert!(role_requirements[0].allow_supervisor_access);
+        assert_eq!(group_requirements.len(), 0);
+        assert_eq!(permission_requirements.len(), 0);
 
-        // Should not have any group or permission requirements
-        assert!(gate.policy.group_requirements().is_empty());
-        assert!(gate.policy.permission_requirements().is_empty());
+        let (_, expected_groups, expected_permissions) =
+            AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::default())
+                .into_components();
+        assert_eq!(expected_groups.len(), 0);
+        assert_eq!(expected_permissions.len(), 0);
     }
 
     #[test]
@@ -387,13 +412,19 @@ mod tests {
         let custom_policy: AccessPolicy<Role, Group> = AccessPolicy::require_role(Role::Admin);
 
         let gate: CookieGate<_, Role, Group> =
-            Gate::cookie("test-app", jwt_codec).with_policy(custom_policy);
+            Gate::cookie("test-app", jwt_codec).with_policy(custom_policy.clone());
 
         assert!(!gate.policy.denies_all());
-        let role_requirements = gate.policy.role_requirements();
+
+        let (role_requirements, group_requirements, permission_requirements) =
+            gate.policy.clone().into_components();
         assert_eq!(role_requirements.len(), 1);
-        assert_eq!(role_requirements[0].role, Role::Admin);
-        assert!(!role_requirements[0].allow_supervisor_access);
+        assert_eq!(group_requirements.len(), 0);
+        assert_eq!(permission_requirements.len(), 0);
+
+        let (_, expected_groups, expected_permissions) = custom_policy.into_components();
+        assert_eq!(expected_groups.len(), 0);
+        assert_eq!(expected_permissions.len(), 0);
     }
 
     #[test]
@@ -429,17 +460,17 @@ mod tests {
         let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
         let gate: CookieGate<_, Role, Group> = Gate::cookie("test-app", jwt_codec).require_login();
 
-        // The policy should allow User role with supervisor access, which means
-        // it should allow User, Reporter, Moderator, and Admin roles
-        let (role_requirements, _, _) = gate.policy.into_components();
+        let (_, expected_groups, expected_permissions) =
+            AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::default())
+                .into_components();
+        assert_eq!(expected_groups.len(), 0);
+        assert_eq!(expected_permissions.len(), 0);
+
+        let (role_requirements, group_requirements, permission_requirements) =
+            gate.policy.clone().into_components();
         assert_eq!(role_requirements.len(), 1);
-
-        let requirement = &role_requirements[0];
-        assert_eq!(requirement.role, Role::User);
-        assert!(requirement.allow_supervisor_access);
-
-        // This effectively allows all roles in the hierarchy since User is the lowest
-        // and allow_supervisor_access is true
+        assert_eq!(group_requirements.len(), 0);
+        assert_eq!(permission_requirements.len(), 0);
     }
 
     #[test]

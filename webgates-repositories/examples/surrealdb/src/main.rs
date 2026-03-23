@@ -1,7 +1,10 @@
-use webgates::codecs::jwt::RegisteredClaims;
+use webgates::codecs::jsonwebtoken;
+use webgates::codecs::jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER as JWT_CRYPTO_PROVIDER;
+use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
+use webgates::cookie_template::CookieTemplate;
 use webgates::prelude::*;
 use webgates_axum::route_handlers;
-use webgates_repositories::services::AccountInsertService;
+use webgates_repositories::services::account_insert::AccountInsertService;
 use webgates_repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 
 use std::sync::Arc;
@@ -18,14 +21,16 @@ async fn main() {
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
+    let _ = JWT_CRYPTO_PROVIDER.install_default();
+
     dotenvy::dotenv().expect("Could not read .env file.");
     let shared_secret =
         dotenvy::var("webgates_SHARED_SECRET").expect("webgates_SHARED_SECRET env var not set.");
     let jwt_options = JsonWebTokenOptions {
-        enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
-        header: Some(webgates::jsonwebtoken::Header::default()),
-        validation: Some(webgates::jsonwebtoken::Validation::default()),
+        enc_key: jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        header: Some(jsonwebtoken::Header::default()),
+        validation: Some(jsonwebtoken::Validation::default()),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
@@ -74,7 +79,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted User.");
 
-    let cookie_template = webgates::cookie_template::CookieTemplate::recommended();
+    let cookie_template = CookieTemplate::recommended();
 
     let app = Router::new()
         .route(

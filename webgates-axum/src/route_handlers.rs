@@ -1,28 +1,41 @@
-//! Pre-built route handlers for authentication workflows.
+//! Axum route handlers for login and logout flows.
 //!
-//! This module provides ready-to-use handlers for common authentication operations:
-//! [`login`] for user authentication and JWT cookie creation, and [`logout`] for
-//! session termination. These handlers integrate with your storage backends and
-//! JWT configuration to provide secure authentication endpoints.
+//! This module exposes two direct handler functions:
+//! [`login`] and [`logout`].
 //!
-//! # Quick Setup
+//! The handlers are thin Axum adapters around the framework-agnostic services in
+//! `webgates`. They do not implement authentication logic themselves. Credential
+//! verification, account lookup, token creation, and logout semantics remain
+//! owned by the core crates.
+//!
+//! # Typical usage
+//!
+//! Mount your own HTTP routes and call these handlers from your Axum handlers so
+//! you can keep request parsing, state extraction, and response mapping explicit.
 //!
 //! ```rust
-//! use axum::{routing::post, Router, Json, extract::State};
-//! use webgates_axum::route_handlers::{login, logout};
-//! use webgates::prelude::{Role, Group, Credentials, Account};
-//! use webgates::codecs::jwt::{RegisteredClaims, JsonWebToken, JwtClaims};
-//! use webgates_repositories::memory::{MemorySecretRepository, MemoryAccountRepository};
-//! use axum_extra::extract::CookieJar;
 //! use std::sync::Arc;
+//!
+//! use axum::{Json, Router, extract::State, routing::post};
+//! use axum_extra::extract::CookieJar;
+//! use webgates::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
+//! use webgates::cookie_template::CookieTemplate;
+//! use webgates::accounts::Account;
+//! use webgates::credentials::Credentials;
+//! use webgates::groups::Group;
+//! use webgates::roles::Role;
+//! use webgates_axum::route_handlers::{login, logout};
+//! use webgates_repositories::memory::account::MemoryAccountRepository;
+//! use webgates_repositories::memory::secret::MemorySecretRepository;
 //!
 //! type AppJwtCodec = JsonWebToken<JwtClaims<Account<Role, Group>>>;
 //!
 //! #[derive(Clone)]
 //! struct AppState {
-//!     account_repo: Arc<webgates_repositories::memory::MemoryAccountRepository<Role, Group>>,
+//!     account_repo: Arc<MemoryAccountRepository<Role, Group>>,
 //!     secret_repo: Arc<MemorySecretRepository>,
 //!     jwt_codec: Arc<AppJwtCodec>,
+//!     cookie_template: CookieTemplate,
 //! }
 //!
 //! async fn login_handler(
@@ -30,56 +43,56 @@
 //!     cookie_jar: CookieJar,
 //!     Json(credentials): Json<Credentials<String>>,
 //! ) -> Result<CookieJar, axum::http::StatusCode> {
-//!     let claims = RegisteredClaims::new("my-app",
-//!         chrono::Utc::now().timestamp() as u64 + 3600); // 1 hour expiry
-//!
-//!     let cookie_template = webgates::cookie_template::CookieTemplate::recommended()
-//!         .name("auth-token")
-//!         .secure(true)
-//!         .http_only(true);
+//!     let claims = RegisteredClaims::new(
+//!         "my-app",
+//!         chrono::Utc::now().timestamp() as u64 + 3600,
+//!     );
 //!
 //!     login(
 //!         cookie_jar,
 //!         credentials,
 //!         claims,
-//!         state.secret_repo,
-//!         state.account_repo,
-//!         state.jwt_codec,
-//!         cookie_template,
-//!     ).await
+//!         Arc::clone(&state.secret_repo),
+//!         Arc::clone(&state.account_repo),
+//!         Arc::clone(&state.jwt_codec),
+//!         state.cookie_template.clone(),
+//!     )
+//!     .await
 //! }
 //!
-//! async fn logout_handler(cookie_jar: CookieJar) -> CookieJar {
-//!     let cookie_template = webgates::cookie_template::CookieTemplate::recommended().name("auth-token");
-//!     logout(cookie_jar, cookie_template).await
+//! async fn logout_handler(
+//!     State(state): State<AppState>,
+//!     cookie_jar: CookieJar,
+//! ) -> CookieJar {
+//!     logout(cookie_jar, state.cookie_template.clone()).await
 //! }
 //!
-//! // Instantiate repositories and JWT codec for the example
-//! let account_repo = Arc::new(webgates_repositories::memory::MemoryAccountRepository::<Role, Group>::default());
-//! let secret_repo = Arc::new(webgates_repositories::memory::MemorySecretRepository::new_with_argon2_hasher().unwrap());
-//! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-//!
-//! // Build application state
 //! let app_state = AppState {
-//!     account_repo: Arc::clone(&account_repo),
-//!     secret_repo: Arc::clone(&secret_repo),
-//!     jwt_codec: Arc::clone(&jwt_codec),
+//!     account_repo: Arc::new(MemoryAccountRepository::<Role, Group>::default()),
+//!     secret_repo: Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap()),
+//!     jwt_codec: Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default()),
+//!     cookie_template: CookieTemplate::recommended().name("auth-token"),
 //! };
 //!
-//! // Build the router with state
-//! let app: Router<AppState> = Router::new()
+//! let _app: Router<AppState> = Router::new()
 //!     .route("/login", post(login_handler))
 //!     .route("/logout", post(logout_handler))
 //!     .with_state(app_state);
 //! ```
 //!
-//! # Security Features
+//! # Public API notes
 //!
-//! Security properties (constant-time verification, dummy hashing, enumeration resistance)
-//! are provided by the core `webgates` login service and credential verification backends.
-//! This adapter simply wires HTTP requests to those services without adding cryptographic logic.
-pub use self::login::login;
-pub use self::logout::logout;
-
+//! - Import handlers via `webgates_axum::route_handlers::{login, logout}`.
+//! - The module keeps the implementation submodules private and exposes only the
+//!   direct handler functions.
+//!
+//! # Security
+//!
+//! Security-sensitive behavior such as constant-time secret verification,
+//! enumeration resistance, and JWT issuance is provided by the underlying
+//! `webgates` services and repositories. This module is only the HTTP adapter.
 mod login;
 mod logout;
+
+pub use self::login::login;
+pub use self::logout::logout;

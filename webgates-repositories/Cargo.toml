@@ -14,21 +14,24 @@ keywords = ["auth", "jwt", "rbac"]
 categories = ["authentication"]
 
 [package.metadata.docs.rs]
-features = ["audit-logging", "repo-surrealdb", "repo-seaorm"]
+features = ["audit-logging", "surrealdb", "sea-orm"]
 
 [features]
 default = []
-audit-logging = ["webgates/audit-logging"]
-repo-surrealdb = ["dep:surrealdb", "dep:argon2"]
-repo-seaorm = [
+audit-logging = []
+surrealdb = [
+    "dep:serde_json",
+    "dep:surrealdb",
+    "dep:surrealdb-types",
+]
+sea-orm = [
     "dep:sea-orm",
     "dep:sea-query",
-    "dep:argon2",
     "dep:serde_json",
 ]
 
 [dependencies]
-argon2 = { workspace = true, features = ["std"], optional = true }
+
 sea-orm = { workspace = true, optional = true }
 sea-query = { workspace = true, optional = true }
 serde = { workspace = true }
@@ -36,11 +39,13 @@ serde_json = { workspace = true, optional = true }
 strum = { workspace = true }
 subtle = { workspace = true }
 surrealdb = { workspace = true, optional = true }
+surrealdb-types = { version = "3", optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v7", "js"] }
-webgates = { path = "../webgates", default-features = true, features = ["server"] }
+webgates-core = { path = "../webgates-core" }
+webgates-secrets = { path = "../webgates-secrets" }
 
 [dev-dependencies]
 tokio-test = "0.4.4"

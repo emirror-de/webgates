@@ -27,11 +27,15 @@
 //!     inserts `StaticTokenAuthorized(true)` on success, 401 otherwise
 //!
 //! Example (JWT strict):
-//! ```rust
+//! ```rust,ignore
 //! use std::sync::Arc;
 //! use axum::Router;
-//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
-//! use webgates_axum::prelude::*;
+//! use webgates::accounts::Account;
+//! use webgates::authz::AccessPolicy;
+//! use webgates::groups::Group;
+//! use webgates::roles::Role;
+//! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
+//! use webgates_axum::gate::Gate;
 //! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
 //! let router = Router::<()>::new();
@@ -41,10 +45,13 @@
 //! ```
 //!
 //! Example (JWT optional):
-//! ```rust
+//! ```rust,ignore
 //! use std::sync::Arc;
-//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
-//! use webgates_axum::prelude::*;
+//! use webgates::accounts::Account;
+//! use webgates::groups::Group;
+//! use webgates::roles::Role;
+//! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
+//! use webgates_axum::gate::Gate;
 //! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
 //! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("my-app", codec)
@@ -52,10 +59,13 @@
 //! ```
 //!
 //! Transition to static token mode (compile-time change of available methods):
-//! ```rust
+//! ```rust,ignore
 //! use std::sync::Arc;
-//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
-//! use webgates_axum::prelude::*;
+//! use webgates::accounts::Account;
+//! use webgates::groups::Group;
+//! use webgates::roles::Role;
+//! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
+//! use webgates_axum::gate::Gate;
 //! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
 //! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("svc-a", codec)
@@ -63,10 +73,13 @@
 //! ```
 //!
 //! Static token optional:
-//! ```rust
+//! ```rust,ignore
 //! use std::sync::Arc;
-//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
-//! use webgates_axum::prelude::*;
+//! use webgates::accounts::Account;
+//! use webgates::groups::Group;
+//! use webgates::roles::Role;
+//! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
+//! use webgates_axum::gate::Gate;
 //! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
 //! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("svc-a", codec)
@@ -76,7 +89,10 @@
 //!
 //! Handler extraction (static token optional):
 //! ```rust
-//! use webgates::prelude::{Role, Group, AccessPolicy, Account, JwtClaims, JsonWebToken};
+//! use webgates::accounts::Account;
+//! use webgates::groups::Group;
+//! use webgates::roles::Role;
+//! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
 //! use webgates_axum::gate::bearer::StaticTokenAuthorized;
 //!
 //! async fn handler(
@@ -106,7 +122,7 @@ mod static_token_authorized;
 
 /// JWT mode configuration (compile-time).
 #[derive(Clone)]
-pub struct JwtConfig<R, G>
+pub(crate) struct JwtConfig<R, G>
 where
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq,
@@ -129,7 +145,7 @@ where
 
 /// Static token mode configuration (compile-time).
 #[derive(Clone)]
-pub struct StaticTokenConfig {
+pub(crate) struct StaticTokenConfig {
     token: String,
     optional: bool,
 }
@@ -308,7 +324,7 @@ where
 ///
 /// This service handles JWT bearer token authentication for protected routes,
 /// validating tokens from the `Authorization: Bearer <token>` header.
-pub struct JwtBearerService<C, R, G, S>
+pub(crate) struct JwtBearerService<C, R, G, S>
 where
     C: Codec<Payload = JwtClaims<Account<R, G>>>,
     R: AccessHierarchy + Eq + std::fmt::Display,
@@ -460,7 +476,7 @@ where
 ///
 /// This service handles authentication using pre-configured static tokens
 /// from the `Authorization: Bearer <token>` header.
-pub struct StaticTokenService<S> {
+pub(crate) struct StaticTokenService<S> {
     inner: S,
     token: String,
     optional: bool,

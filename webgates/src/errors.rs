@@ -59,12 +59,12 @@ use thiserror::Error;
 pub use crate::errors_core::{ErrorSeverity, UserFriendlyError};
 
 // Category-based error re-exports for ergonomic imports.
-pub use crate::authn::errors::{AuthenticationError, AuthnError};
-pub use crate::authz::errors::AuthzError;
+pub use crate::authn::{AuthenticationError, AuthnError};
+pub use crate::authz::AuthzError;
 pub use crate::codecs::errors::{CodecOperation, CodecsError, JwtError, JwtOperation};
-pub use crate::hashing::errors::{HashingError, HashingOperation};
-pub use crate::permissions::errors::PermissionsError;
+pub use crate::permissions::PermissionsError;
 pub use crate::secrets::errors::SecretError;
+pub use crate::secrets::hashing::errors::{HashingError, HashingOperation};
 
 /// Result type alias using our comprehensive Error type.
 ///

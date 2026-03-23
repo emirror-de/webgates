@@ -14,31 +14,41 @@
 //! # Quick Start
 //!
 //! ```rust
-//! use webgates::accounts::Account;
-//! use webgates::prelude::{Role, Group};
-//! use webgates::hashing::argon2::Argon2Hasher;
-//! use webgates_repositories::memory::{MemoryAccountRepository, MemorySecretRepository, MemoryPermissionMappingRepository};
-//! use webgates::secrets::Secret;
-//! use webgates::accounts::AccountRepository;
-//! use webgates::secrets::SecretRepository;
 //! use std::sync::Arc;
+//! use webgates_core::accounts::Account;
+//! use webgates_core::groups::Group;
+//! use webgates_core::roles::Role;
+//! use webgates_repositories::account_repository::AccountRepository;
+//! use webgates_repositories::memory::account::MemoryAccountRepository;
+//! use webgates_repositories::memory::permission_mapping::MemoryPermissionMappingRepository;
+//! use webgates_repositories::memory::secret::MemorySecretRepository;
+//! use webgates_repositories::secret_repository::SecretRepository;
+//! use webgates_secrets::hashing::argon2::Argon2Hasher;
+//! use webgates_secrets::Secret;
 //!
 //! # tokio_test::block_on(async {
-//! // Create repositories
 //! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
 //! let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
-//! let mapping_repo = Arc::new(MemoryPermissionMappingRepository::default());
+//! let _mapping_repo = Arc::new(MemoryPermissionMappingRepository::default());
 //!
-//! // Create an account
-//! let account = Account::new("user@example.com", &[Role::User], &[Group::new("staff")]);
-//! let stored_account = account_repo.store_account(account).await.unwrap().unwrap();
+//! let account = Account::new(
+//!     "user@example.com".to_string(),
+//!     vec![Role::User],
+//!     vec![Group::new("staff")],
+//! );
+//! let stored_account: Account<Role, Group> = account_repo.store_account(account).await.unwrap().unwrap();
 //!
-//! // Create corresponding secret
-//! let secret = Secret::new(&stored_account.account_id, "password", Argon2Hasher::new_recommended().unwrap()).unwrap();
+//! let secret = Secret::new(
+//!     &stored_account.account_id,
+//!     "password",
+//!     Argon2Hasher::new_recommended().unwrap(),
+//! ).unwrap();
 //! secret_repo.store_secret(secret).await.unwrap();
 //!
-//! // Query the account
-//! let found = account_repo.query_account_by_user_id("user@example.com").await.unwrap();
+//! let found: Option<Account<Role, Group>> = account_repo
+//!     .query_account_by_user_id("user@example.com")
+//!     .await
+//!     .unwrap();
 //! assert!(found.is_some());
 //! # });
 //! ```
@@ -46,27 +56,31 @@
 //! # Creating from Existing Data
 //!
 //! ```rust
-//! use webgates::accounts::Account;
-//! use webgates::prelude::{Role, Group};
-//! use webgates::secrets::Secret;
-//! use webgates_repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+//! use webgates_core::accounts::Account;
+//! use webgates_core::groups::Group;
+//! use webgates_core::roles::Role;
+//! use webgates_repositories::memory::account::MemoryAccountRepository;
+//! use webgates_repositories::memory::secret::MemorySecretRepository;
 //!
-//! // Create repositories with pre-populated data
 //! let accounts = vec![
-//!     Account::new("admin@example.com", &[Role::Admin], &[]),
-//!     Account::new("user@example.com", &[Role::User], &[Group::new("staff")]),
+//!     Account::new("admin@example.com".to_string(), vec![Role::Admin], Vec::new()),
+//!     Account::new(
+//!         "user@example.com".to_string(),
+//!         vec![Role::User],
+//!         vec![Group::new("staff")],
+//!     ),
 //! ];
 //! let account_repo = MemoryAccountRepository::from(accounts);
 //!
-//! let secrets = vec![/* your secrets */];
+//! let secrets = vec![];
 //! let secret_repo = MemorySecretRepository::try_from(secrets).unwrap();
+//! let _ = (account_repo, secret_repo);
 //! ```
-pub use self::account::*;
-pub use self::group::*;
-pub use self::permission_mapping::*;
-pub use self::secret::*;
-
-mod account;
-mod group;
-mod permission_mapping;
-mod secret;
+/// In-memory account repository implementation.
+pub mod account;
+/// In-memory group repository implementation.
+pub mod group;
+/// In-memory permission-mapping repository implementation.
+pub mod permission_mapping;
+/// In-memory secret repository implementation.
+pub mod secret;

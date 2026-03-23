@@ -1,70 +1,123 @@
 # webgates-repositories
 
-Repository implementations and repository-facing services for the `webgates` authentication/authorization domain.
+Repository implementations and repository-facing services for the `webgates` authentication and authorization domain.
 
-- In-memory repositories for quick starts and tests
-- SeaORM-backed repositories (`repo-seaorm`)
-- SurrealDB-backed repositories (`repo-surrealdb`)
-- Optional audit logging hooks (`audit-logging`)
-- Shared error stack tailored to repository backends
+This crate exposes:
+- repository traits in dedicated trait modules
+- in-memory implementations under concrete module paths
+- optional SeaORM and SurrealDB backends behind feature flags
+- repository-scoped services for account insertion and deletion
+- shared repository error types
 
 ## Install
 
-Pick the backends you need:
+Pick only the backend features you need:
 
 ```toml
 [dependencies]
-webgates = { version = "0.1" }
-webgates-repositories = { version = "0.1", features = ["repo-seaorm"] }
+webgates-repositories = { version = "0.1" }
 # or
-webgates-repositories = { version = "0.1", features = ["repo-surrealdb"] }
-# in-memory requires no extra features
+webgates-repositories = { version = "0.1", features = ["sea-orm"] }
+# or
+webgates-repositories = { version = "0.1", features = ["surrealdb"] }
 ```
 
 MSRV: 1.88
 
+## Canonical public API
+
+The public API is module-oriented.
+
+### Repository traits
+
+Import traits from their defining modules:
+
+```rust
+use webgates_repositories::account_repository::AccountRepository;
+use webgates_repositories::group_repository::GroupRepository;
+use webgates_repositories::permission_mapping_repository::PermissionMappingRepository;
+use webgates_repositories::secret_repository::SecretRepository;
+```
+
+### In-memory implementations
+
+Import concrete in-memory types from their concrete child modules:
+
+```rust
+use webgates_repositories::memory::account::MemoryAccountRepository;
+use webgates_repositories::memory::group::MemoryGroupRepository;
+use webgates_repositories::memory::permission_mapping::MemoryPermissionMappingRepository;
+use webgates_repositories::memory::secret::MemorySecretRepository;
+```
+
+### Services
+
+Import repository services from their defining modules:
+
+```rust
+use webgates_repositories::services::account_delete::AccountDeleteService;
+use webgates_repositories::services::account_insert::AccountInsertService;
+```
+
+### Optional backends
+
+- `webgates_repositories::sea_orm::SeaOrmRepository`
+- `webgates_repositories::surrealdb::{DatabaseScope, SurrealDbRepository}`
+
 ## Feature flags
 
-- `default = []` (no default features enabled)
-- `repo-surrealdb`: SurrealDB-backed repository implementations (opt-in).
-- `repo-seaorm`: SeaORM-backed repository implementations (opt-in).
-- `audit-logging`: emit tracing events for repository operations (opt-in; integrates with `webgates` audit logging).
+- `default = []`
+- `surrealdb`: enables the SurrealDB backend
+- `sea-orm`: enables the SeaORM backend
+- `audit-logging`: enables repository audit events
 
-Notes:
-- Enable only the features you need to avoid pulling in large transitive dependencies.
-- See `Cargo.toml` for the exact feature definitions and dependency implications.
+Enable only the features you need to keep dependency scope smaller.
 
 ## Quick starts
 
-### In-memory (zero config)
+### In-memory account and secret repositories
 
 ```rust
-use webgates::gate::Gate;
-use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
-use webgates::accounts::Account;
-use webgates::prelude::{Group, Role};
-use webgates_repositories::memory::{
-    MemoryAccountRepository, MemorySecretRepository, MemoryPermissionMappingRepository,
-};
 use std::sync::Arc;
-
-type Claims = JwtClaims<Account<Role, Group>>;
-let codec = Arc::new(JsonWebToken::<Claims>::default());
-
-let gate = Gate::cookie::<_, Role, Group>("issuer", Arc::clone(&codec))
-    .with_policy(webgates::authz::AccessPolicy::require_role(Role::Admin));
+use webgates_core::prelude::{Group, Role};
+use webgates_repositories::memory::account::MemoryAccountRepository;
+use webgates_repositories::memory::secret::MemorySecretRepository;
 
 let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
 let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher()?);
-let perms_repo = Arc::new(MemoryPermissionMappingRepository::new());
-
-// use the repos in your app (login handlers, services, etc.)
 ```
 
-### SeaORM (sketch)
+### In-memory permission mapping repository
+
+```rust
+use webgates_repositories::memory::permission_mapping::MemoryPermissionMappingRepository;
+
+let mapping_repo = MemoryPermissionMappingRepository::default();
+```
+
+### Account insert service
+
+```rust
+use std::sync::Arc;
+use webgates_core::prelude::{Group, Role};
+use webgates_repositories::memory::account::MemoryAccountRepository;
+use webgates_repositories::memory::secret::MemorySecretRepository;
+use webgates_repositories::services::account_insert::AccountInsertService;
+
+let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher()?);
+
+let account = AccountInsertService::insert("user@example.com", "password")
+    .with_roles(vec![Role::User])
+    .with_groups(vec![Group::new("engineering")])
+    .into_repositories(account_repo, secret_repo)
+    .await?;
+```
+
+### SeaORM
 
 ```toml
-webgates-repositories = { version = "0.1", features = ["repo-seaorm"] }
+webgates-repositories = { version = "0.1", features = ["sea-orm"] }
 sea-orm = { version = "2", features = ["sqlx-postgres", "runtime-tokio-rustls"] }
 ```
 
@@ -73,44 +126,59 @@ use sea_orm::Database;
 use webgates_repositories::sea_orm::SeaOrmRepository;
 
 let db = Database::connect("postgres://...").await?;
-let repo = SeaOrmRepository::new(db);
+let repo = SeaOrmRepository::new(&db)?;
 ```
 
-### SurrealDB (sketch)
+### SurrealDB
 
 ```toml
-webgates-repositories = { version = "0.1", features = ["repo-surrealdb"] }
+webgates-repositories = { version = "0.1", features = ["surrealdb"] }
 ```
 
 ```rust
 use surrealdb::engine::local::Mem;
 use surrealdb::Surreal;
-use webgates_repositories::surrealdb::SurrealDbRepository;
+use webgates_repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 
 let db = Surreal::new::<Mem>(()).await?;
-db.use_ns("ns").use_db("db").await?;
-let repo = SurrealDbRepository::new(db);
+let repo = SurrealDbRepository::new(db, DatabaseScope::default())?;
 ```
 
 ## Errors
 
-All repository APIs return `webgates_repositories::errors::Result<T>` with a rich error stack (`Error`, `DatabaseError`, `RepositoriesError`, `ErrorSeverity`, `UserFriendlyError`). Map or log errors at boundaries; avoid leaking internal details to clients.
+Use the shared error module at:
+
+```rust
+use webgates_repositories::errors::{Error, Result};
+```
+
+The module also exposes backend-oriented error types such as:
+- `DatabaseError`
+- `RepositoriesError`
+- `ErrorSeverity`
+- `UserFriendlyError`
+
+Errors should be mapped at application boundaries without exposing internal storage details to clients.
 
 ## Services
 
-`AccountInsertService` and `AccountDeleteService` provide convenience flows over the repository traits for provisioning and teardown. These services are asynchronous and intended to be used on an async runtime (for example, Tokio). Enable the repository backend features (`repo-seaorm`, `repo-surrealdb`) as appropriate for your persistence layer.
+`AccountInsertService` and `AccountDeleteService` stay at the repository boundary and coordinate repository traits without introducing an application-layer dependency.
+
+Canonical service paths:
+- `webgates_repositories::services::account_insert::AccountInsertService`
+- `webgates_repositories::services::account_delete::AccountDeleteService`
 
 ## Audit logging
 
-Enable `audit-logging` to emit tracing events for repository operations. Keep logs free of secrets/PII; use correlation IDs.
+Enable `audit-logging` to emit tracing events for repository workflows. Keep logs free of secrets and personal data, and prefer correlation IDs in surrounding application code.
 
 ## Examples
 
 - `examples/sea-orm`
 - `examples/surrealdb`
-- Workspace examples under `../examples` use the in-memory backend by default.
+- workspace examples under `../examples`
 
 ## License and notices
 
 - License: MIT
-- SurrealDB (when enabling `repo-surrealdb`): BUSL-1.1. Production use is restricted by BUSL; include required third-party notices and comply with SurrealDB licensing.
+- SurrealDB, when enabled through the `surrealdb` feature, may impose additional upstream licensing obligations. Review the SurrealDB license terms before production use.

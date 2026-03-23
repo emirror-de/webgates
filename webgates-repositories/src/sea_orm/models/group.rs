@@ -6,10 +6,10 @@
 //! `Serialize`/`Deserialize` and the `GroupEntity` trait (which provides
 //! `group_id()`).
 
-#[cfg(feature = "repo-seaorm")]
+#[cfg(feature = "sea-orm")]
 use sea_orm::{ActiveValue, entity::prelude::*};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use webgates::groups::GroupEntity;
+use webgates_core::groups::GroupEntity;
 
 /// SeaORM entity for a persisted group.
 ///

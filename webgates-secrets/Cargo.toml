@@ -1,0 +1,27 @@
+[package]
+name = "webgates-secrets"
+version = "0.1.0-dev"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+authors = ["Lewin Probst <info@emirror.de>"]
+description = "Secret value and hashing primitives for the webgates authentication and authorization ecosystem."
+homepage = "https://github.com/emirror-de/webgates"
+repository = "https://github.com/emirror-de/webgates"
+readme = "../README.md"
+documentation = "https://docs.rs/webgates-secrets"
+keywords = ["auth", "hashing", "password"]
+categories = ["authentication"]
+
+[features]
+default = []
+
+[dependencies]
+argon2 = { workspace = true, features = ["std"] }
+serde = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true, features = ["serde", "v7", "js"] }
+webgates-core = { path = "../webgates-core" }
+
+[dev-dependencies]
+tokio-test = "0.4.4"

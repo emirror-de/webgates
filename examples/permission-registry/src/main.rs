@@ -11,12 +11,14 @@
 
 use std::sync::Arc;
 use tracing::{info, warn};
-use webgates::permissions::{
-    Permissions,
-    mapping::{PermissionMapping, PermissionMappingRepository},
+use webgates::accounts::Account;
+use webgates::groups::Group;
+use webgates::permissions::{PermissionId, PermissionMapping, Permissions};
+use webgates::roles::Role;
+use webgates_repositories::{
+    memory::permission_mapping::MemoryPermissionMappingRepository,
+    permission_mapping_repository::PermissionMappingRepository,
 };
-use webgates::prelude::{Account, Group, PermissionId, Role};
-use webgates_repositories::memory::MemoryPermissionMappingRepository;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -180,9 +182,9 @@ async fn demo_account_with_registry(
 
     // Create an account
     let mut account = Account::new(
-        "admin@example.com",
-        &[Role::Admin],
-        &[Group::new("administrators")],
+        "admin@example.com".to_string(),
+        vec![Role::Admin],
+        vec![Group::new("administrators")],
     );
 
     // Grant some permissions with descriptive names

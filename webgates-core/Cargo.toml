@@ -1,0 +1,31 @@
+[package]
+name = "webgates-core"
+version = "0.1.0-dev"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+authors = ["Lewin Probst <info@emirror.de>"]
+description = "Core domain types, permission system, and authorization building blocks for webgates."
+homepage = "https://github.com/emirror-de/webgates"
+repository = "https://github.com/emirror-de/webgates"
+readme = "../README.md"
+documentation = "https://docs.rs/webgates-core"
+keywords = ["auth", "authorization", "rbac"]
+categories = ["authentication"]
+
+[dependencies]
+const-crypto = "0.3"
+roaring = { workspace = true, features = ["serde"] }
+serde = { workspace = true }
+strum = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true, features = ["serde", "v7"] }
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+uuid = { workspace = true, features = ["js"] }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+tokio-test = "0.4.4"
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

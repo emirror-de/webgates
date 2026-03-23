@@ -23,7 +23,8 @@
 //!
 //! ```rust
 //! use std::sync::Arc;
-//! use webgates::prelude::{Account, Group, Role, JsonWebToken, JwtClaims};
+//! use webgates::prelude::{Account, Group, Role};
+//! use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
 //! use webgates::gate::GateExt;
 //! use webgates::gate::bearer::{BearerGate, BearerGateAdapter, JwtBearerRuntime, StaticTokenRuntime};
 //!
@@ -92,7 +93,9 @@ use super::GateExt;
 use crate::accounts::Account;
 use crate::authz::{AccessHierarchy, AccessPolicy, AuthorizationService};
 use crate::codecs::Codec;
-use crate::codecs::jwt::{JwtClaims, JwtValidationResult, JwtValidationService, RegisteredClaims};
+use crate::codecs::jwt::validation_result::JwtValidationResult;
+use crate::codecs::jwt::validation_service::JwtValidationService;
+use crate::codecs::jwt::{JwtClaims, RegisteredClaims};
 use uuid::Uuid;
 
 /// JWT mode configuration (compile-time).
@@ -537,7 +540,7 @@ mod tests {
         )
         .require_login();
 
-        let account = Account::<Role, Group>::new("user", &[Role::User], &[]);
+        let account = Account::<Role, Group>::new("user".into(), vec![Role::User], vec![]);
         let exp = Utc::now().timestamp() as u64 + 60;
         let claims = JwtClaims::new(account.clone(), RegisteredClaims::new("issuer", exp));
         let token = String::from_utf8(codec.encode(&claims).expect("encode jwt")).unwrap();

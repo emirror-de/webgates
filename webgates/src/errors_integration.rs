@@ -11,22 +11,6 @@
 
 use crate::codecs::errors::{CodecOperation, CodecsError};
 use crate::errors::Error;
-use crate::hashing::errors::{HashingError, HashingOperation};
-
-/// Map Argon2 errors into the crate-wide `Error` under the hashing category.
-///
-/// This keeps Argon2-specific concerns in the integration layer and prevents
-/// the core error enum from depending directly on external hashing crates.
-impl From<argon2::Error> for Error {
-    fn from(err: argon2::Error) -> Self {
-        Error::Hashing(HashingError::with_context(
-            HashingOperation::Hash,
-            format!("Argon2 error: {}", err),
-            Some("Argon2id".to_string()),
-            None,
-        ))
-    }
-}
 
 /// Map cookie template builder validation errors into the crate-wide `Error`
 /// under the codecs category.
@@ -47,19 +31,6 @@ impl From<crate::cookie_template::CookieTemplateBuilderError> for Error {
 mod tests {
     use super::*;
     use crate::errors::UserFriendlyError;
-
-    #[test]
-    fn argon2_error_maps_to_hashing_error() {
-        let err = argon2::Error::SaltTooShort;
-        let mapped = Error::from(err);
-        match mapped {
-            Error::Hashing(h) => {
-                assert!(h.developer_message().contains("Argon2 error"));
-                assert_eq!(h.severity(), crate::errors::ErrorSeverity::Critical);
-            }
-            _ => panic!("expected hashing error"),
-        }
-    }
 
     #[test]
     fn cookie_template_error_maps_to_codec_error() {

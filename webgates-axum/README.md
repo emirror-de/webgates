@@ -1,50 +1,94 @@
 # webgates-axum
 
-Axum integration for the `webgates` core. Provides middleware (cookie/bearer gates), OAuth2 helpers, and ready-made login/logout handlers. Use it with the `webgates` core for domain types and gate configuration, and with `webgates-repositories` for storage backends.
+Axum integration for the `webgates` core.
+
+This crate is the Axum-facing adapter layer for `webgates`. It exposes a small public API:
+
+- `webgates_axum::gate::Gate` as the canonical entry point for cookie, bearer, and OAuth2 integration
+- `webgates_axum::route_handlers::login` and `webgates_axum::route_handlers::logout` for ready-made auth cookie handlers
+- `webgates_axum::gate::bearer::StaticTokenAuthorized` for optional static-token routes
+
+It does not replace `webgates`. You still depend on `webgates` for domain types, codecs, policies, claims, cookie templates, and repository contracts.
 
 ## Install
 
-Pick only the crates and features you need. The workspace crates intentionally enable no default features — enable the specific features you require (for example, enable the `server` feature on `webgates` to access Gate builders and the JWT codec implementation).
+Most applications should depend on both crates explicitly.
 
-Core-only (no server features; minimal dependencies):
-
-```toml
-[dependencies]
-webgates = "0.1"
-webgates-axum = "0.1"
-```
-
-Axum integration (recommended when you need middleware and route handlers):
+Standard setup:
 
 ```toml
 [dependencies]
 axum = "0.8"
-tokio = { version = "1", features = ["full"] }
-serde = { version = "1", features = ["derive"] }
+webgates = "0.1"
 webgates-axum = "0.1"
 ```
 
-If you want to use the `Gate` builders and codecs provided by the `webgates` core crate directly, enable the core's `server` feature:
+If you want a narrower `webgates` dependency set, disable its defaults and enable only the required features there.
 
 ```toml
 [dependencies]
-webgates = { version = "0.1", features = ["server"] }
+axum = "0.8"
+webgates = { version = "0.1", default-features = false, features = ["authn", "codecs", "cookies", "oauth2", "repositories", "secrets"] }
+webgates-axum = "0.1"
 ```
 
 MSRV: 1.88
 
-## Quick start (cookie gate)
+## Public API
+
+The canonical public API of this crate is intentionally small.
+
+### Gate entry point
+
+Use `webgates_axum::gate::Gate` to build middleware:
+
+- `Gate::cookie(...)`
+- `Gate::bearer(...)`
+- `Gate::oauth2(...)`
+
+These builders are the intended integration surface for Axum applications.
+
+### Route handlers
+
+Use `webgates_axum::route_handlers::login` and `webgates_axum::route_handlers::logout` when you want simple cookie-based login/logout endpoints that plug into the `webgates` core services.
+
+### Optional static-token extraction
+
+If you use optional static bearer token mode, handlers can read:
+
+- `webgates_axum::gate::bearer::StaticTokenAuthorized`
+
+This is the only bearer-mode extension helper intended for direct handler use.
+
+### What to import directly
+
+Prefer direct imports from stable module paths:
+
+```rust
+use webgates_axum::gate::Gate;
+use webgates_axum::route_handlers::login;
+use webgates_axum::route_handlers::logout;
+use webgates_axum::gate::bearer::StaticTokenAuthorized;
+```
+
+Do not rely on convenience prelude-style imports. Prefer the explicit paths above.
+
+## Quick start
+
+### Cookie gate
 
 ```rust,ignore
 use std::sync::Arc;
+
 use axum::{routing::get, Router};
-use webgates_axum::gate::Gate;
+use webgates::accounts::Account;
 use webgates::authz::AccessPolicy;
 use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
-use webgates::accounts::Account;
-use webgates::prelude::{Role, Group};
+use webgates::prelude::{Group, Role};
+use webgates_axum::gate::Gate;
 
 type Claims = JwtClaims<Account<Role, Group>>;
+
 let codec = Arc::new(JsonWebToken::<Claims>::default());
 
 let app = Router::new()
@@ -55,45 +99,124 @@ let app = Router::new()
     );
 ```
 
-- `Gate::bearer` works the same for `Authorization: Bearer`.
-- `allow_anonymous_with_optional_user()` never blocks; inserts `Option<Account<_>>` / `Option<RegisteredClaims>`.
-- `require_login()` allows the baseline role plus supervisors (hierarchy).
-- Use `with_cookie_template` / `configure_cookie_template` to align cookie name/path with your login writer.
+### Bearer gate
+
+```rust,ignore
+use std::sync::Arc;
+
+use axum::{routing::get, Router};
+use webgates::accounts::Account;
+use webgates::authz::AccessPolicy;
+use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
+use webgates::prelude::{Group, Role};
+use webgates_axum::gate::Gate;
+
+type Claims = JwtClaims<Account<Role, Group>>;
+
+let codec = Arc::new(JsonWebToken::<Claims>::default());
+
+let app = Router::new()
+    .route("/api/admin", get(|| async { "ok" }))
+    .layer(
+        Gate::bearer("my-api", Arc::clone(&codec))
+            .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin)),
+    );
+```
+
+### Optional authentication
+
+Both cookie and JWT bearer gates support optional mode:
+
+- `allow_anonymous_with_optional_user()` forwards all requests
+- cookie mode inserts `Option<Account<_, _>>` and `Option<RegisteredClaims>`
+- JWT bearer mode inserts `Option<Account<_, _>>` and `Option<RegisteredClaims>`
+
+Use this only for routes where the handler intentionally performs any required access checks.
+
+### Require any authenticated user
+
+Use `require_login()` when you want the baseline role plus all of its supervisors according to your `AccessHierarchy`.
+
+### Cookie template alignment
+
+Use `with_cookie_template(...)` or `configure_cookie_template(...)` to keep the auth cookie configuration aligned between:
+
+- your login cookie writer
+- your cookie gate
+- your OAuth2 callback cookie writer, if used
 
 ## Login / logout handlers
 
-`webgates-axum::route_handlers::{login, logout}` set and clear the auth cookie. The cookie template and issuer must match your gate configuration.
+`webgates_axum::route_handlers::login` and `webgates_axum::route_handlers::logout` are thin HTTP adapters around the core `webgates` authentication services.
 
-## OAuth2 (Authorization Code + PKCE)
+`login(...)`:
 
-`gate::oauth2` builds an OAuth2 flow; you can optionally mint first-party JWT cookies by supplying a codec and TTL. Provide an account mapper and (optionally) a repository to persist accounts before issuing the cookie.
+- verifies submitted credentials
+- loads the matching account
+- mints a JWT with the supplied registered claims
+- writes the auth cookie into the returned `CookieJar`
+
+`logout(...)`:
+
+- removes the auth cookie using the supplied `CookieTemplate`
+
+The cookie template and issuer must match the rest of your authentication setup.
+
+## OAuth2
+
+`Gate::oauth2()` configures an Authorization Code + PKCE flow for Axum.
+
+Typical configuration includes:
+
+- authorization URL
+- token URL
+- client ID
+- optional client secret
+- redirect URL
+- requested scopes
+- optional account mapper
+- optional account repository/inserter
+- optional first-party JWT codec for session issuance
+
+The resulting router exposes:
+
+- `/login`
+- `/callback`
+
+mounted under the base path you pass to `into_router(...)`.
 
 ## Features
 
-- `audit-logging`: propagate audit logging from the core crate (opt-in)
-- `prometheus`: emit Prometheus metrics for auth events (opt-in; depends on `audit-logging`)
-- This crate depends on the `webgates` core crate. Feature flags are opt-in and the core crate itself has no default features; enable the core's `server` feature when you need server-facing APIs (Gate builders, codecs) from `webgates`.
+- `default = []`
+- `audit-logging`: enables audit logging integration from `webgates`
+- `prometheus`: installs Prometheus metrics integration for auth events and depends on `audit-logging`
 
 ## Repository backends
 
-Use `webgates-repositories` if you need persistence. Backend features are opt-in — enable only the backends you need.
+Use `webgates-repositories` when you need persistence.
 
-- In-memory: zero config (good for tests and examples).
-- SeaORM (`repo-seaorm`): relational databases (bring the DB driver via SeaORM feature flags).
-- SurrealDB (`repo-surrealdb`): SurrealDB-backed (opt-in; SurrealDB is licensed under BUSL-1.1 — review and comply with the license before enabling in production).
+Backend features are opt-in:
+
+- in-memory for tests and examples
+- SeaORM for relational databases
+- SurrealDB for SurrealDB-backed storage
+
+SurrealDB support is optional and subject to SurrealDB’s BUSL-1.1 licensing. Review that license before enabling it in production.
 
 ## Security checklist
 
-- Keep issuer identical between login (claims) and gates.
-- Align cookie names/templates between login and gate; set Secure/HttpOnly/SameSite appropriately.
-- Use persistent JWT keys in production; rotate as needed.
-- Rate-limit login; validate inputs at boundaries.
-- Avoid logging secrets or tokens; use correlation IDs.
-- Prefer short-lived JWTs; enable `audit-logging` and `prometheus` for observability.
+- Keep the issuer identical between token minting and gate validation.
+- Keep cookie names and templates aligned across login, logout, cookie gates, and OAuth2 callback flows.
+- Use secure cookie settings appropriate for production.
+- Use persistent signing keys in production and rotate them deliberately.
+- Apply rate limits and timeout policy to login and OAuth2 endpoints.
+- Validate all request input at the HTTP boundary.
+- Avoid logging secrets, raw tokens, or sensitive payloads.
+- Prefer short-lived JWTs and explicit observability.
 
 ## Examples
 
-- `examples/simple-usage` (in-memory)
+- `examples/simple-usage`
 - `examples/oauth2-github`
 - `examples/permission-registry`
 - `examples/prometheus`
@@ -103,4 +226,6 @@ Use `webgates-repositories` if you need persistence. Backend features are opt-in
 
 ## License
 
-MIT (SurrealDB feature is BUSL-1.1—review and comply when enabling `repo-surrealdb`).
+MIT
+
+SurrealDB support relies on the optional `surrealdb` backend feature in `webgates-repositories`. Review and comply with BUSL-1.1 when enabling that backend.

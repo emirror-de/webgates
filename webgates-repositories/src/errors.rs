@@ -1,11 +1,12 @@
 //! Error types and result aliases for repository implementations.
+use std::borrow::Cow;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use thiserror::Error;
-use webgates::errors::UserFriendlyError as CoreUserFriendlyError;
-use webgates::hashing::{HashingOperation, errors::HashingError};
-use webgates::secrets::errors::SecretError;
+use webgates_core::errors_core::UserFriendlyError as CoreUserFriendlyError;
+use webgates_secrets::errors::SecretError;
+use webgates_secrets::hashing::errors::HashingError;
 
 /// Severity levels for categorizing errors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -142,9 +143,101 @@ impl RepositoriesError {
         }
     }
 
+    /// Construct a repository operation failure without additional context.
+    pub fn for_repository(
+        repository: RepositoryType,
+        operation: RepositoryOperation,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::operation_failed(repository, operation, message, None, None)
+    }
+
+    /// Construct a repository operation failure for a specific key.
+    pub fn for_repository_key(
+        repository: RepositoryType,
+        operation: RepositoryOperation,
+        key: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::operation_failed(repository, operation, message, Some(key.into()), None)
+    }
+
+    /// Construct a repository operation failure with a key and extra context.
+    pub fn for_repository_key_with_context(
+        repository: RepositoryType,
+        operation: RepositoryOperation,
+        key: impl Into<String>,
+        message: impl Into<String>,
+        context: impl Into<String>,
+    ) -> Self {
+        Self::operation_failed(
+            repository,
+            operation,
+            message,
+            Some(key.into()),
+            Some(context.into()),
+        )
+    }
+
+    /// Construct a validation-style repository failure.
+    pub fn invalid_input(
+        repository: RepositoryType,
+        operation: RepositoryOperation,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::for_repository(repository, operation, message)
+    }
+
+    /// Construct a validation-style repository failure for a specific key.
+    pub fn invalid_input_for_key(
+        repository: RepositoryType,
+        operation: RepositoryOperation,
+        key: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::for_repository_key(repository, operation, key, message)
+    }
+
+    /// Construct a secret repository failure from an internal secret-related error.
+    pub fn secret_operation_error(
+        operation: RepositoryOperation,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::for_repository(RepositoryType::Secret, operation, message)
+    }
+
+    /// Construct a secret repository failure for a specific key.
+    pub fn secret_operation_error_for_key(
+        operation: RepositoryOperation,
+        key: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::for_repository_key(RepositoryType::Secret, operation, key, message)
+    }
+
+    /// Construct a permission-mapping repository failure from an invalid mapping.
+    pub fn invalid_permission_mapping(
+        operation: RepositoryOperation,
+        message: impl Into<Cow<'static, str>>,
+        context: Option<&str>,
+    ) -> Self {
+        Self::operation_failed(
+            RepositoryType::PermissionMapping,
+            operation,
+            message.into().into_owned(),
+            None,
+            context.map(str::to_string),
+        )
+    }
+
     /// Construct a not found error.
     pub fn not_found(repository: RepositoryType, key: Option<String>) -> Self {
         Self::NotFound { repository, key }
+    }
+
+    /// Construct a not found error for a specific key.
+    pub fn not_found_for_key(repository: RepositoryType, key: impl Into<String>) -> Self {
+        Self::not_found(repository, Some(key.into()))
     }
 
     /// Construct a constraint/precondition failure.
@@ -158,6 +251,15 @@ impl RepositoriesError {
             message: message.into(),
             key,
         }
+    }
+
+    /// Construct a constraint/precondition failure for a specific key.
+    pub fn constraint_for_key(
+        repository: RepositoryType,
+        key: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::constraint(repository, message, Some(key.into()))
     }
 
     fn support_code_inner(&self) -> String {
@@ -613,11 +715,11 @@ impl UserFriendlyError for Error {
         match self {
             Error::Repositories(e) => e.severity(),
             Error::Database(e) => e.severity(),
-            Error::Hashing(e) => match e.severity() {
-                webgates::errors::ErrorSeverity::Error => ErrorSeverity::Error,
-                webgates::errors::ErrorSeverity::Warning => ErrorSeverity::Warning,
-                webgates::errors::ErrorSeverity::Info => ErrorSeverity::Info,
-                webgates::errors::ErrorSeverity::Critical => ErrorSeverity::Critical,
+            Error::Hashing(e) => match CoreUserFriendlyError::severity(e) {
+                webgates_core::errors_core::ErrorSeverity::Error => ErrorSeverity::Error,
+                webgates_core::errors_core::ErrorSeverity::Warning => ErrorSeverity::Warning,
+                webgates_core::errors_core::ErrorSeverity::Info => ErrorSeverity::Info,
+                webgates_core::errors_core::ErrorSeverity::Critical => ErrorSeverity::Critical,
             },
         }
     }
@@ -639,54 +741,22 @@ impl UserFriendlyError for Error {
     }
 }
 
-/// Conversion into the core webgates error type for compatibility.
-impl From<Error> for webgates::errors::Error {
-    fn from(err: Error) -> Self {
-        match err {
-            Error::Repositories(e) => {
-                webgates::errors::Error::Secrets(SecretError::hashing_with_context(
-                    HashingOperation::Verify,
-                    format!("repository error: {}", e),
-                    None,
-                    None,
-                ))
-            }
-            Error::Database(e) => {
-                webgates::errors::Error::Secrets(SecretError::hashing_with_context(
-                    HashingOperation::Verify,
-                    format!("database error: {}", e),
-                    None,
-                    None,
-                ))
-            }
-            Error::Hashing(e) => webgates::errors::Error::Hashing(e),
-        }
+/// Conversion from secrets and hashing errors into the repository error domain.
+impl From<SecretError> for Error {
+    fn from(err: SecretError) -> Self {
+        Error::Repositories(RepositoriesError::secret_operation_error(
+            RepositoryOperation::Get,
+            format!("secret error: {}", err),
+        ))
     }
 }
 
-/// Conversion from the core webgates error type into the repository error domain.
-/// Non-hashing categories are mapped to repository-level failures with conservative defaults.
-impl From<webgates::errors::Error> for Error {
-    fn from(err: webgates::errors::Error) -> Self {
-        match err {
-            webgates::errors::Error::Hashing(e) => Error::Hashing(e),
-            webgates::errors::Error::Secrets(e) => {
-                Error::Repositories(RepositoriesError::operation_failed(
-                    RepositoryType::Secret,
-                    RepositoryOperation::Get,
-                    format!("core secrets error: {}", e),
-                    None,
-                    None,
-                ))
-            }
-            other => Error::Repositories(RepositoriesError::operation_failed(
-                RepositoryType::Account,
-                RepositoryOperation::Get,
-                format!("core error: {}", other),
-                None,
-                None,
-            )),
-        }
+impl From<Box<dyn std::error::Error + Send + Sync>> for Error {
+    fn from(err: Box<dyn std::error::Error + Send + Sync>) -> Self {
+        Error::Repositories(RepositoriesError::secret_operation_error(
+            RepositoryOperation::Get,
+            format!("secret or hashing error: {}", err),
+        ))
     }
 }
 

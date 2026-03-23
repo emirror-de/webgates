@@ -1,5 +1,6 @@
 use crate::errors::{Error as RepoError, Result};
-use webgates::groups::{GroupEntity, GroupRepository};
+use crate::group_repository::GroupRepository;
+use webgates_core::groups::GroupEntity;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -51,6 +52,10 @@ where
     T: Serialize + DeserializeOwned + GroupEntity + Eq + Clone + Send + Sync + 'static,
 {
     type Error = RepoError;
+
+    async fn bootstrap(&self) -> Result<()> {
+        Ok(())
+    }
 
     async fn store_group(&self, group: T) -> Result<bool> {
         let res: Result<_> = {

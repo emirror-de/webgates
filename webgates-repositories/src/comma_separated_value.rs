@@ -41,7 +41,7 @@
 //!
 //! # Note
 //!
-//! This module is available when the `repo-seaorm` feature of `webgates-repositories`
+//! This module is available when the `sea-orm` feature of `webgates-repositories`
 //! is enabled because it exists to support the SeaORM storage backend in this crate.
 
 /// Conversion between a model and its CSV representation.
@@ -55,11 +55,11 @@ where
     fn from_csv(value: &str) -> Result<Self, String>;
 }
 
-#[cfg(feature = "repo-seaorm")]
-impl CommaSeparatedValue for Vec<webgates::prelude::Role> {
+#[cfg(feature = "sea-orm")]
+impl CommaSeparatedValue for Vec<webgates_core::roles::Role> {
     fn into_csv(self) -> String {
         self.into_iter()
-            .map(|r| r.to_string())
+            .map(|r: webgates_core::roles::Role| r.to_string())
             .collect::<Vec<_>>()
             .join(",")
     }
@@ -70,14 +70,14 @@ impl CommaSeparatedValue for Vec<webgates::prelude::Role> {
         }
         value
             .split(',')
-            .map(|s| s.trim().parse::<webgates::prelude::Role>())
+            .map(|s| s.trim().parse::<webgates_core::roles::Role>())
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| format!("failed to parse role from csv: {e}"))
     }
 }
 
-#[cfg(feature = "repo-seaorm")]
-impl CommaSeparatedValue for Vec<webgates::groups::Group> {
+#[cfg(feature = "sea-orm")]
+impl CommaSeparatedValue for Vec<webgates_core::groups::Group> {
     fn into_csv(self) -> String {
         self.into_iter()
             .map(|g| g.name().to_string())
@@ -91,7 +91,7 @@ impl CommaSeparatedValue for Vec<webgates::groups::Group> {
         }
         Ok(value
             .split(',')
-            .map(|s| webgates::groups::Group::new(s.trim()))
+            .map(|s| webgates_core::groups::Group::new(s.trim()))
             .collect())
     }
 }

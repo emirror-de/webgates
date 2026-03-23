@@ -17,9 +17,16 @@ use axum::{
     routing::{get, post},
 };
 
-use axum_extra::extract::CookieJar;
-use webgates::cookie_template::CookieTemplate;
-use webgates::prelude::*;
+use axum_extra::extract::{CookieJar, cookie::Cookie};
+use webgates::codecs::jsonwebtoken::{DecodingKey, EncodingKey, Validation};
+use webgates::{
+    accounts::Account,
+    authz::AccessPolicy,
+    codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims},
+    cookie_template::CookieTemplate,
+    groups::Group,
+    roles::Role,
+};
 use webgates_axum::gate::Gate;
 
 use serde::{Deserialize, Serialize};
@@ -47,10 +54,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create JWT codec with proper shared secret
     let shared_secret = "my-super-secret-key-for-demo"; // In production, use a proper secret from env
     let jwt_options = JsonWebTokenOptions {
-        enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: DecodingKey::from_secret(shared_secret.as_bytes()),
         header: Some(Default::default()),
-        validation: Some(webgates::jsonwebtoken::Validation::default()),
+        validation: Some(Validation::default()),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
@@ -271,7 +278,7 @@ async fn login_handler(
         info!("Successful login for user: {}", form.username);
 
         // Create a simple JWT cookie for demonstration
-        let cookie = webgates::cookie::Cookie::build(("my-app", "demo-token"))
+        let cookie = Cookie::build(("my-app", "demo-token"))
             .path("/")
             .http_only(true)
             .build();
@@ -303,7 +310,7 @@ async fn login_handler(
 
 async fn logout_handler(jar: CookieJar) -> Result<Response, StatusCode> {
     // Remove the authentication cookie
-    let cookie = webgates::cookie::Cookie::build(("my-app", ""))
+    let cookie = Cookie::build(("my-app", ""))
         .path("/")
         .http_only(true)
         .removal()

@@ -38,10 +38,7 @@ impl Gate {
     }
 
     /// Create a bearer-based gate as an axum layer using the core configuration.
-    pub fn bearer<C, R, G>(
-        issuer: &str,
-        codec: Arc<C>,
-    ) -> bearer::BearerGate<C, R, G, bearer::JwtConfig<R, G>>
+    pub fn bearer<C, R, G>(issuer: &str, codec: Arc<C>) -> bearer::BearerGate<C, R, G, impl Clone>
     where
         C: Codec,
         R: AccessHierarchy + Eq + std::fmt::Display + Default + Clone + Send + Sync + 'static,

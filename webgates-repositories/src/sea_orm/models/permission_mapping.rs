@@ -12,10 +12,9 @@
 //!
 //! See also the domain value: `crate::domain::values::PermissionMapping`.
 
-#[cfg(feature = "repo-seaorm")]
+#[cfg(feature = "sea-orm")]
 use sea_orm::{ActiveValue, entity::prelude::*};
-use webgates::permissions::PermissionId;
-use webgates::permissions::mapping::PermissionMapping;
+use webgates_core::permissions::{PermissionId, PermissionMapping};
 
 /// SeaORM entity for a permission mapping (normalized string <-> id).
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]

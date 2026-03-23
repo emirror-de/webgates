@@ -1,49 +1,100 @@
-# webgates (core)
+# webgates
 
-Framework-agnostic authentication and authorization primitives for building gate layers (cookie, bearer) with JWTs, hierarchical roles, groups, and permissions. This crate has no web framework dependency; adapters (e.g., Axum) live elsewhere.
+User-facing composition crate for the webgates workspace.
+
+`webgates` combines the core domain model with optional authentication, codec,
+cookie, secret, and OAuth2 support behind a single dependency for application
+code. Most users should depend on this crate directly.
+
+Framework integrations live in sibling crates such as `webgates-axum`.
+Persistence backends live in `webgates-repositories`.
 
 ## When to use this crate
-- You want gate configuration, codecs, domain types, and authorization logic without pulling in a web framework.
-- You are writing your own adapter/middleware around the provided gates.
-- You need reusable domain models (accounts, roles, groups, permissions), password hashing, and validation utilities.
 
-If you need Axum middleware and route handlers, depend on `webgates-axum`. Repository backends live in `webgates-repositories`.
+Use `webgates` when you want:
+
+- one crate for the standard webgates stack
+- framework-agnostic gate configuration
+- JWT codec support
+- authentication services and cookie helpers
+- secret and hashing primitives
+- a small, feature-gated public surface without wiring the core sibling crates manually
+
+If you only need a narrower layer, the workspace also exposes dedicated crates
+such as:
+
+- `webgates-core`
+- `webgates-codecs`
+- `webgates-secrets`
 
 ## Install
 
-Core only (no server features):
+Standard setup with the composed default feature set:
 
 ```toml
 [dependencies]
 webgates = "0.1"
 ```
 
-Server-enabled (runtime, Gate builders, codecs — opt-in):
+Minimal setup without the composed defaults:
 
 ```toml
 [dependencies]
-webgates = { version = "0.1", features = ["server"] }
+webgates = { version = "0.1", default-features = false }
+```
+
+Custom setup with only selected capabilities:
+
+```toml
+[dependencies]
+webgates = { version = "0.1", default-features = false, features = ["codecs", "cookies", "authn"] }
 ```
 
 Minimum supported Rust version: 1.88.
 
 ## Core concepts
 
-- Gates (framework-agnostic)
-  - `Gate::cookie("issuer", codec)`: JWT via HTTP-only cookies.
-  - `Gate::bearer("issuer", codec)`: JWT via `Authorization: Bearer`; `with_static_token` for shared-secret mode.
-  - `allow_anonymous_with_optional_user()`: never blocks; inserts optional user context.
-  - `require_login()`: allow baseline role + supervisors (role hierarchy).
-- Policies
-  - `AccessPolicy::require_role(..)`, `require_role_or_supervisor(..)`, `require_group(..)`, `require_permission("domain:action")`.
-- Codecs
-  - `codecs::jwt::JsonWebToken` with `JsonWebTokenOptions`; use persistent keys in production.
-- Domain
-  - `accounts`, `roles`, `groups`, `permissions`, credential hashing (Argon2), deterministic permission IDs, collision validation helpers.
+### Gates
 
-## Quick start (framework-agnostic gate configuration)
+Framework-agnostic access gates:
 
-Note: The example below uses server-oriented APIs (`Gate`, `codecs`) that are feature-gated. Enable the `server` feature in your Cargo.toml (see the Install section) when using these pieces.
+- `Gate::cookie("issuer", codec)` for JWTs in HTTP-only cookies
+- `Gate::bearer("issuer", codec)` for `Authorization: Bearer`
+- `with_static_token(...)` for shared-secret bearer mode
+- `allow_anonymous_with_optional_user()` for non-blocking optional user context
+- `require_login()` for baseline role plus supervisors
+
+### Policies
+
+Authorization policies are explicit and composable:
+
+- `AccessPolicy::require_role(..)`
+- `AccessPolicy::require_role_or_supervisor(..)`
+- `AccessPolicy::require_group(..)`
+- `AccessPolicy::require_permission("domain:action")`
+
+### Codecs
+
+JWT support is available through:
+
+- `codecs::jwt::JsonWebToken`
+- `codecs::jwt::JsonWebTokenOptions`
+
+Use persistent keys in production.
+
+### Domain
+
+The crate exposes the core authentication and authorization model:
+
+- `accounts`
+- `roles`
+- `groups`
+- `permissions`
+- credential handling and verification helpers
+- deterministic permission identifiers
+- collision validation helpers
+
+## Quick start
 
 ```rust
 use std::sync::Arc;
@@ -57,30 +108,68 @@ type AppClaims = JwtClaims<Account<Role, Group>>;
 let codec = Arc::new(JsonWebToken::<AppClaims>::default());
 
 let gate = Gate::cookie::<_, Role, Group>("my-app", Arc::clone(&codec))
-    .require_login() // baseline role + supervisors
+    .require_login()
     .with_policy(AccessPolicy::require_permission("admin:read"));
 ```
 
-Adapt this gate in your framework by implementing the adapter traits in `gate::cookie` / `gate::bearer`.
+Use `webgates-axum` if you want ready-made Axum middleware and route handlers.
+If you use another framework, build an adapter around the gate runtime APIs.
 
 ## Features
 
-- `default = []` (no features enabled by default)
-- `server`: opt-in feature that brings runtime and server-oriented dependencies (tokio, cookie, serde_json, subtle, tracing, oauth2, argon2, etc.). Required for `Gate`, `codecs`, and other server integrations.
-- `audit-logging`: structured audit events (`tracing`)
-- `prometheus`: metrics for audit (implies `audit-logging`)
-- `insecure-fast-hash`: faster Argon2 configuration intended for development only
-- `wasm`: build core types for WASM (omits server dependencies)
+`webgates` is the composition surface for end users.
+
+- `default = ["full"]`
+- `full`: enables the standard composed stack
+- `authn`: authentication services
+- `codecs`: JWT codec support via `webgates-codecs`
+- `cookies`: cookie templates and cookie-backed helpers
+- `oauth2`: OAuth2 support
+- `secrets`: hashing and secret handling via `webgates-secrets`
+- `audit-logging`: structured audit events with `tracing`
+- `prometheus`: Prometheus metrics support; implies `audit-logging`
+- `wasm`: WASM-oriented build support
+
+`full` currently enables:
+
+- `authn`
+- `codecs`
+- `cookies`
+- `oauth2`
+- `secrets`
+
+Typical choices:
+
+- most applications: use default features
+- domain-only usage: `default-features = false`
+- custom composition: disable defaults and enable only what you need
+
+## Related crates
+
+- `webgates-core`: domain model and authorization primitives
+- `webgates-codecs`: codec implementations such as JWT support
+- `webgates-secrets`: secret and hashing primitives
+- `webgates-axum`: Axum integration
+- `webgates-repositories`: repository traits and storage backends
 
 ## Security checklist
 
-- Use a persistent JWT key; do not rely on the default random key.
-- Keep issuer strings identical between login (claims) and gates.
-- Align cookie names/templates between login writer and gate reader; set Secure/HttpOnly/SameSite appropriately.
-- Rate-limit login; validate inputs at boundaries.
-- Avoid logging secrets or tokens; prefer correlation IDs.
-- Enable `audit-logging` and `prometheus` for observability.
+- Use a persistent JWT key in production.
+- Keep issuer strings identical between login and gates.
+- Align cookie names and templates between writers and readers.
+- Set `Secure`, `HttpOnly`, and `SameSite` appropriately.
+- Rate-limit login and validate inputs at boundaries.
+- Avoid logging secrets or tokens.
+- Use correlation IDs for observability.
+- Enable `audit-logging` and `prometheus` where appropriate.
+- Enable only the features and sibling crates you actually need.
 
 ## License
 
 MIT
+
+Additional backend note:
+
+- SurrealDB support is provided by `webgates-repositories` through its
+  `surrealdb` feature. Review and comply with SurrealDB's BUSL-1.1 terms before
+  enabling it in production.

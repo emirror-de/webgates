@@ -5,111 +5,121 @@
 /*!
 # webgates
 
-Core domain models, codecs, hashing, and authorization logic for the webgates
-project. This crate is platform-agnostic by design and exposes the types and
-services you need to build authentication and authorization layers (gates).
-Framework-specific adapters (for example, Axum middleware and route handlers)
-are provided by the sibling crate `webgates-axum`.
+`webgates` extends `webgates-core` with optional authentication, codec, cookie,
+OAuth2, audit, and secret-management capabilities.
 
-## What’s here
+This crate is not the workspace grab bag. The canonical domain and
+authorization API lives in `webgates-core`. This crate keeps those core modules
+available and adds only the higher-level capabilities that build on top of
+them.
 
-- Accounts, roles, groups, and permissions domain types
-- Authorization policies and validation helpers
-- JWT codecs and registered claim types
-- Password hashing (Argon2) and credential verification helpers
-- Result and error helpers and a user-friendly error taxonomy
-- Utilities for permission validation and deterministic hashing
+Framework adapters remain in sibling crates such as `webgates-axum`.
+Persistence backends remain in `webgates-repositories`.
 
-## Feature gating and adapters
+## What this crate adds
 
-Many server- and framework-oriented pieces in this crate are gated behind the
-optional `server` feature. The following modules require the `server` feature:
+Compared with `webgates-core`, this crate adds optional modules for:
 
-- `gate` (Gate builders)
-- `codecs` (JWT codec implementations)
-- `authn`, `cookie_template`, `hashing`, `secrets`, `verification_result`
-- Integration error helpers and other runtime utilities
+- authentication workflows via `authn`
+- cookie templates via `cookie_template`
+- framework-agnostic gate builders via `gate`
+- audit logging via `audit`
 
-The crate intentionally ships with no default features enabled. Enable the
-`server` feature in your `Cargo.toml` to pull in runtime and server-facing
-dependencies when you need them (for example, when creating Gate builders or
-using the provided JWT codecs). If you only need the domain types (accounts,
-roles, groups, permissions) and zero runtime dependencies, omit the `server`
-feature.
+Optional integration crates are exposed only when their corresponding feature is
+enabled:
 
-If you plan to use Axum adapters (middleware, route handlers, OAuth helpers),
-depend on `webgates-axum` which re-exports and adapts the core APIs into Axum
-tower layers.
+- `codecs` enables `webgates-codecs`
+- `secrets` enables `webgates-secrets`
 
-## Quick start (feature-aware)
+## Feature model
 
-The short example below shows core usage. Note the `server` feature is required
-for `Gate` and the `codecs` module — enable it in your `Cargo.toml` when using
-those APIs.
+This crate defaults to the smallest possible surface and enables no optional
+features automatically.
+
+Available features:
+
+- `authn` — authentication services; depends on `codecs`, `repositories`, and `secrets`
+- `codecs` — re-export `webgates-codecs`
+- `cookies` — cookie templates and cookie-dependent gate helpers
+- `oauth2` — OAuth2 gate support; depends on `codecs`, `cookies`, and `repositories`
+- `secrets` — re-export `webgates-secrets`
+- `repositories` — repository contracts used by higher-level workflows
+- `audit-logging` — structured audit events
+- `prometheus` — Prometheus metrics for audit logging
+
+Use `webgates-core` directly if you only need the base domain and authorization
+types.
+
+Use `webgates` when you want the core API plus the optional higher-level
+capabilities defined above.
+
+## Quick start
+
+Core types come from the same canonical module paths as in `webgates-core`:
 
 ```rust
 use webgates::accounts::Account;
 use webgates::authz::AccessPolicy;
-use webgates::prelude::{Group, Role};
+use webgates::groups::Group;
+use webgates::roles::Role;
+```
 
-// The `codecs` module and `Gate` are feature-gated behind `server`.
-// The following example requires `features = ["server"]` for this crate.
-#[cfg(feature = "server")]
+Optional capabilities are enabled explicitly:
+
+```rust
+#[cfg(all(feature = "codecs", feature = "cookies"))]
 {
     use std::sync::Arc;
-    use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
+    use webgates::accounts::Account;
+    use webgates::authz::AccessPolicy;
     use webgates::gate::Gate;
+    use webgates::groups::Group;
+    use webgates::roles::Role;
+    use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
 
     type AppClaims = JwtClaims<Account<Role, Group>>;
     let codec = Arc::new(JsonWebToken::<AppClaims>::default());
 
-    let gate = Gate::cookie::<_, Role, Group>("my-app", Arc::clone(&codec))
-        .require_login() // baseline role + supervisors
+    let _gate = Gate::cookie::<_, Role, Group>("my-app", Arc::clone(&codec))
+        .require_login()
         .with_policy(AccessPolicy::require_permission("admin:read"));
 }
 ```
 
-Adapt this crate into your web framework with the adapters from `webgates-axum`,
-or implement your own thin adapter if you integrate with a different framework.
+## Design notes
 
-## Notes
-
-- Prefer enabling only the features you need. The `server` feature pulls in
-  async/runtime and HTTP-related dependencies.
-- For repository-backed storage and optional persistence features, see the
-  separate `webgates-repositories` crate.
+- `webgates-core` owns the core domain and authorization API.
+- `webgates` extends that API with optional higher-level functionality.
+- `webgates-axum` owns Axum-specific integration.
+- `webgates-repositories` owns persistence backends and repository modules.
 */
 
-#[cfg(feature = "server")]
-pub use cookie;
-pub use jsonwebtoken;
-pub use uuid;
+pub use webgates_core::validate_permissions;
+pub use webgates_core::{
+    accounts, authz, credentials, errors_core, groups, permissions, roles, verification_result,
+};
 
-pub mod accounts;
 #[cfg(feature = "audit-logging")]
 pub mod audit;
-#[cfg(feature = "server")]
+#[cfg(feature = "authn")]
 pub mod authn;
-pub mod authz;
-#[cfg(feature = "server")]
-pub mod codecs;
-#[cfg(feature = "server")]
+#[cfg(feature = "cookies")]
+pub use cookie;
+#[cfg(feature = "codecs")]
+pub use webgates_codecs as codecs;
+#[cfg(feature = "cookies")]
 pub mod cookie_template;
-pub mod credentials;
-#[cfg(feature = "server")]
+#[cfg(any(
+    feature = "authn",
+    feature = "codecs",
+    feature = "cookies",
+    feature = "secrets"
+))]
 pub mod errors;
-pub mod errors_core;
-#[cfg(feature = "server")]
+#[cfg(any(feature = "codecs", feature = "cookies"))]
 pub(crate) mod errors_integration;
-#[cfg(feature = "server")]
+#[cfg(any(feature = "codecs", feature = "cookies", feature = "oauth2"))]
 pub mod gate;
-pub mod groups;
-#[cfg(feature = "server")]
-pub mod hashing;
-pub mod permissions;
-pub mod prelude;
-pub mod roles;
-#[cfg(feature = "server")]
-pub mod secrets;
-#[cfg(feature = "server")]
-pub mod verification_result;
+pub use webgates_core::prelude;
+#[cfg(feature = "secrets")]
+pub use webgates_secrets as secrets;

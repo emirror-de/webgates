@@ -16,14 +16,17 @@
 // Running
 // - Ensure webgates_SHARED_SECRET is set (a .env is provided in this example).
 // - From this example directory, run: cargo run
+use webgates::accounts::Account;
 use webgates::authz::{AccessHierarchy, AccessPolicy};
+use webgates::codecs::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
 use webgates::cookie_template::CookieTemplate;
-use webgates::prelude::{Account, Credentials};
+use webgates::credentials::Credentials;
 use webgates_axum::gate::Gate;
 use webgates_axum::route_handlers;
-use webgates_repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
-use webgates_repositories::services::AccountInsertService;
+use webgates_repositories::memory::account::MemoryAccountRepository;
+use webgates_repositories::memory::secret::MemorySecretRepository;
+use webgates_repositories::services::account_insert::AccountInsertService;
 
 use std::sync::Arc;
 
@@ -260,10 +263,10 @@ async fn main() {
     let shared_secret =
         dotenvy::var("webgates_SHARED_SECRET").expect("webgates_SHARED_SECRET env var not set.");
     let jwt_options = JsonWebTokenOptions {
-        enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
-        header: Some(webgates::jsonwebtoken::Header::default()),
-        validation: Some(webgates::jsonwebtoken::Validation::default()),
+        enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: DecodingKey::from_secret(shared_secret.as_bytes()),
+        header: Some(Header::default()),
+        validation: Some(Validation::default()),
     };
     let jwt_codec = Arc::new(JsonWebToken::<
         JwtClaims<Account<CustomRoleDefinition, CustomGroupDefinition>>,

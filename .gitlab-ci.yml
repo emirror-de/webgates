@@ -44,8 +44,8 @@ clippy_check:
     <<: *rust_job
     stage: check
     script:
-        # Run clippy for combinations that include repo-surrealdb,repo-seaorm
-        - cargo clippy --workspace --all-targets --features repo-surrealdb,repo-seaorm -- -D warnings
+        # Run clippy for combinations that include surrealdb,sea-orm
+        - cargo clippy --workspace --all-targets --features surrealdb,sea-orm -- -D warnings
         # Run clippy for wasm feature (no default features)
         - cargo clippy --workspace --all-targets --no-default-features --features wasm -- -D warnings
     allow_failure: false
@@ -67,25 +67,18 @@ test_wasm:
     allow_failure: false
 
 # Individual feature tests
-test_insecure_fast_hash:
-    <<: *rust_job
-    stage: test
-    script:
-        - cargo test --workspace --features insecure-fast-hash
-    allow_failure: false
-
 test_storage_surrealdb:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --features repo-surrealdb
+        - cargo test --workspace --features surrealdb
     allow_failure: false
 
 test_storage_seaorm:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --features repo-seaorm
+        - cargo test --workspace --features sea-orm
     allow_failure: false
 
 # Feature combination tests
@@ -93,21 +86,7 @@ test_all_storage_features:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --features repo-surrealdb,repo-seaorm
-    allow_failure: false
-
-test_fast_hash_with_surrealdb:
-    <<: *rust_job
-    stage: test
-    script:
-        - cargo test --workspace --features insecure-fast-hash,repo-surrealdb
-    allow_failure: false
-
-test_fast_hash_with_seaorm:
-    <<: *rust_job
-    stage: test
-    script:
-        - cargo test --workspace --features insecure-fast-hash,repo-seaorm
+        - cargo test --workspace --features surrealdb,sea-orm
     allow_failure: false
 
 # Integration and doc tests
@@ -153,24 +132,12 @@ cargo_semver_checks_default:
         - merge_requests
         - nightly
 
-cargo_semver_checks_insecure_fast_hash:
-    <<: *rust_job
-    stage: security
-    script:
-        - cargo install cargo-semver-checks
-        - cargo semver-checks check-release --only-explicit-features --features insecure-fast-hash,default
-    allow_failure: false
-    only:
-        - merge_requests
-        - nightly
-        - /^version\/.*$/
-
 cargo_semver_checks_storage_surrealdb:
     <<: *rust_job
     stage: security
     script:
         - cargo install cargo-semver-checks
-        - cargo semver-checks check-release --only-explicit-features --features repo-surrealdb,default
+        - cargo semver-checks check-release --only-explicit-features --features surrealdb,default
     allow_failure: false
     only:
         - merge_requests
@@ -181,7 +148,7 @@ cargo_semver_checks_storage_seaorm:
     stage: security
     script:
         - cargo install cargo-semver-checks
-        - cargo semver-checks check-release --only-explicit-features --features repo-seaorm,default
+        - cargo semver-checks check-release --only-explicit-features --features sea-orm,default
     allow_failure: false
     only:
         - merge_requests

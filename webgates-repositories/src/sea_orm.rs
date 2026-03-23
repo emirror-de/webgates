@@ -1,21 +1,28 @@
-//! SeaORM repository integration providing account & credential persistence with constant‑time verification.
+//! SeaORM repository integration providing account, group, permission-mapping,
+//! and secret persistence with constant-time credential verification.
 //!
-//! This repository includes constant-time credential verification to
-//! mitigate user enumeration via timing differences. A dummy Argon2
-//! hash (built with the active build-mode preset) is precomputed at
-//! construction and used whenever a secret for a given account id
-//! does not exist, ensuring the Argon2 verification path is always
-//! executed.
+//! This backend module centralizes shared SeaORM concerns such as:
+//! - repository construction
+//! - consistent database error mapping
+//! - stable table-aware context for adapter failures
+//! - dummy-hash setup for constant-time credential verification
 
-use crate::errors::{Error, Result};
-use webgates::hashing::{HashingService, argon2::Argon2Hasher, errors::HashingError};
-
-use sea_orm::DatabaseConnection;
+use crate::{
+    TableName,
+    errors::{DatabaseError, DatabaseOperation, Error, Result},
+};
+use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Schema};
+use std::future::Future;
+use webgates_secrets::hashing::{
+    HashingService,
+    argon2::Argon2Hasher,
+    errors::{HashingError, HashingOperation},
+};
 
 /// SeaORM persistence entities (database models) used by `SeaOrmRepository`.
 ///
 /// These are thin schemas mapping relational rows to structures convertible
-/// to and from the domain layer (`Account`, `Secret`).
+/// to and from the domain layer.
 pub mod models;
 
 mod account;
@@ -25,54 +32,13 @@ mod secret;
 
 /// Repository implementation for [SeaORM](sea_orm).
 ///
-/// # Responsibilities
-/// * Translate between domain `Account` / `Secret` and SeaORM models
-/// * Provide CRUD operations required by higher‑level services
-/// * Perform constant‑time credential verification
-///
-/// # Timing Side‑Channel Mitigation
-/// A precomputed dummy Argon2 hash (same parameters as production hashes)
-/// is always verified when an account's secret is missing. Existence and
-/// hash‑match results are combined using bitwise operations on `subtle::Choice`
-/// to avoid branching that could leak information.
-///
-/// # Concurrency
-/// `SeaOrmRepository` is cheaply cloneable (internally holds a `DatabaseConnection`).
-/// Clones share the same underlying pool and are `Send + Sync`.
-///
-/// # Error Semantics
-/// Each DB interaction maps the concrete SeaORM / driver error into an
-/// `DatabaseError::Operation` variant enriched with: operation, table,
-/// and record identifier (when available).
-///
-/// # Usage
-/// ```rust
-/// # #[cfg(feature = "repo-seaorm")]
-/// # {
-/// use webgates_repositories::sea_orm::SeaOrmRepository;
-/// use sea_orm::Database;
-/// # #[tokio::test] async fn usage_sea_orm() -> Result<(), Box<dyn std::error::Error>> {
-/// let db = Database::connect("sqlite::memory:").await?;
-/// let repo = SeaOrmRepository::new(&db)?;
-/// # Ok(()) }
-/// # }
-/// ```
-///
-/// # Extensibility
-/// * To add new persisted aggregates: create a new model module, implement
-///   conversions, and extend the repository or introduce a new trait.
-/// * For multi‑tenant separation consider separate schemas / databases at
-///   the connection level; this struct does not enforce tenant isolation.
-///
-/// # Security Considerations
-/// * Still pair with rate limiting & structured logging
-/// * Keep Argon2 parameters strong and consistent
-/// * Secrets are assumed already hashed (insertion path uses hashed values)
+/// This type owns shared backend concerns for all SeaORM adapters while the
+/// individual repository traits are implemented in focused modules.
 pub struct SeaOrmRepository {
-    db: DatabaseConnection,
+    pub(crate) db: DatabaseConnection,
     /// Precomputed dummy Argon2 hash used for nonexistent accounts to keep
     /// verification timing consistent.
-    dummy_hash: String,
+    pub(crate) dummy_hash: String,
 }
 
 impl SeaOrmRepository {
@@ -80,13 +46,13 @@ impl SeaOrmRepository {
     pub fn new(db: &DatabaseConnection) -> Result<Self> {
         let hasher = Argon2Hasher::new_recommended().map_err(|error| {
             Error::Hashing(HashingError::new(
-                webgates::hashing::HashingOperation::Hash,
+                HashingOperation::Hash,
                 format!("Failed to initialize Argon2 hasher: {error}"),
             ))
         })?;
         let dummy_hash = hasher.hash_value("dummy_password").map_err(|error| {
             Error::Hashing(HashingError::new(
-                webgates::hashing::HashingOperation::Hash,
+                HashingOperation::Hash,
                 format!("Failed to generate dummy password hash: {error}"),
             ))
         })?;
@@ -94,5 +60,63 @@ impl SeaOrmRepository {
             db: db.clone(),
             dummy_hash,
         })
+    }
+
+    /// Create all repository tables if they do not exist yet.
+    pub fn bootstrap(&self) -> impl Future<Output = Result<()>> + Send + '_ {
+        async move {
+            let backend = self.db.get_database_backend();
+            let schema = Schema::new(backend);
+
+            self.create_table_if_missing(
+                backend,
+                schema.create_table_from_entity(models::credentials::Entity),
+                TableName::WebgatesCredentials,
+            )
+            .await?;
+
+            self.create_table_if_missing(
+                backend,
+                schema.create_table_from_entity(models::account::Entity),
+                TableName::WebgatesAccounts,
+            )
+            .await?;
+
+            self.create_table_if_missing(
+                backend,
+                schema.create_table_from_entity(models::group::Entity),
+                TableName::WebgatesGroups,
+            )
+            .await?;
+
+            self.create_table_if_missing(
+                backend,
+                schema.create_table_from_entity(models::permission_mapping::Entity),
+                TableName::WebgatesPermissionMappings,
+            )
+            .await?;
+
+            Ok(())
+        }
+    }
+
+    async fn create_table_if_missing(
+        &self,
+        _backend: DbBackend,
+        statement: sea_orm::sea_query::TableCreateStatement,
+        table_name: TableName,
+    ) -> Result<()> {
+        self.db
+            .execute(&statement)
+            .await
+            .map(|_| ())
+            .map_err(|error| {
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Insert,
+                    format!("Failed to create table `{table_name}`: {error}"),
+                    Some(table_name.to_string()),
+                    None,
+                ))
+            })
     }
 }

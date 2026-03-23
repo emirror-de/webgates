@@ -3,9 +3,9 @@
 //! Internal table storing the Argon2 hashed secret for an account.
 //! Most users interact through `SeaOrmRepository`; import this only
 //! for custom migrations or direct queries.
-use webgates::secrets::Secret;
+use webgates_secrets::Secret;
 
-#[cfg(feature = "repo-seaorm")]
+#[cfg(feature = "sea-orm")]
 use sea_orm::{ActiveValue, entity::prelude::*};
 
 /// Credentials persistence entity (stores Argon2 hash).

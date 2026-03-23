@@ -89,11 +89,24 @@ jobs:
                       cmd: cargo test -p webgates --features wasm
                       desc: webgates-wasm
                     - pkg: webgates
-                      cmd: cargo test -p webgates --features server
-                      desc: webgates-server
+                      cmd: cargo test -p webgates --no-default-features --features authn
+                      desc: webgates-authn
                     - pkg: webgates
-                      cmd: cargo test -p webgates --features insecure-fast-hash
-                      desc: webgates-insecure-fast-hash
+                      cmd: cargo test -p webgates --no-default-features --features codecs
+                      desc: webgates-codecs
+                    - pkg: webgates
+                      cmd: cargo test -p webgates --no-default-features --features cookies
+                      desc: webgates-cookies
+                    - pkg: webgates
+                      cmd: cargo test -p webgates --no-default-features --features oauth2
+                      desc: webgates-oauth2
+                    - pkg: webgates
+                      cmd: cargo test -p webgates --no-default-features --features repositories
+                      desc: webgates-repositories
+                    - pkg: webgates
+                      cmd: cargo test -p webgates --no-default-features --features secrets
+                      desc: webgates-secrets
+
                     - pkg: webgates
                       cmd: cargo test -p webgates --features audit-logging
                       desc: webgates-audit-logging
@@ -101,25 +114,22 @@ jobs:
                       cmd: cargo test -p webgates --features prometheus
                       desc: webgates-prometheus
                     - pkg: webgates
-                      cmd: cargo test -p webgates --features repo-surrealdb
-                      desc: webgates-repo-surrealdb
-                    - pkg: webgates
-                      cmd: cargo test -p webgates --features repo-seaorm
-                      desc: webgates-repo-seaorm
+                      cmd: cargo test -p webgates --features full
+                      desc: webgates-full
 
                     # webgates-repositories crate: default, per-feature, and all-features
                     - pkg: webgates-repositories
                       cmd: cargo test -p webgates-repositories
                       desc: repositories-default
                     - pkg: webgates-repositories
-                      cmd: cargo test -p webgates-repositories --all-features
-                      desc: repositories-all-features
+                      cmd: cargo test -p webgates-repositories --features audit-logging
+                      desc: repositories-audit-logging
                     - pkg: webgates-repositories
-                      cmd: cargo test -p webgates-repositories --features repo-surrealdb
-                      desc: repositories-repo-surrealdb
+                      cmd: cargo test -p webgates-repositories --features surrealdb
+                      desc: repositories-surrealdb
                     - pkg: webgates-repositories
-                      cmd: cargo test -p webgates-repositories --features repo-seaorm
-                      desc: repositories-repo-seaorm
+                      cmd: cargo test -p webgates-repositories --features sea-orm
+                      desc: repositories-sea-orm
 
                     # webgates-axum crate: default and all-features
                     - pkg: webgates-axum
@@ -173,14 +183,12 @@ jobs:
                     - name: wasm
                       cmd: cargo test -p webgates --features wasm
 
-                    - name: insecure_fast_hash
-                      cmd: cargo test -p webgates --features insecure-fast-hash
-                    - name: repo_surrealdb
-                      cmd: cargo test -p webgates-repositories --features repo-surrealdb
-                    - name: repo_seaorm
-                      cmd: cargo test -p webgates-repositories --features repo-seaorm
-                    - name: repo_all_features
-                      cmd: cargo test -p webgates-repositories --features repo-surrealdb,repo-seaorm
+                    - name: surrealdb
+                      cmd: cargo test -p webgates-repositories --features surrealdb
+                    - name: sea_orm
+                      cmd: cargo test -p webgates-repositories --features sea-orm
+                    - name: all_backend_features
+                      cmd: cargo test -p webgates-repositories --features surrealdb,sea-orm
                     - name: axum_default
                       cmd: cargo test -p webgates-axum
         steps:
@@ -383,8 +391,6 @@ jobs:
                     - name: default
                       args: "--default-features"
 
-                    - name: insecure-fast-hash
-                      args: "--only-explicit-features --features default,insecure-fast-hash"
                     - name: audit-logging
                       args: "--only-explicit-features --features default,audit-logging"
                     - name: prometheus

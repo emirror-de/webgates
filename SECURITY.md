@@ -35,8 +35,6 @@ The crate provides three security presets:
 **Default Behavior**:
 - Release builds: `HighSecurity` preset automatically
 - Debug builds: `DevFast` preset (4 MiB memory, 1 iteration, 1 thread) for faster iteration
-- Release opt-in: `insecure-fast-hash` feature enables `DevFast` in release builds (⚠️ NEVER use in production)
-
 ### Timing Attack Protection
 - **Constant-Time Verification**: Always performs Argon2 computation, even for non-existent accounts
 - **Dummy Hash Verification**: Uses a pre-computed dummy hash for non-existent users
@@ -196,8 +194,8 @@ let protected_routes = Router::new()
 | Backend | Feature Flag | Production Ready | Notes |
 |---------|--------------|------------------|-------|
 | In-Memory | (default) | ❌ Development only | Lost on restart |
-| SurrealDB | `repo-surrealdb` | ✅ | Embedded or remote |
-| SeaORM | `repo-seaorm` | ✅ | Multi-database support |
+| SurrealDB | `surrealdb` | ✅ | Embedded or remote |
+| SeaORM | `sea-orm` | ✅ | Multi-database support |
 
 ---
 
@@ -382,9 +380,9 @@ match auth_result {
 ### Available Feature Flags (v2.0.0-dev)
 | Feature | Security Impact | Recommendation |
 |---------|-----------------|----------------|
-| `insecure-fast-hash` | ⚠️ Weakens password hashing | **NEVER** enable in production |
-| `repo-surrealdb` | ✅ Production-ready storage | Safe for production |
-| `repo-seaorm` | ✅ Production-ready storage | Safe for production |
+| `full` | ✅ Enables the standard composed authentication stack | Recommended for most applications |
+| `surrealdb` | ✅ Production-ready storage | Safe for production |
+| `sea-orm` | ✅ Production-ready storage | Safe for production |
 | `audit-logging` | ✅ Enhances security monitoring | Recommended for production |
 | `prometheus` | ✅ Enables metrics collection | Recommended for production monitoring |
 
@@ -396,12 +394,12 @@ webgates = {
     version = "2.0.0-dev",
     features = ["audit-logging", "prometheus"]
 }
-webgates-repositories = { version = "2.0.0-dev", features = ["repo-surrealdb"] }
+webgates-repositories = { version = "2.0.0-dev", features = ["surrealdb"] }
 
 // Development configuration (faster hashing automatically enabled in debug builds)
 [dev-dependencies]
 webgates = { version = "2.0.0-dev" }
-webgates-repositories = { version = "2.0.0-dev", features = ["repo-surrealdb"] }
+webgates-repositories = { version = "2.0.0-dev", features = ["surrealdb"] }
 ```
 
 ---

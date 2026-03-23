@@ -1,19 +1,23 @@
 use super::SeaOrmRepository;
 use crate::TableName;
 use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result as RepoResult};
+use crate::permission_mapping_repository::{
+    PermissionMappingRepository, PermissionMappingRepositoryBulk,
+};
 use crate::sea_orm::models::permission_mapping as seaorm_permission_mapping;
 use sea_orm::sea_query::OnConflict;
 use sea_orm::{
     ColumnTrait, EntityTrait, QueryFilter, QueryOrder, TransactionTrait, entity::prelude::*,
 };
 
-use webgates::permissions::PermissionId;
-use webgates::permissions::mapping::{
-    PermissionMapping, PermissionMappingRepository, PermissionMappingRepositoryBulk,
-};
+use webgates_core::permissions::{PermissionId, PermissionMapping};
 
 impl PermissionMappingRepository for SeaOrmRepository {
     type Error = RepoError;
+
+    async fn bootstrap(&self) -> RepoResult<()> {
+        SeaOrmRepository::bootstrap(self).await
+    }
 
     async fn store_mapping(
         &self,

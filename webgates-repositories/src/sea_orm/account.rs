@@ -1,16 +1,18 @@
 use super::SeaOrmRepository;
 use crate::TableName;
+use crate::account_repository::AccountRepository;
 use crate::comma_separated_value::CommaSeparatedValue;
 use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result};
 use crate::sea_orm::models::account as seaorm_account;
 use sea_orm::{
-    ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
+    ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
+    Schema,
     entity::{ActiveModelTrait, ActiveValue},
 };
 use serde::{Serialize, de::DeserializeOwned};
 use uuid::Uuid;
-use webgates::accounts::{Account, AccountRepository};
-use webgates::authz::AccessHierarchy;
+use webgates_core::accounts::Account;
+use webgates_core::authz::AccessHierarchy;
 
 /// Helper to convert a SeaORM model into the domain `Account`.
 fn model_to_account<R, G>(model: seaorm_account::Model) -> Result<Account<R, G>>
@@ -37,7 +39,7 @@ where
         ))
     })?;
 
-    let mut account = Account::new(&model.user_id, &roles, &groups);
+    let mut account = Account::new(model.user_id, roles, groups);
     account.account_id = model.account_id;
     Ok(account)
 }
@@ -58,6 +60,29 @@ where
     Vec<G>: CommaSeparatedValue,
 {
     type Error = RepoError;
+
+    async fn bootstrap(&self) -> Result<()> {
+        let builder = self.db.get_database_backend();
+        let schema = Schema::new(match builder {
+            DbBackend::MySql => DbBackend::MySql,
+            DbBackend::Postgres => DbBackend::Postgres,
+            DbBackend::Sqlite => DbBackend::Sqlite,
+            _ => builder,
+        });
+
+        let statement = schema.create_table_from_entity(seaorm_account::Entity);
+        self.db.execute(&statement).await.map_err(|error| {
+            RepoError::Database(DatabaseError::with_context(
+                DatabaseOperation::Insert,
+                format!("Failed to bootstrap account table: {}", error),
+                Some(TableName::WebgatesAccounts.to_string()),
+                None,
+            ))
+        })?;
+
+        Ok(())
+    }
+
     async fn query_account_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
         let res: Result<_> = {
             let model = seaorm_account::Entity::find()
@@ -106,6 +131,43 @@ where
 
     async fn store_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
         let res: Result<_> = {
+            let account_id = account.account_id;
+            let user_id = account.user_id.clone();
+
+            let existing_by_account_id = seaorm_account::Entity::find()
+                .filter(seaorm_account::Column::AccountId.eq(account_id))
+                .one(&self.db)
+                .await
+                .map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Query,
+                        format!("Failed to check account_id uniqueness: {}", e),
+                        Some(TableName::WebgatesAccounts.to_string()),
+                        Some(account_id.to_string()),
+                    ))
+                })?;
+
+            if existing_by_account_id.is_some() {
+                return Ok(None);
+            }
+
+            let existing_by_user_id = seaorm_account::Entity::find()
+                .filter(seaorm_account::Column::UserId.eq(user_id.clone()))
+                .one(&self.db)
+                .await
+                .map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Query,
+                        format!("Failed to check user_id uniqueness: {}", e),
+                        Some(TableName::WebgatesAccounts.to_string()),
+                        Some(user_id.clone()),
+                    ))
+                })?;
+
+            if existing_by_user_id.is_some() {
+                return Ok(None);
+            }
+
             let mut model = seaorm_account::ActiveModel::from(account.clone());
             model.id = ActiveValue::NotSet;
 
@@ -114,7 +176,7 @@ where
                     DatabaseOperation::Insert,
                     format!("Failed to insert account: {}", e),
                     Some(TableName::WebgatesAccounts.to_string()),
-                    None,
+                    Some(user_id),
                 ))
             })?;
 
@@ -160,8 +222,11 @@ where
 
     async fn update_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
         let res: Result<_> = {
+            let account_id = account.account_id;
+            let user_id = account.user_id.clone();
+
             let Some(db_account) = seaorm_account::Entity::find()
-                .filter(seaorm_account::Column::AccountId.eq(account.account_id))
+                .filter(seaorm_account::Column::AccountId.eq(account_id))
                 .one(&self.db)
                 .await
                 .map_err(|e| {
@@ -169,15 +234,33 @@ where
                         DatabaseOperation::Query,
                         format!("Failed to query account for update: {}", e),
                         Some(TableName::WebgatesAccounts.to_string()),
-                        Some(account.user_id.clone()),
+                        Some(account_id.to_string()),
                     ))
                 })?
             else {
                 return Ok(None);
             };
 
+            let conflicting_user = seaorm_account::Entity::find()
+                .filter(seaorm_account::Column::UserId.eq(user_id.clone()))
+                .one(&self.db)
+                .await
+                .map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Query,
+                        format!("Failed to check user_id uniqueness for update: {}", e),
+                        Some(TableName::WebgatesAccounts.to_string()),
+                        Some(user_id.clone()),
+                    ))
+                })?;
+
+            if let Some(conflicting_user) = conflicting_user {
+                if conflicting_user.account_id != account_id {
+                    return Ok(None);
+                }
+            }
+
             let mut db_account = db_account.into_active_model();
-            let user_id = account.user_id.clone();
             db_account.user_id = ActiveValue::Set(account.user_id);
             db_account.groups = ActiveValue::Set(account.groups.into_csv());
             db_account.roles = ActiveValue::Set(account.roles.into_csv());

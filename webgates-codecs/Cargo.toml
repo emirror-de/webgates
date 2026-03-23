@@ -1,0 +1,27 @@
+[package]
+name = "webgates-codecs"
+version = "0.1.0-dev"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+authors = ["Lewin Probst <info@emirror.de>"]
+description = "Framework-agnostic JWT codecs and validation helpers for webgates."
+homepage = "https://github.com/emirror-de/webgates"
+repository = "https://github.com/emirror-de/webgates"
+readme = "README.md"
+documentation = "https://docs.rs/webgates-codecs"
+keywords = ["auth", "jwt", "codec"]
+categories = ["authentication"]
+
+[dependencies]
+chrono = { workspace = true }
+jsonwebtoken = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true }
+serde_with = "3"
+thiserror = { workspace = true }
+tracing = { workspace = true }
+webgates-core = { path = "../webgates-core" }
+
+[dev-dependencies]
+uuid = { workspace = true, features = ["serde", "v7", "js"] }

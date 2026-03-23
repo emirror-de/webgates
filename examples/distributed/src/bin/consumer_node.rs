@@ -1,7 +1,14 @@
 use distributed::{ApiPermission, AppPermissions, PermissionHelper, RepositoryPermission};
 
-use webgates::prelude::*;
-use webgates_axum::prelude::*;
+use webgates::codecs::jsonwebtoken;
+use webgates::{
+    accounts::Account,
+    authz::AccessPolicy,
+    codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims},
+    groups::Group,
+    roles::Role,
+};
+use webgates_axum::gate::Gate;
 
 use std::sync::Arc;
 
@@ -94,10 +101,10 @@ async fn main() {
         dotenvy::var("webgates_SHARED_SECRET").expect("webgates_SHARED_SECRET env var not set.");
     let jwt_codec = Arc::new(
         JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(JsonWebTokenOptions {
-            enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
-            dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
-            header: Some(webgates::jsonwebtoken::Header::default()),
-            validation: Some(webgates::jsonwebtoken::Validation::default()),
+            enc_key: jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+            dec_key: jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+            header: Some(jsonwebtoken::Header::default()),
+            validation: Some(jsonwebtoken::Validation::default()),
         }),
     );
     let cookie_template = webgates::cookie_template::CookieTemplate::recommended();

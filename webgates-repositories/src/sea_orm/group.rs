@@ -1,19 +1,42 @@
 use super::SeaOrmRepository;
 use crate::TableName;
 use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result};
+use crate::group_repository::GroupRepository as GroupRepositoryTrait;
 use crate::sea_orm::models::group as seaorm_group;
 use sea_orm::{
-    ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
+    ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
+    Schema,
     entity::{ActiveModelTrait, ActiveValue},
 };
 use serde::{Serialize, de::DeserializeOwned};
-use webgates::groups::{GroupEntity, GroupRepository as GroupRepositoryTrait};
+use webgates_core::groups::GroupEntity;
 
 impl<T> GroupRepositoryTrait<T> for SeaOrmRepository
 where
     T: Serialize + DeserializeOwned + GroupEntity + Eq + Clone + Send + Sync + 'static,
 {
     type Error = RepoError;
+
+    async fn bootstrap(&self) -> Result<()> {
+        let backend = self.db.get_database_backend();
+        let schema = Schema::new(backend);
+        let mut statement = schema.create_table_from_entity(seaorm_group::Entity);
+
+        if backend != DbBackend::Sqlite {
+            statement.if_not_exists();
+        }
+
+        self.db.execute(&statement).await.map_err(|e| {
+            RepoError::Database(DatabaseError::with_context(
+                DatabaseOperation::Insert,
+                format!("Failed to bootstrap group repository: {}", e),
+                Some(TableName::WebgatesGroups.to_string()),
+                None,
+            ))
+        })?;
+
+        Ok(())
+    }
 
     async fn store_group(&self, group: T) -> Result<bool> {
         let res: Result<_> = {

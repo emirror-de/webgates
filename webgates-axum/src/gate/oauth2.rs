@@ -10,7 +10,8 @@
 //! ```ignore
 //! use std::sync::Arc;
 //! use webgates_axum::gate::Gate;
-//! use webgates::prelude::*;
+//! use webgates::prelude::{Role, Group, AccessPolicy, Account};
+//! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
 //!
 //! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
@@ -44,7 +45,7 @@ use oauth2::{
 };
 use serde::Deserialize;
 use tracing::error;
-use webgates::accounts::{Account, AccountRepository};
+use webgates::accounts::Account;
 use webgates::authz::AccessHierarchy;
 use webgates::codecs::Codec;
 use webgates::codecs::jwt::JwtClaims;
@@ -55,6 +56,7 @@ use webgates::gate::oauth2::{
     CallbackInput, CallbackOutcome, LoginPreparation, OAuth2Gate as CoreOAuth2Gate, OAuth2Runtime,
     TokenExchanger, TokenRequest,
 };
+use webgates_repositories::account_repository::AccountRepository;
 
 /// Axum-facing OAuth2 gate builder (thin wrapper over the core builder).
 #[derive(Clone)]

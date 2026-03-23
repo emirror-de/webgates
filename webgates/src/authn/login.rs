@@ -10,13 +10,14 @@
 //! - Dummy UUID hashing for missing accounts to equalize timing between "user not found" and "wrong password"
 //! - Unified invalid-credentials responses to mitigate user enumeration
 //! - Stateless service; cryptographic operations live in credential verifiers and repositories
-use crate::accounts::{Account, AccountRepository};
+use crate::accounts::Account;
 use crate::authz::AccessHierarchy;
 use crate::codecs::Codec;
 use crate::codecs::jwt::{JwtClaims, RegisteredClaims};
 use crate::credentials::Credentials;
 use crate::credentials::CredentialsVerifier;
 use crate::verification_result::VerificationResult;
+use webgates_repositories::account_repository::AccountRepository;
 
 use std::sync::Arc;
 
@@ -181,7 +182,7 @@ where
         codec: Arc<C>,
     ) -> LoginResult
     where
-        CredVeri: CredentialsVerifier<Uuid>,
+        CredVeri: CredentialsVerifier,
         AccRepo: AccountRepository<R, G>,
         AccRepo::Error: std::fmt::Display + Send + Sync + 'static,
         C: Codec<Payload = JwtClaims<Account<R, G>>>,
@@ -326,14 +327,14 @@ mod tests {
     use crate::codecs::jwt::{JsonWebToken, JwtClaims};
     use crate::credentials::CredentialsVerifier;
     use crate::groups::Group;
-    use crate::hashing::HashingService;
-    use crate::hashing::argon2::Argon2Hasher;
     use crate::roles::Role;
     use crate::secrets::Secret;
-    use crate::secrets::SecretRepository;
+    use crate::secrets::hashing::HashingService;
+    use crate::secrets::hashing::argon2::Argon2Hasher;
     use std::collections::HashMap;
     use std::time::{Duration, Instant};
     use tokio::sync::RwLock;
+    use webgates_repositories::secret_repository::SecretRepository;
 
     fn median(durs: &[Duration]) -> Duration {
         let mut v = durs.to_vec();
@@ -447,11 +448,11 @@ mod tests {
         }
     }
 
-    impl CredentialsVerifier<Uuid> for DummySecretRepository {
+    impl CredentialsVerifier for DummySecretRepository {
         async fn verify_credentials(
             &self,
             credentials: Credentials<Uuid>,
-        ) -> crate::errors::Result<VerificationResult> {
+        ) -> crate::errors_core::Result<VerificationResult> {
             let read = self.store.read().await;
             let (hash_to_check, user_exists) = match read.get(&credentials.id) {
                 Some(stored) => (stored.secret.clone(), true),
@@ -481,7 +482,11 @@ mod tests {
 
         let existing_user = "existing@example.com";
         let password = "test_password";
-        let account = Account::new(existing_user, &[Role::User], &[Group::new("test-group")]);
+        let account = Account::new(
+            existing_user.to_string(),
+            vec![Role::User],
+            vec![Group::new("test-group")],
+        );
         let stored_account = account_repo.store_account(account).await.unwrap().unwrap();
 
         let secret = Secret::new(

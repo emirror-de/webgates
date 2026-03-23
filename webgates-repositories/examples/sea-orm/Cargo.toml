@@ -16,4 +16,4 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 webgates = { path = "../../../webgates" }
 webgates-axum = { path = "../../../webgates-axum" }
-webgates-repositories = { path = "../../", features = ["repo-seaorm"] }
+webgates-repositories = { path = "../../", features = ["sea-orm"] }

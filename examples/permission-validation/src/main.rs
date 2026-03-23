@@ -86,7 +86,7 @@ fn example_static_validation() -> Result<()> {
         }
         Err(e) => {
             error!("  ❌ Static validation failed: {}", e);
-            return Err(e);
+            return Err(webgates::errors::Error::Permissions(e));
         }
     }
 
@@ -115,7 +115,7 @@ fn example_static_validation() -> Result<()> {
         }
         Err(e) => {
             error!("  ❌ ApplicationValidator validation failed: {}", e);
-            return Err(e);
+            return Err(webgates::errors::Error::Permissions(e));
         }
     }
 
@@ -199,7 +199,12 @@ async fn example_runtime_validation() -> Result<()> {
         }
         Err(e) => {
             error!("  ❌ Runtime validation failed: {}", e);
-            return Err(e);
+            return Err(webgates::errors::Error::Permissions(
+                webgates::errors::PermissionsError::collision(
+                    0,
+                    vec![format!("Runtime validation failed: {}", e)],
+                ),
+            ));
         }
     }
 
@@ -247,7 +252,12 @@ async fn example_detailed_validation() -> Result<()> {
         }
         Err(e) => {
             error!("  ❌ Advanced validation process failed: {}", e);
-            return Err(e);
+            return Err(webgates::errors::Error::Permissions(
+                webgates::errors::PermissionsError::collision(
+                    0,
+                    vec![format!("Advanced validation process failed: {}", e)],
+                ),
+            ));
         }
     }
 
@@ -433,7 +443,7 @@ async fn handle_validation_with_recovery(permissions: Vec<String>) -> Result<()>
         }
         Err(e) => {
             error!("Failed to generate validation report: {}", e);
-            return Err(e);
+            return Err(webgates::errors::Error::Permissions(e));
         }
     }
 
@@ -462,7 +472,10 @@ async fn validate_service_permissions(permissions: Vec<String>) -> Result<usize>
     // Use strict validation for service permissions
     checker.validate().map_err(|e| {
         error!("Service permission validation failed: {}", e);
-        e
+        webgates::errors::Error::Permissions(webgates::errors::PermissionsError::collision(
+            0,
+            vec![format!("Service permission validation failed: {}", e)],
+        ))
     })?;
 
     Ok(permission_count)
@@ -497,7 +510,13 @@ async fn validate_with_fallback() -> Result<()> {
             let mut fallback_checker = PermissionCollisionChecker::new(safe_permissions);
             fallback_checker.validate().map_err(|e| {
                 error!("Even fallback permissions failed validation: {}", e);
-                e
+                webgates::errors::Error::Permissions(webgates::errors::PermissionsError::collision(
+                    0,
+                    vec![format!(
+                        "Even fallback permissions failed validation: {}",
+                        e
+                    )],
+                ))
             })?;
 
             info!("    ✅ Fallback permission set validated successfully");
@@ -505,7 +524,12 @@ async fn validate_with_fallback() -> Result<()> {
         }
         Err(e) => {
             error!("    Validation process failed entirely: {}", e);
-            Err(e)
+            Err(webgates::errors::Error::Permissions(
+                webgates::errors::PermissionsError::collision(
+                    0,
+                    vec![format!("Validation process failed entirely: {}", e)],
+                ),
+            ))
         }
     }
 }
@@ -535,7 +559,12 @@ async fn simulate_permission_cleanup(permissions: &mut Vec<String>) -> Result<()
             Ok(_) => info!("    ✅ Post-cleanup validation passed"),
             Err(e) => {
                 error!("    ❌ Post-cleanup validation failed: {}", e);
-                return Err(e);
+                return Err(webgates::errors::Error::Permissions(
+                    webgates::errors::PermissionsError::collision(
+                        0,
+                        vec![format!("Post-cleanup validation failed: {}", e)],
+                    ),
+                ));
             }
         }
     } else {

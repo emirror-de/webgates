@@ -12,14 +12,18 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use webgates::accounts::{Account, AccountRepository};
-use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
+use webgates::accounts::Account;
+use webgates::authz::AccessPolicy;
+use webgates::codecs::jsonwebtoken;
+use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
 use webgates::cookie;
 use webgates::cookie_template::CookieTemplate;
-use webgates::prelude::{AccessPolicy, Group, Role};
+use webgates::groups::Group;
+use webgates::roles::Role;
 use webgates_axum::gate::Gate;
 use webgates_axum::route_handlers;
-use webgates_repositories::memory::MemoryAccountRepository;
+use webgates_repositories::account_repository::AccountRepository;
+use webgates_repositories::memory::account::MemoryAccountRepository;
 
 #[derive(serde::Deserialize)]
 struct GithubUser {
@@ -49,6 +53,10 @@ where
     Inner: AccountRepository<R, G> + Send + Sync + 'static,
 {
     type Error = <Inner as AccountRepository<R, G>>::Error;
+
+    async fn bootstrap(&self) -> Result<(), Self::Error> {
+        self.inner.bootstrap().await
+    }
 
     async fn store_account(
         &self,
@@ -129,14 +137,12 @@ async fn main() {
 
     // Build a JWT codec with a persistent symmetric key (from env for demo)
     let jwt_codec = Arc::new(
-        JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
-            webgates::codecs::jwt::JsonWebTokenOptions {
-                enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(jwt_secret.as_bytes()),
-                dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(jwt_secret.as_bytes()),
-                header: None,
-                validation: None,
-            },
-        ),
+        JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(JsonWebTokenOptions {
+            enc_key: jsonwebtoken::EncodingKey::from_secret(jwt_secret.as_bytes()),
+            dec_key: jsonwebtoken::DecodingKey::from_secret(jwt_secret.as_bytes()),
+            header: None,
+            validation: None,
+        }),
     );
 
     let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
@@ -195,7 +201,7 @@ async fn main() {
                         Err(_) => "github-user".to_string(),
                     };
 
-                    Ok(Account::<Role, Group>::new(&login, &[Role::User], &[]))
+                    Ok(Account::<Role, Group>::new(login, vec![Role::User], vec![]))
                 })
             },
         );

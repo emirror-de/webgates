@@ -1,4 +1,4 @@
-use webgates::accounts::{Account, AccountRepository};
+use webgates::accounts::Account;
 use webgates::authn::{LoginResult, LoginService};
 use webgates::authz::AccessHierarchy;
 use webgates::codecs::Codec;
@@ -6,13 +6,13 @@ use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
 use webgates::cookie_template::CookieTemplate;
 use webgates::credentials::Credentials;
 use webgates::credentials::CredentialsVerifier;
+use webgates_repositories::account_repository::AccountRepository;
 
 use std::sync::Arc;
 
 use axum::http::StatusCode;
 use axum_extra::extract::CookieJar;
 use tracing::error;
-use uuid::Uuid;
 
 /// Authenticates user credentials and creates a JWT authentication cookie.
 ///
@@ -51,7 +51,7 @@ pub async fn login<CredVeri, AccRepo, C, R, G>(
 where
     R: AccessHierarchy + Eq,
     G: Eq + Clone,
-    CredVeri: CredentialsVerifier<Uuid>,
+    CredVeri: CredentialsVerifier,
     AccRepo: AccountRepository<R, G>,
     C: Codec<Payload = JwtClaims<Account<R, G>>>,
 {

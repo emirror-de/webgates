@@ -4,13 +4,21 @@
 //! on the home page and logout buttons on protected pages.
 
 use axum_extra::extract::CookieJar;
+use webgates::accounts::Account;
+use webgates::authz::AccessPolicy;
+use webgates::codecs::jsonwebtoken;
+use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
 use webgates::cookie;
-use webgates::errors::Result;
-use webgates::{codecs::jwt::RegisteredClaims, cookie_template::CookieTemplate, prelude::*};
+use webgates::cookie_template::CookieTemplate;
+use webgates::credentials::Credentials;
+use webgates::errors::{HashingOperation, Result, SecretError};
+use webgates::groups::Group;
+use webgates::roles::Role;
 use webgates_axum::gate::Gate;
 use webgates_axum::route_handlers::{login, logout};
-use webgates_repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
-use webgates_repositories::services::AccountInsertService;
+use webgates_repositories::memory::account::MemoryAccountRepository;
+use webgates_repositories::memory::secret::MemorySecretRepository;
+use webgates_repositories::services::account_insert::AccountInsertService;
 
 use std::sync::Arc;
 
@@ -40,7 +48,16 @@ async fn main() -> Result<()> {
 
     // Set up storage (in-memory for this example)
     let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-    let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher()?);
+    let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().map_err(
+        |error| {
+            webgates::errors::Error::Secrets(SecretError::hashing_with_context(
+                HashingOperation::Hash,
+                format!("failed to initialize secret repository: {}", error),
+                Some("Argon2".to_string()),
+                None,
+            ))
+        },
+    )?);
 
     // Create some test users
     create_test_users(Arc::clone(&account_repo), Arc::clone(&secret_repo)).await;
@@ -48,10 +65,10 @@ async fn main() -> Result<()> {
     // Create JWT codec with proper shared secret
     let shared_secret = "my-super-secret-key-for-demo"; // In production, use a proper secret from env
     let jwt_options = JsonWebTokenOptions {
-        enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        enc_key: jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
         header: Some(Default::default()),
-        validation: Some(webgates::jsonwebtoken::Validation::default()),
+        validation: Some(jsonwebtoken::Validation::default()),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));

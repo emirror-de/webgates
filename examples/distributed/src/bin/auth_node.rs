@@ -1,10 +1,14 @@
 use distributed::{ApiPermission, AppPermissions, PermissionHelper};
 
+use webgates::codecs::jsonwebtoken;
 use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, RegisteredClaims};
-use webgates::prelude::{Credentials, Group, Role};
+use webgates::credentials::Credentials;
+use webgates::groups::Group;
+use webgates::roles::Role;
 use webgates_axum::route_handlers;
-use webgates_repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
-use webgates_repositories::services::AccountInsertService;
+use webgates_repositories::memory::account::MemoryAccountRepository;
+use webgates_repositories::memory::secret::MemorySecretRepository;
+use webgates_repositories::services::account_insert::AccountInsertService;
 
 use std::sync::Arc;
 
@@ -26,10 +30,10 @@ async fn main() {
     let shared_secret =
         dotenvy::var("webgates_SHARED_SECRET").expect("webgates_SHARED_SECRET env var not set.");
     let jwt_codec = Arc::new(JsonWebToken::new_with_options(JsonWebTokenOptions {
-        enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
-        header: Some(webgates::jsonwebtoken::Header::default()),
-        validation: Some(webgates::jsonwebtoken::Validation::default()),
+        enc_key: jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        header: Some(jsonwebtoken::Header::default()),
+        validation: Some(jsonwebtoken::Validation::default()),
     }));
     debug!("JWT codec initialized.");
 
@@ -89,7 +93,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted User with API read access.");
 
-    let cookie_template = webgates::prelude::CookieTemplate::recommended();
+    let cookie_template = webgates::cookie_template::CookieTemplate::recommended();
 
     let app = Router::new()
         .route(

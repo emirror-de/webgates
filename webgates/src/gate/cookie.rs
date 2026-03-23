@@ -29,7 +29,8 @@ core crate.
 use std::sync::Arc;
 
 // Local crate types used by the gate
-use webgates::prelude::{Account, Group, Role, JsonWebToken, JwtClaims};
+use webgates::prelude::{Account, Group, Role};
+use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
 use webgates::gate::GateExt;
 use webgates::gate::cookie::{CookieGate, CookieGateAdapter, CookieGateRuntime, CookieEvaluation};
 
@@ -132,7 +133,9 @@ use super::GateExt;
 use crate::accounts::Account;
 use crate::authz::{AccessHierarchy, AccessPolicy, AuthorizationService};
 use crate::codecs::Codec;
-use crate::codecs::jwt::{JwtClaims, JwtValidationResult, JwtValidationService, RegisteredClaims};
+use crate::codecs::jwt::validation_result::JwtValidationResult;
+use crate::codecs::jwt::validation_service::JwtValidationService;
+use crate::codecs::jwt::{JwtClaims, RegisteredClaims};
 use crate::cookie_template::{CookieTemplate, CookieTemplateBuilderError};
 use uuid::Uuid;
 

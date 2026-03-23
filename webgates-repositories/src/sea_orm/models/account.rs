@@ -6,10 +6,10 @@
 //! See also: [`credentials`](super::credentials) for secret storage.
 
 use crate::comma_separated_value::CommaSeparatedValue;
-use webgates::accounts::Account;
-use webgates::authz::AccessHierarchy;
+use webgates_core::accounts::Account;
+use webgates_core::authz::AccessHierarchy;
 
-#[cfg(feature = "repo-seaorm")]
+#[cfg(feature = "sea-orm")]
 use sea_orm::{ActiveValue, entity::prelude::*};
 
 /// SeaORM entity for an account.
@@ -22,7 +22,8 @@ pub struct Model {
     /// Stable business identifier for the account (UUID v7 recommended).
     #[sea_orm(unique)]
     pub account_id: Uuid,
-    /// External user identifier (e.g. email or username). Should be unique + indexed.
+    /// External user identifier (e.g. email or username). Must be unique.
+    #[sea_orm(unique)]
     pub user_id: String,
     /// Comma‑separated list of group identifiers (serialization of `Vec<G>`).
     pub groups: String,

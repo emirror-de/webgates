@@ -1,6 +1,9 @@
-use crate::errors::{Error as RepoError, Result};
-use webgates::accounts::{Account, AccountRepository};
-use webgates::authz::AccessHierarchy;
+use crate::account_repository::AccountRepository;
+use crate::errors::{
+    Error as RepoError, RepositoriesError, RepositoryOperation, RepositoryType, Result,
+};
+use webgates_core::accounts::Account;
+use webgates_core::authz::AccessHierarchy;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -21,21 +24,23 @@ use uuid::Uuid;
 ///
 /// # Example
 /// ```rust
-/// use webgates::accounts::Account;
-/// use webgates::prelude::{Role, Group};
-/// use webgates::accounts::AccountRepository;
-/// use webgates_repositories::memory::MemoryAccountRepository;
+/// use webgates_core::accounts::Account;
+/// use webgates_core::groups::Group;
+/// use webgates_core::roles::Role;
+/// use webgates_repositories::account_repository::AccountRepository;
+/// use webgates_repositories::memory::account::MemoryAccountRepository;
 /// use std::sync::Arc;
 ///
 /// # tokio_test::block_on(async {
 /// let repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
 ///
 /// // Store an account
-/// let account = Account::new("user@example.com", &[Role::User], &[]);
-/// let stored = repo.store_account(account).await.unwrap();
+/// let account = Account::new("user@example.com".to_string(), vec![Role::User], Vec::new());
+/// let stored: Option<Account<Role, Group>> = repo.store_account(account).await.unwrap();
 ///
 /// // Query the account
-/// let found = repo.query_account_by_user_id("user@example.com").await.unwrap();
+/// let found: Option<Account<Role, Group>> = repo.query_account_by_user_id("user@example.com").await.unwrap();
+/// assert!(stored.is_some());
 /// assert!(found.is_some());
 /// # });
 /// ```
@@ -68,7 +73,7 @@ where
     fn from(value: Vec<Account<R, G>>) -> Self {
         let mut accounts = HashMap::new();
         for val in value {
-            let id = val.user_id.clone();
+            let id = val.account_id.to_string();
             accounts.insert(id, val);
         }
         let accounts = Arc::new(RwLock::new(accounts));
@@ -83,6 +88,10 @@ where
     G: Eq + Clone + Send + Sync + 'static,
 {
     type Error = RepoError;
+
+    async fn bootstrap(&self) -> Result<()> {
+        Ok(())
+    }
 
     /// Lookup by the logical login identifier (`user_id`).
     ///
@@ -115,9 +124,31 @@ where
     /// preserving the `user_id` field inside the `Account`.
     async fn store_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
         let res: Result<_> = {
-            let id = account.account_id.to_string();
+            let account_id = account.account_id.to_string();
+            let user_id = account.user_id.clone();
             let mut write = self.accounts.write().await;
-            write.insert(id, account.clone());
+
+            if write.contains_key(&account_id) {
+                return Err(RepoError::Repositories(
+                    RepositoriesError::constraint_for_key(
+                        RepositoryType::Account,
+                        account_id,
+                        "Account with the same account_id already exists",
+                    ),
+                ));
+            }
+
+            if write.values().any(|stored| stored.user_id == user_id) {
+                return Err(RepoError::Repositories(
+                    RepositoriesError::constraint_for_key(
+                        RepositoryType::Account,
+                        user_id,
+                        "Account with the same user_id already exists",
+                    ),
+                ));
+            }
+
+            write.insert(account_id, account.clone());
             Ok(Some(account))
         };
         res
@@ -134,8 +165,34 @@ where
     }
 
     async fn update_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
-        // Reuse store semantics: upsert by account_id
-        self.store_account(account).await
+        let res: Result<_> = {
+            let account_id = account.account_id.to_string();
+            let user_id = account.user_id.clone();
+            let mut write = self.accounts.write().await;
+
+            if !write.contains_key(&account_id) {
+                return Ok(None);
+            }
+
+            if write
+                .values()
+                .any(|stored| stored.account_id != account.account_id && stored.user_id == user_id)
+            {
+                return Err(RepoError::Repositories(
+                    RepositoriesError::operation_failed(
+                        RepositoryType::Account,
+                        RepositoryOperation::Update,
+                        "Account with the same user_id already exists",
+                        Some(user_id),
+                        None,
+                    ),
+                ));
+            }
+
+            write.insert(account_id, account.clone());
+            Ok(Some(account))
+        };
+        res
     }
 
     async fn query_all_accounts(&self) -> Result<Vec<Account<R, G>>> {

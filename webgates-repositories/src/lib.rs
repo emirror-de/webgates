@@ -9,17 +9,27 @@ Repository implementations and storage backends for the `webgates` authenticatio
 and authorization domain. Use this crate when you need persistence for accounts,
 credentials, permission mappings, or groups.
 
-## Backends
+## Public API
 
-- [`memory`] — zero-configuration, in-memory stores for development and testing.
-- [`surrealdb`] *(feature: `repo-surrealdb`)* — SurrealDB-backed repositories.
-- [`sea_orm`] *(feature: `repo-seaorm`)* — SQL-backed repositories via SeaORM.
+This crate exposes repository contracts and backend modules through explicit module
+paths:
+
+- [`account_repository`] — account persistence trait
+- [`group_repository`] — group persistence trait
+- [`permission_mapping_repository`] — permission mapping persistence traits
+- [`secret_repository`] — secret persistence trait
+- [`memory`] — zero-configuration, in-memory stores for development and testing
+- [`surrealdb`] *(feature: `surrealdb`)* — SurrealDB-backed repositories
+- [`sea_orm`] *(feature: `sea-orm`)* — SQL-backed repositories via SeaORM
+- [`services`] — repository-level account workflows
+
+Use these canonical module paths instead of crate-root shortcuts.
 
 ## Feature flags
 
-- `repo-surrealdb`: enable SurrealDB repositories.
-- `repo-seaorm`: enable SeaORM repositories.
-- `server`: transitively pulls in async runtime support required by the backends.
+- `surrealdb`: enable SurrealDB repositories.
+- `sea-orm`: enable SeaORM repositories.
+- `audit-logging`: enable structured audit events for repository workflows.
 
 ## Quick start
 
@@ -27,17 +37,19 @@ In-memory (no feature flags required):
 
 ```rust
 use std::sync::Arc;
-use webgates_repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
-use webgates::prelude::{Group, Role};
+use webgates_core::groups::Group;
+use webgates_core::roles::Role;
+use webgates_repositories::memory::account::MemoryAccountRepository;
+use webgates_repositories::memory::secret::MemorySecretRepository;
 
 let accounts = Arc::new(MemoryAccountRepository::<Role, Group>::default());
 let secrets = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
 ```
 
-SeaORM (SQL) — requires `repo-seaorm`:
+SeaORM (SQL) — requires `sea-orm`:
 
 ```rust
-# #[cfg(feature = "repo-seaorm")]
+# #[cfg(feature = "sea-orm")]
 # async fn example(db: sea_orm::DatabaseConnection) -> Result<(), Box<dyn std::error::Error>> {
 use std::sync::Arc;
 use webgates_repositories::sea_orm::SeaOrmRepository;
@@ -47,10 +59,10 @@ let repo = Arc::new(SeaOrmRepository::new(&db)?);
 # }
 ```
 
-SurrealDB — requires `repo-surrealdb`:
+SurrealDB — requires `surrealdb`:
 
 ```rust
-# #[cfg(feature = "repo-surrealdb")]
+# #[cfg(feature = "surrealdb")]
 # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 use std::sync::Arc;
 use surrealdb::engine::local::Mem;
@@ -64,18 +76,28 @@ let repo = Arc::new(SurrealDbRepository::new(db, DatabaseScope::default())?);
 ```
 */
 
-#[cfg(feature = "repo-seaorm")]
+/// Repository trait for account persistence backends.
+pub mod account_repository;
+#[cfg(feature = "audit-logging")]
+pub mod audit;
+#[cfg(feature = "sea-orm")]
 pub mod comma_separated_value;
 pub mod errors;
+/// Repository trait for group persistence backends.
+pub mod group_repository;
 pub mod memory;
-#[cfg(feature = "repo-seaorm")]
+/// Repository traits for permission mapping persistence backends.
+pub mod permission_mapping_repository;
+#[cfg(feature = "sea-orm")]
 pub mod sea_orm;
+/// Repository trait for secret persistence backends.
+pub mod secret_repository;
 pub mod services;
-#[cfg(feature = "repo-surrealdb")]
+#[cfg(feature = "surrealdb")]
 pub mod surrealdb;
 
 /// Stable table names used by the storage backends.
-#[cfg(any(feature = "repo-surrealdb", feature = "repo-seaorm"))]
+#[cfg(any(feature = "surrealdb", feature = "sea-orm"))]
 #[derive(strum::Display, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[strum(serialize_all = "snake_case")]
 pub enum TableName {

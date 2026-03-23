@@ -2,20 +2,31 @@ use super::SeaOrmRepository;
 use crate::TableName;
 use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result as RepoResult};
 use crate::sea_orm::models::credentials as seaorm_credentials;
-use webgates::credentials::{Credentials, CredentialsVerifier};
-use webgates::errors::Result;
-use webgates::hashing::{HashingService, argon2::Argon2Hasher};
-use webgates::secrets::{Secret, SecretRepository};
-use webgates::verification_result::VerificationResult;
-
+use crate::secret_repository::SecretRepository;
 use sea_orm::{
     ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter,
     entity::{ActiveModelTrait, ActiveValue},
 };
 use uuid::Uuid;
+use webgates_core::credentials::{Credentials, CredentialsVerifier};
+use webgates_core::errors_core::Result;
+use webgates_core::verification_result::VerificationResult;
+use webgates_secrets::Secret;
+use webgates_secrets::hashing::{HashingService, argon2::Argon2Hasher};
 
 impl SecretRepository for SeaOrmRepository {
     type Error = RepoError;
+
+    async fn bootstrap(&self) -> RepoResult<()> {
+        SeaOrmRepository::bootstrap(self).await.map_err(|e| {
+            RepoError::Database(DatabaseError::with_context(
+                DatabaseOperation::Insert,
+                format!("Failed to bootstrap secret repository: {}", e),
+                Some(TableName::WebgatesCredentials.to_string()),
+                None,
+            ))
+        })
+    }
 
     async fn store_secret(&self, secret: Secret) -> RepoResult<bool> {
         let res: RepoResult<_> = {
@@ -112,7 +123,7 @@ impl SecretRepository for SeaOrmRepository {
     }
 }
 
-impl CredentialsVerifier<Uuid> for SeaOrmRepository {
+impl CredentialsVerifier for SeaOrmRepository {
     async fn verify_credentials(
         &self,
         credentials: Credentials<Uuid>,

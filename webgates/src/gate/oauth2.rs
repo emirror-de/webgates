@@ -20,7 +20,8 @@
 //! use std::sync::Arc;
 //! use std::future::Future;
 //! use std::pin::Pin;
-//! use webgates::prelude::{Account, Group, Role, JsonWebToken, JwtClaims};
+//! use webgates::prelude::{Account, Group, Role};
+//! use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
 //! use webgates::gate::oauth2::{OAuth2Gate, OAuth2Runtime, TokenRequest, TokenExchanger, CallbackInput};
 //! use webgates::cookie_template::CookieTemplate;
 //!
@@ -102,7 +103,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use super::GateExt;
-use crate::accounts::{Account, AccountRepository};
+use crate::accounts::Account;
 use crate::authz::AccessHierarchy;
 use crate::codecs::Codec;
 use crate::codecs::jwt::{JwtClaims, RegisteredClaims};
@@ -114,6 +115,7 @@ use oauth2::{
     StandardTokenResponse, TokenUrl, basic::BasicTokenType,
 };
 use serde::{Deserialize, Serialize};
+use webgates_repositories::account_repository::AccountRepository;
 
 pub mod errors;
 use errors::{OAuth2CookieKind, OAuth2Error, Result as OAuth2Result};

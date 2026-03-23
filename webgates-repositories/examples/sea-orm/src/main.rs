@@ -1,11 +1,14 @@
-use webgates::accounts::AccountRepository;
+use webgates::codecs::jsonwebtoken;
 use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
-use webgates::hashing::argon2::Argon2Hasher;
+use webgates::cookie_template::CookieTemplate;
 use webgates::prelude::*;
-use webgates::secrets::{Secret, SecretRepository};
+use webgates::secrets::Secret;
+use webgates::secrets::hashing::argon2::Argon2Hasher;
 use webgates_axum::route_handlers;
+use webgates_repositories::account_repository::AccountRepository;
 use webgates_repositories::sea_orm::SeaOrmRepository;
-use webgates_repositories::services::AccountInsertService;
+use webgates_repositories::secret_repository::SecretRepository;
+use webgates_repositories::services::account_insert::AccountInsertService;
 
 use std::sync::Arc;
 
@@ -60,10 +63,10 @@ async fn main() {
     let shared_secret =
         dotenvy::var("webgates_SHARED_SECRET").expect("webgates_SHARED_SECRET env var not set.");
     let jwt_options = JsonWebTokenOptions {
-        enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
-        header: Some(webgates::jsonwebtoken::Header::default()),
-        validation: Some(webgates::jsonwebtoken::Validation::default()),
+        enc_key: jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        header: Some(jsonwebtoken::Header::default()),
+        validation: Some(jsonwebtoken::Validation::default()),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
@@ -113,7 +116,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted User.");
 
-    let cookie_template = webgates::cookie_template::CookieTemplate::recommended();
+    let cookie_template = CookieTemplate::recommended();
 
     let app = Router::new()
         .route(
@@ -151,12 +154,11 @@ async fn main() {
                 let account_repository = Arc::clone(&account_repository);
                 let secrets_repository = Arc::clone(&secrets_repository);
                 move |Json(body): Json<PasswordUpdate>| async move {
-                    let Some(account): std::option::Option<
-                        webgates::accounts::Account<Role, Group>,
-                    > = account_repository
-                        .query_account_by_user_id(&body.user_id)
-                        .await
-                        .unwrap()
+                    let Some(account): std::option::Option<Account<Role, Group>> =
+                        account_repository
+                            .query_account_by_user_id(&body.user_id)
+                            .await
+                            .unwrap()
                     else {
                         return (StatusCode::NOT_FOUND, "account not found").into_response();
                     };

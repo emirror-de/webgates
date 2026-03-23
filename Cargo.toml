@@ -10,6 +10,8 @@ members = [
     "examples/rate-limiting",
     "examples/simple-usage",
     "webgates",
+    "webgates-core",
+    "webgates-codecs",
     "webgates-axum",
     "webgates-repositories",
     "webgates-repositories/examples/sea-orm",
@@ -33,7 +35,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 strum = { version = "0.27", features = ["derive"] }
 subtle = ">=2.6.1"
-surrealdb = { version = "2", features = ["kv-mem"] }
+surrealdb = { version = "3", features = ["kv-mem"] }
 thiserror = "2"
 tokio = { version = "1", default-features = false }
 tracing = "0.1"

@@ -14,19 +14,23 @@
 //! - http://localhost:3000/metrics - Prometheus metrics endpoint
 
 use axum_extra::extract::CookieJar;
+use webgates::codecs::jsonwebtoken::{DecodingKey, EncodingKey, Validation};
 use webgates::{
+    accounts::Account,
     authz::AccessPolicy,
     codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims},
     cookie_template::CookieTemplate,
-    prelude::{Account, Credentials, Group, Role},
+    credentials::Credentials,
+    groups::Group,
+    roles::Role,
 };
 use webgates_axum::{
     gate::Gate,
     route_handlers::{login, logout},
 };
 use webgates_repositories::{
-    memory::{MemoryAccountRepository, MemorySecretRepository},
-    services::AccountInsertService,
+    memory::{account::MemoryAccountRepository, secret::MemorySecretRepository},
+    services::account_insert::AccountInsertService,
 };
 
 use std::sync::Arc;
@@ -85,10 +89,10 @@ async fn main() {
     // Create JWT codec with proper shared secret
     let shared_secret = "my-super-secret-key-for-demo"; // In production, use a proper secret from env
     let jwt_options = JsonWebTokenOptions {
-        enc_key: webgates::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: webgates::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: DecodingKey::from_secret(shared_secret.as_bytes()),
         header: Some(Default::default()),
-        validation: Some(webgates::jsonwebtoken::Validation::default()),
+        validation: Some(Validation::default()),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
