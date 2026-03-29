@@ -84,6 +84,3 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tokio-test = "0.4.4"
 uuid = "1"
 webgates-repositories = { path = "../webgates-repositories", features = ["sea-orm", "surrealdb"] }
-
-[profile.dev]
-debug = false

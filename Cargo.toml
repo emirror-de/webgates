@@ -44,3 +44,6 @@ uuid = { version = "1" }
 
 [workspace.package]
 version = "0.1.0-dev"
+
+[profile.dev]
+debug = false
