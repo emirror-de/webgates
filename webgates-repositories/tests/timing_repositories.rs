@@ -51,11 +51,8 @@ async fn run_timing_case() {
     let user_id = "user@example.com";
     let password = "correct_password";
 
-    let account = Account::new(
-        user_id.to_string(),
-        vec![Role::User],
-        vec![Group::new("test")],
-    );
+    let mut account = Account::new(user_id);
+    account.groups = vec![Group::new("test")];
     let stored: Account<Role, Group> = account_repo.store_account(account).await.unwrap().unwrap();
 
     let secret = Secret::new(&stored.account_id, password, hasher.clone()).unwrap();

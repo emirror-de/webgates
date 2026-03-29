@@ -24,11 +24,8 @@
 //! let group_policy = AccessPolicy::<Role, Group>::require_group(Group::new("engineering"));
 //! let permission_policy = AccessPolicy::<Role, Group>::require_permission(PermissionId::from("read:api"));
 //!
-//! let account = Account::new(
-//!     "user@example.com".to_string(),
-//!     vec![Role::User],
-//!     vec![Group::new("engineering")],
-//! );
+//! let mut account = Account::<Role, Group>::new("user@example.com");
+//! account.groups.push(Group::new("engineering"));
 //!
 //! let auth_service = AuthorizationService::new(group_policy);
 //! assert!(auth_service.is_authorized(&account));

@@ -10,11 +10,9 @@
 //! use webgates_core::permissions::Permissions;
 //! use webgates_core::roles::Role;
 //!
-//! let account = Account::new(
-//!     "user@example.com".to_string(),
-//!     vec![Role::User, Role::Reporter],
-//!     vec![Group::new("engineering"), Group::new("backend-team")],
-//! ).with_permissions(Permissions::from_iter(["read:api", "write:docs"]));
+//! let account = Account::<Role, Group>::new("user@example.com")
+//!     .with_groups(vec![Group::new("engineering")])
+//!     .with_permissions(Permissions::from_iter(["read:api", "write:docs"]));
 //! ```
 
 use crate::authz::AccessHierarchy;
@@ -35,10 +33,12 @@ use uuid::Uuid;
 /// use webgates_core::permissions::Permissions;
 /// use webgates_core::roles::Role;
 ///
-/// let account = Account::new("user123".to_string(), vec![Role::User], vec![Group::new("staff")]);
+/// let account = Account::<Role, Group>::new("user123");
 ///
 /// let permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
-/// let account = Account::<Role, Group>::new("admin@example.com".to_string(), vec![Role::Admin], Vec::new())
+/// let account = Account::<Role, Group>::new("admin@example.com")
+///     .with_roles(vec![Role::Admin])
+///     .with_groups(vec![Group::new("staff")])
 ///     .with_permissions(permissions);
 /// ```
 ///
@@ -49,7 +49,7 @@ use uuid::Uuid;
 /// # use webgates_core::groups::Group;
 /// # use webgates_core::permissions::PermissionId;
 /// # use webgates_core::roles::Role;
-/// # let mut account = Account::<Role, Group>::new("user".to_string(), Vec::new(), Vec::new());
+/// # let mut account = Account::<Role, Group>::new("user");
 /// account.grant_permission("read:api");
 /// account.grant_permission(PermissionId::from("write:api"));
 ///
@@ -96,19 +96,19 @@ where
 
 impl<R, G> Account<R, G>
 where
-    R: AccessHierarchy + Eq + Clone,
+    R: AccessHierarchy + Eq + Clone + Default,
     G: Eq + Clone,
 {
-    /// Creates a new account with the specified user ID, roles, and groups.
+    /// Creates a new account with the specified user ID.
     ///
     /// A random UUID is automatically generated for the account ID. The account
-    /// starts with no permissions; use [`Self::with_permissions`] or
-    /// [`Self::grant_permission`] to add them.
+    /// starts with a single default role, no groups, and no permissions. Use
+    /// [`Default`] on your role type to define the initial role assigned by this
+    /// constructor. Use direct field mutation or struct update patterns after
+    /// construction when you need to customize roles or groups.
     ///
     /// # Parameters
     /// - `user_id`: Unique identifier for the user, such as an email or username.
-    /// - `roles`: Roles assigned to this account.
-    /// - `groups`: Groups this account belongs to.
     ///
     /// # Examples
     /// ```rust
@@ -116,24 +116,61 @@ where
     /// use webgates_core::groups::Group;
     /// use webgates_core::roles::Role;
     ///
-    /// let account = Account::new(
-    ///     "user@example.com".to_string(),
-    ///     vec![Role::User, Role::Reporter],
-    ///     vec![Group::new("engineering"), Group::new("backend-team")],
-    /// );
+    /// let account = Account::<Role, Group>::new("user@example.com");
     ///
     /// assert_eq!(account.user_id, "user@example.com");
-    /// assert_eq!(account.roles.len(), 2);
-    /// assert_eq!(account.groups.len(), 2);
+    /// assert_eq!(account.roles, vec![Role::User]);
+    /// assert!(account.groups.is_empty());
     /// ```
-    pub fn new(user_id: String, roles: Vec<R>, groups: Vec<G>) -> Self {
+    pub fn new(user_id: &str) -> Self {
         Self {
             account_id: Uuid::now_v7(),
-            user_id,
-            groups,
-            roles,
+            user_id: user_id.to_string(),
+            groups: Vec::new(),
+            roles: vec![R::default()],
             permissions: Permissions::new(),
         }
+    }
+
+    /// Consumes this account and returns it with the specified roles.
+    ///
+    /// This is useful when building accounts that need explicit roles instead of
+    /// the single default role assigned by [`Self::new`].
+    ///
+    /// # Example
+    /// ```rust
+    /// use webgates_core::accounts::Account;
+    /// use webgates_core::groups::Group;
+    /// use webgates_core::roles::Role;
+    ///
+    /// let account = Account::<Role, Group>::new("user@example.com")
+    ///     .with_roles(vec![Role::Admin]);
+    ///
+    /// assert!(account.has_role(&Role::Admin));
+    /// assert!(!account.has_role(&Role::User));
+    /// ```
+    pub fn with_roles(self, roles: Vec<R>) -> Self {
+        Self { roles, ..self }
+    }
+
+    /// Consumes this account and returns it with the specified groups.
+    ///
+    /// This is useful when building accounts with initial group membership.
+    ///
+    /// # Example
+    /// ```rust
+    /// use webgates_core::accounts::Account;
+    /// use webgates_core::groups::Group;
+    /// use webgates_core::roles::Role;
+    ///
+    /// let account = Account::<Role, Group>::new("user@example.com")
+    ///     .with_groups(vec![Group::new("engineering")]);
+    ///
+    /// assert!(account.is_member_of(&Group::new("engineering")));
+    /// assert!(!account.is_member_of(&Group::new("marketing")));
+    /// ```
+    pub fn with_groups(self, groups: Vec<G>) -> Self {
+        Self { groups, ..self }
     }
 
     /// Consumes this account and returns it with the specified permissions.
@@ -148,7 +185,7 @@ where
     /// use webgates_core::roles::Role;
     ///
     /// let permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
-    /// let account = Account::<Role, Group>::new("user@example.com".to_string(), vec![Role::User], Vec::new())
+    /// let account = Account::<Role, Group>::new("user@example.com")
     ///     .with_permissions(permissions);
     /// ```
     pub fn with_permissions(self, permissions: Permissions) -> Self {
@@ -167,7 +204,7 @@ where
     /// use webgates_core::permissions::PermissionId;
     /// use webgates_core::roles::Role;
     ///
-    /// let mut account = Account::<Role, Group>::new("user".to_string(), Vec::new(), Vec::new());
+    /// let mut account = Account::<Role, Group>::new("user");
     /// account.grant_permission("read:profile");
     /// account.grant_permission(PermissionId::from("write:profile"));
     /// ```
@@ -187,7 +224,7 @@ where
     /// use webgates_core::permissions::PermissionId;
     /// use webgates_core::roles::Role;
     ///
-    /// let mut account = Account::<Role, Group>::new("user".to_string(), Vec::new(), Vec::new());
+    /// let mut account = Account::<Role, Group>::new("user");
     /// account.grant_permission("write:profile");
     /// account.revoke_permission(PermissionId::from("write:profile"));
     /// ```
@@ -207,11 +244,7 @@ where
     /// use webgates_core::groups::Group;
     /// use webgates_core::roles::Role;
     ///
-    /// let account = Account::<Role, Group>::new(
-    ///     "user@example.com".to_string(),
-    ///     vec![Role::User],
-    ///     vec![Group::new("engineering")],
-    /// );
+    /// let account = Account::<Role, Group>::new("user@example.com");
     ///
     /// assert!(account.has_role(&Role::User));
     /// assert!(!account.has_role(&Role::Admin));
@@ -229,11 +262,8 @@ where
     /// use webgates_core::groups::Group;
     /// use webgates_core::roles::Role;
     ///
-    /// let account = Account::<Role, Group>::new(
-    ///     "user@example.com".to_string(),
-    ///     vec![Role::User],
-    ///     vec![Group::new("engineering")],
-    /// );
+    /// let mut account = Account::<Role, Group>::new("user@example.com");
+    /// account.groups.push(Group::new("engineering"));
     ///
     /// assert!(account.is_member_of(&Group::new("engineering")));
     /// assert!(!account.is_member_of(&Group::new("marketing")));
@@ -254,7 +284,7 @@ where
     /// use webgates_core::permissions::PermissionId;
     /// use webgates_core::roles::Role;
     ///
-    /// let mut account = Account::<Role, Group>::new("user@example.com".to_string(), Vec::new(), Vec::new());
+    /// let mut account = Account::<Role, Group>::new("user@example.com");
     /// account.grant_permission("read:api");
     /// account.grant_permission(PermissionId::from("write:docs"));
     ///
@@ -278,29 +308,35 @@ mod tests {
     use crate::roles::Role;
 
     #[test]
-    fn new_preserves_owned_inputs() {
-        let user_id = String::from("user@example.com");
-        let roles = vec![Role::User, Role::Reporter];
-        let groups = vec![Group::new("engineering"), Group::new("backend-team")];
+    fn new_uses_default_role_and_empty_groups() {
+        let account = Account::<Role, Group>::new("user@example.com");
 
-        let account = Account::new(user_id.clone(), roles.clone(), groups.clone());
-
-        assert_eq!(account.user_id, user_id);
-        assert_eq!(account.roles, roles);
-        assert_eq!(account.groups, groups);
+        assert_eq!(account.user_id, "user@example.com");
+        assert_eq!(account.roles, vec![Role::User]);
+        assert!(account.groups.is_empty());
         assert!(account.permissions.is_empty());
+    }
+
+    #[test]
+    fn with_roles_replaces_default_role_set() {
+        let account = Account::<Role, Group>::new("user@example.com").with_roles(vec![Role::Admin]);
+
+        assert_eq!(account.roles, vec![Role::Admin]);
+    }
+
+    #[test]
+    fn with_groups_replaces_group_set() {
+        let groups = vec![Group::new("engineering"), Group::new("backend-team")];
+        let account = Account::<Role, Group>::new("user@example.com").with_groups(groups.clone());
+
+        assert_eq!(account.groups, groups);
     }
 
     #[test]
     fn with_permissions_replaces_permission_set() {
         let permissions = Permissions::from_iter(["read:api", "write:api"]);
 
-        let account = Account::<Role, Group>::new(
-            String::from("user@example.com"),
-            vec![Role::User],
-            vec![Group::new("engineering")],
-        )
-        .with_permissions(permissions);
+        let account = Account::<Role, Group>::new("user@example.com").with_permissions(permissions);
 
         assert!(account.has_permission("read:api"));
         assert!(account.has_permission("write:api"));
@@ -308,8 +344,7 @@ mod tests {
 
     #[test]
     fn grant_and_revoke_permission_update_account_permissions() {
-        let mut account =
-            Account::<Role, Group>::new(String::from("user@example.com"), Vec::new(), Vec::new());
+        let mut account = Account::<Role, Group>::new("user@example.com");
 
         account.grant_permission("read:api");
         assert!(account.has_permission("read:api"));
@@ -320,11 +355,9 @@ mod tests {
 
     #[test]
     fn role_and_group_queries_reflect_membership() {
-        let account = Account::<Role, Group>::new(
-            String::from("user@example.com"),
-            vec![Role::Admin],
-            vec![Group::new("engineering")],
-        );
+        let mut account = Account::<Role, Group>::new("user@example.com");
+        account.roles = vec![Role::Admin];
+        account.groups = vec![Group::new("engineering")];
 
         assert!(account.has_role(&Role::Admin));
         assert!(!account.has_role(&Role::User));

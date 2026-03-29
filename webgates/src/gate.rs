@@ -43,7 +43,7 @@ impl Gate {
     /// Create an OAuth2 gate configuration.
     pub fn oauth2<R, G>() -> oauth2::OAuth2Gate<R, G>
     where
-        R: AccessHierarchy + Eq + Display + Send + Sync + 'static,
+        R: AccessHierarchy + Eq + Display + Default + Send + Sync + 'static,
         G: Eq + Clone + Send + Sync + 'static,
     {
         oauth2::OAuth2Gate::new()

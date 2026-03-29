@@ -102,12 +102,10 @@ mod tests {
     use crate::roles::Role;
 
     fn create_test_account() -> Account<Role, Group> {
-        Account::new(
-            "test_user".to_string(),
-            vec![Role::Admin],
-            vec![Group::new("engineering")],
-        )
-        .with_permissions(["read:api", "write:docs"].into_iter().collect())
+        let mut account = Account::new("test_user");
+        account.roles = vec![Role::Admin];
+        account.groups = vec![Group::new("engineering")];
+        account.with_permissions(["read:api", "write:docs"].into_iter().collect())
     }
 
     #[test]

@@ -546,7 +546,7 @@ mod tests {
         )
         .require_login();
 
-        let account = Account::<Role, Group>::new("user".into(), vec![Role::User], vec![]);
+        let account = Account::<Role, Group>::new("user");
         let exp = Utc::now().timestamp() as u64 + 60;
         let claims = JwtClaims::new(account.clone(), RegisteredClaims::new("issuer", exp));
         let token = String::from_utf8(codec.encode(&claims).expect("encode jwt")).unwrap();

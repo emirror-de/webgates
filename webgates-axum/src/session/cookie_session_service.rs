@@ -523,11 +523,8 @@ mod tests {
             &self,
             session: &webgates::sessions::session::Session,
         ) -> Result<AuthToken, Self::Error> {
-            let account = Account::new(
-                session.subject_id.clone(),
-                vec![Role::User],
-                vec![Group::new("staff")],
-            );
+            let mut account = Account::new(&session.subject_id);
+            account.groups = vec![Group::new("staff")];
             let claims = JwtClaims::new(
                 account,
                 RegisteredClaims::new(
@@ -610,11 +607,8 @@ mod tests {
     }
 
     fn make_auth_token(codec: &SessionCodec, expiration_time: u64) -> String {
-        let account = Account::new(
-            "user@example.com".to_string(),
-            vec![Role::User],
-            vec![Group::new("staff")],
-        );
+        let mut account = Account::new("user@example.com");
+        account.groups = vec![Group::new("staff")];
         let claims = JwtClaims::new(account, RegisteredClaims::new("issuer", expiration_time));
         let encoded = match codec.encode(&claims) {
             Ok(encoded) => encoded,

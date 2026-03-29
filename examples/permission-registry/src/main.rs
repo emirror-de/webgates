@@ -181,11 +181,9 @@ async fn demo_account_with_registry(
     info!("\n=== Account with Registry ===");
 
     // Create an account
-    let mut account = Account::new(
-        "admin@example.com".to_string(),
-        vec![Role::Admin],
-        vec![Group::new("administrators")],
-    );
+    let mut account = Account::new("admin@example.com");
+    account.roles = vec![Role::Admin];
+    account.groups = vec![Group::new("administrators")];
 
     // Grant some permissions with descriptive names
     let admin_permissions = vec![

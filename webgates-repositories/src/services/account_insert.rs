@@ -121,8 +121,10 @@ where
     {
         let user_id = self.user_id;
         let secret = self.secret;
-        let account = Account::new(user_id.clone(), self.roles, self.groups)
-            .with_permissions(self.permissions);
+        let mut account = Account::new(&user_id);
+        account.roles = self.roles;
+        account.groups = self.groups;
+        let account = account.with_permissions(self.permissions);
 
         debug!("Created account builder payload.");
 

@@ -601,11 +601,8 @@ mod tests {
         let secret_repo = Arc::new(DummySecretRepository::new());
         let session_repo = DummySessionRepository::default();
 
-        let account = Account::new(
-            "user@example.com".to_string(),
-            vec![Role::User],
-            vec![Group::new("staff")],
-        );
+        let mut account = Account::new("user@example.com");
+        account.groups = vec![Group::new("staff")];
         let stored_account = match account_repo.store_account(account).await {
             Ok(Some(account)) => account,
             Ok(None) => panic!("stored account should be returned"),

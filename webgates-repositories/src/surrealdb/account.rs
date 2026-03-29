@@ -166,7 +166,7 @@ where
 
 impl<R, G> TryFrom<SurrealAccountRecord> for Account<R, G>
 where
-    R: AccessHierarchy + Eq + DeserializeOwned,
+    R: AccessHierarchy + Eq + Default + DeserializeOwned,
     G: Eq + Clone + DeserializeOwned,
 {
     type Error = RepoError;
@@ -210,7 +210,7 @@ where
 
 impl<R, G, S> AccountRepository<R, G> for SurrealDbRepository<S>
 where
-    R: AccessHierarchy + Eq + DeserializeOwned + Serialize + Send + Sync + 'static,
+    R: AccessHierarchy + Eq + Default + DeserializeOwned + Serialize + Send + Sync + 'static,
     G: Serialize + DeserializeOwned + Eq + Clone + Send + Sync + 'static,
     S: Connection,
 {
@@ -505,11 +505,9 @@ mod tests {
 
     #[test]
     fn account_record_round_trips_structured_roles_and_groups() {
-        let mut account = Account::new(
-            "user@example.com".to_string(),
-            vec![StructuredRole::Admin],
-            vec![Group::new("engineering")],
-        );
+        let mut account = Account::new("user@example.com");
+        account.roles = vec![StructuredRole::Admin];
+        account.groups = vec![Group::new("engineering")];
         account.account_id = Uuid::now_v7();
         account.grant_permission("read:account");
         account.grant_permission("write:account");
@@ -556,11 +554,8 @@ mod tests {
 
     #[test]
     fn record_to_account_round_trips_builtin_role_type() {
-        let mut account = Account::new(
-            "user@example.com".to_string(),
-            vec![Role::User],
-            vec![Group::new("engineering")],
-        );
+        let mut account = Account::new("user@example.com");
+        account.groups = vec![Group::new("engineering")];
         account.account_id = Uuid::now_v7();
         account.grant_permission("read:account");
 

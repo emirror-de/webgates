@@ -17,7 +17,7 @@ use webgates_core::authz::AccessHierarchy;
 /// Helper to convert a SeaORM model into the domain `Account`.
 fn model_to_account<R, G>(model: seaorm_account::Model) -> Result<Account<R, G>>
 where
-    R: AccessHierarchy + Eq + Clone + Serialize + DeserializeOwned,
+    R: AccessHierarchy + Eq + Clone + Default + Serialize + DeserializeOwned,
     G: Eq + Clone + Serialize + DeserializeOwned,
     Vec<R>: CommaSeparatedValue,
     Vec<G>: CommaSeparatedValue,
@@ -39,8 +39,10 @@ where
         ))
     })?;
 
-    let mut account = Account::new(model.user_id, roles, groups);
+    let mut account = Account::new(&model.user_id);
     account.account_id = model.account_id;
+    account.roles = roles;
+    account.groups = groups;
     Ok(account)
 }
 

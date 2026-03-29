@@ -201,7 +201,7 @@ async fn main() {
                         Err(_) => "github-user".to_string(),
                     };
 
-                    Ok(Account::<Role, Group>::new(login, vec![Role::User], vec![]))
+                    Ok(Account::<Role, Group>::new(&login))
                 })
             },
         );

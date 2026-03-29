@@ -802,11 +802,8 @@ mod tests {
 
         let existing_user = "existing@example.com";
         let password = "test_password";
-        let account = Account::new(
-            existing_user.to_string(),
-            vec![Role::User],
-            vec![Group::new("test-group")],
-        );
+        let mut account = Account::new(existing_user);
+        account.groups = vec![Group::new("test-group")];
         let stored_account = account_repo.store_account(account).await.unwrap().unwrap();
 
         let secret = Secret::new(
