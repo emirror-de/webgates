@@ -1,5 +1,6 @@
 **/target
 result*
+**/.DS_Store
 
 .direnv
 
