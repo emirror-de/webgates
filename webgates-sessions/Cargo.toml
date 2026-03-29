@@ -1,0 +1,34 @@
+[package]
+name = "webgates-sessions"
+version = "0.1.0-dev"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+authors = ["Lewin Probst <info@emirror.de>"]
+description = "Framework-agnostic session lifecycle and JWT auto-renewal primitives for webgates."
+homepage = "https://github.com/emirror-de/webgates"
+repository = "https://github.com/emirror-de/webgates"
+readme = "README.md"
+documentation = "https://docs.rs/webgates-sessions"
+keywords = ["auth", "jwt", "session", "refresh-token"]
+categories = ["authentication"]
+
+[features]
+default = []
+
+[dependencies]
+chrono = { workspace = true, features = ["serde"] }
+rand = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+sha2 = "0.10"
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["sync", "time"] }
+tracing = { workspace = true }
+uuid = { workspace = true, features = ["serde", "v7", "js"] }
+webgates-codecs = { path = "../webgates-codecs" }
+webgates-core = { path = "../webgates-core" }
+webgates-secrets = { path = "../webgates-secrets" }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio-test = "0.4.4"

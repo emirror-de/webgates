@@ -242,14 +242,28 @@ mod tests {
         let id = Uuid::now_v7();
         let correct_password = "admin_password";
         let wrong_password = "admin_wrong_password";
-        let hasher = Argon2Hasher::new_recommended()
-            .expect("recommended Argon2 hasher should be constructible in tests");
-        let secret = Secret::new(&id, correct_password, hasher.clone())
-            .expect("secret construction should hash the provided test password");
+        let hasher = match Argon2Hasher::new_recommended() {
+            Ok(hasher) => hasher,
+            Err(error) => panic!(
+                "recommended Argon2 hasher should be constructible in tests: {}",
+                error
+            ),
+        };
+        let secret = match Secret::new(&id, correct_password, hasher.clone()) {
+            Ok(secret) => secret,
+            Err(error) => panic!(
+                "secret construction should hash the provided test password: {}",
+                error
+            ),
+        };
 
-        let verification = secret
-            .verify(wrong_password, hasher)
-            .expect("verification should return an authorization result for a valid stored hash");
+        let verification = match secret.verify(wrong_password, hasher) {
+            Ok(verification) => verification,
+            Err(error) => panic!(
+                "verification should return an authorization result for a valid stored hash: {}",
+                error
+            ),
+        };
 
         assert_eq!(VerificationResult::Unauthorized, verification);
     }
@@ -258,14 +272,28 @@ mod tests {
     fn secret_verification_returns_ok_for_matching_secret() {
         let id = Uuid::now_v7();
         let correct_password = "admin_password";
-        let hasher = Argon2Hasher::new_recommended()
-            .expect("recommended Argon2 hasher should be constructible in tests");
-        let secret = Secret::new(&id, correct_password, hasher.clone())
-            .expect("secret construction should hash the provided test password");
+        let hasher = match Argon2Hasher::new_recommended() {
+            Ok(hasher) => hasher,
+            Err(error) => panic!(
+                "recommended Argon2 hasher should be constructible in tests: {}",
+                error
+            ),
+        };
+        let secret = match Secret::new(&id, correct_password, hasher.clone()) {
+            Ok(secret) => secret,
+            Err(error) => panic!(
+                "secret construction should hash the provided test password: {}",
+                error
+            ),
+        };
 
-        let verification = secret
-            .verify(correct_password, hasher)
-            .expect("verification should return success for the original plaintext secret");
+        let verification = match secret.verify(correct_password, hasher) {
+            Ok(verification) => verification,
+            Err(error) => panic!(
+                "verification should return success for the original plaintext secret: {}",
+                error
+            ),
+        };
 
         assert_eq!(VerificationResult::Ok, verification);
     }
@@ -273,10 +301,20 @@ mod tests {
     #[test]
     fn from_hashed_preserves_account_id_and_hash() {
         let id = Uuid::now_v7();
-        let hasher = Argon2Hasher::new_recommended()
-            .expect("recommended Argon2 hasher should be constructible in tests");
-        let secret = Secret::new(&id, "admin_password", hasher)
-            .expect("secret construction should hash the provided test password");
+        let hasher = match Argon2Hasher::new_recommended() {
+            Ok(hasher) => hasher,
+            Err(error) => panic!(
+                "recommended Argon2 hasher should be constructible in tests: {}",
+                error
+            ),
+        };
+        let secret = match Secret::new(&id, "admin_password", hasher) {
+            Ok(secret) => secret,
+            Err(error) => panic!(
+                "secret construction should hash the provided test password: {}",
+                error
+            ),
+        };
 
         let reconstructed = Secret::from_hashed(&id, &secret.secret);
 

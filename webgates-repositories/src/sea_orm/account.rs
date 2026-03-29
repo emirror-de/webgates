@@ -254,10 +254,10 @@ where
                     ))
                 })?;
 
-            if let Some(conflicting_user) = conflicting_user {
-                if conflicting_user.account_id != account_id {
-                    return Ok(None);
-                }
+            if let Some(conflicting_user) = conflicting_user
+                && conflicting_user.account_id != account_id
+            {
+                return Ok(None);
             }
 
             let mut db_account = db_account.into_active_model();

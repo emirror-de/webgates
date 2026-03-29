@@ -244,22 +244,22 @@ mod tests {
         let initial = PermissionMapping::from("read:api");
         let duplicate = PermissionMapping::from("  READ:API  ");
 
-        let stored_initial = repository
-            .store_mapping(initial.clone())
-            .await
-            .expect("initial mapping should store");
+        let stored_initial = match repository.store_mapping(initial.clone()).await {
+            Ok(stored) => stored,
+            Err(error) => panic!("initial mapping should store: {}", error),
+        };
         assert_eq!(stored_initial, Some(initial));
 
-        let stored_duplicate = repository
-            .store_mapping(duplicate)
-            .await
-            .expect("duplicate insert should succeed as a no-op");
+        let stored_duplicate = match repository.store_mapping(duplicate).await {
+            Ok(stored) => stored,
+            Err(error) => panic!("duplicate insert should succeed as a no-op: {}", error),
+        };
         assert!(stored_duplicate.is_none());
 
-        let mappings = repository
-            .list_all_mappings()
-            .await
-            .expect("list should succeed");
+        let mappings = match repository.list_all_mappings().await {
+            Ok(mappings) => mappings,
+            Err(error) => panic!("list should succeed: {}", error),
+        };
         assert_eq!(mappings.len(), 1);
     }
 
@@ -272,17 +272,17 @@ mod tests {
             PermissionMapping::from(" READ:API "),
         ];
 
-        let stored = repository
-            .store_mappings(mappings)
-            .await
-            .expect("bulk store should succeed");
+        let stored = match repository.store_mappings(mappings).await {
+            Ok(stored) => stored,
+            Err(error) => panic!("bulk store should succeed: {}", error),
+        };
 
         assert_eq!(stored.len(), 2);
 
-        let all_mappings = repository
-            .list_all_mappings()
-            .await
-            .expect("list should succeed");
+        let all_mappings = match repository.list_all_mappings().await {
+            Ok(mappings) => mappings,
+            Err(error) => panic!("list should succeed: {}", error),
+        };
         assert_eq!(all_mappings.len(), 2);
     }
 
@@ -291,22 +291,22 @@ mod tests {
         let repository = MemoryPermissionMappingRepository::default();
         let mapping = PermissionMapping::from("read:api");
 
-        repository
-            .store_mapping(mapping.clone())
-            .await
-            .expect("store should succeed");
+        match repository.store_mapping(mapping.clone()).await {
+            Ok(_) => {}
+            Err(error) => panic!("store should succeed: {}", error),
+        };
 
-        let removed = repository
-            .remove_mapping_by_string("  READ:API ")
-            .await
-            .expect("remove should succeed");
+        let removed = match repository.remove_mapping_by_string("  READ:API ").await {
+            Ok(removed) => removed,
+            Err(error) => panic!("remove should succeed: {}", error),
+        };
 
         assert_eq!(removed, Some(mapping));
 
-        let remaining = repository
-            .list_all_mappings()
-            .await
-            .expect("list should succeed");
+        let remaining = match repository.list_all_mappings().await {
+            Ok(mappings) => mappings,
+            Err(error) => panic!("list should succeed: {}", error),
+        };
         assert!(remaining.is_empty());
     }
 }

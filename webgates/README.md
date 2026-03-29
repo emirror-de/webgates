@@ -18,6 +18,7 @@ Use `webgates` when you want:
 - JWT codec support
 - authentication services and cookie helpers
 - secret and hashing primitives
+- framework-agnostic session lifecycle and JWT auto-renewal primitives
 - a small, feature-gated public surface without wiring the core sibling crates manually
 
 If you only need a narrower layer, the workspace also exposes dedicated crates
@@ -26,6 +27,7 @@ such as:
 - `webgates-core`
 - `webgates-codecs`
 - `webgates-secrets`
+- `webgates-sessions`
 
 ## Install
 
@@ -126,6 +128,7 @@ If you use another framework, build an adapter around the gate runtime APIs.
 - `cookies`: cookie templates and cookie-backed helpers
 - `oauth2`: OAuth2 support
 - `secrets`: hashing and secret handling via `webgates-secrets`
+- `sessions`: framework-agnostic session lifecycle and renewal primitives via `webgates-sessions`
 - `audit-logging`: structured audit events with `tracing`
 - `prometheus`: Prometheus metrics support; implies `audit-logging`
 - `wasm`: WASM-oriented build support
@@ -137,20 +140,87 @@ If you use another framework, build an adapter around the gate runtime APIs.
 - `cookies`
 - `oauth2`
 - `secrets`
+- `sessions`
 
 Typical choices:
 
 - most applications: use default features
 - domain-only usage: `default-features = false`
+- session-backed authentication: enable `sessions` together with the auth and transport features you need
 - custom composition: disable defaults and enable only what you need
+
+## Session-backed authentication
+
+Enable the `sessions` feature when you want short-lived auth JWTs backed by
+long-lived refresh-token session state.
+
+This adds access to the framework-agnostic session layer through
+`webgates::sessions`, including:
+
+- typed session and session-family models
+- session issuance, renewal, and revocation services
+- opaque refresh-token generation and hashing primitives
+- repository contracts for session persistence, rotation, leases, and revocation
+- an in-memory repository for tests and local development
+
+Typical composition for session-backed login and renewal:
+
+```toml
+[dependencies]
+webgates = { version = "0.1", default-features = false, features = ["authn", "codecs", "cookies", "repositories", "secrets", "sessions"] }
+```
+
+For HTTP adapters, keep cookie extraction and response mutation in the adapter
+crate. In the Axum integration, use:
+
+- `webgates_axum::route_handlers::login_with_sessions`
+- `webgates_axum::route_handlers::logout_with_sessions`
+- `webgates_axum::session::CookieSessionLayer`
+
+This keeps token issuance, renewal rules, replay handling, and revocation in the
+framework-agnostic session layer while transport-specific cookie behavior stays
+in `webgates-axum`.
+
+## Session-backed authentication
+
+Enable the `sessions` feature when you want short-lived auth JWTs backed by
+long-lived refresh-token session state.
+
+This adds access to the framework-agnostic session layer through
+`webgates::sessions`, including:
+
+- typed session and session-family models
+- session issuance, renewal, and revocation services
+- opaque refresh-token generation and hashing primitives
+- repository contracts for session persistence, rotation, leases, and revocation
+- an in-memory repository for tests and local development
+
+Typical composition for session-backed login and renewal:
+
+```toml
+[dependencies]
+webgates = { version = "0.1", default-features = false, features = ["authn", "codecs", "cookies", "repositories", "secrets", "sessions"] }
+```
+
+For HTTP adapters, keep cookie extraction and response mutation in the adapter
+crate. In the Axum integration, use:
+
+- `webgates_axum::route_handlers::login_with_sessions`
+- `webgates_axum::route_handlers::logout_with_sessions`
+- `webgates_axum::session::CookieSessionLayer`
+
+This keeps token issuance, renewal rules, replay handling, and revocation in the
+framework-agnostic session layer while transport-specific cookie behavior stays
+in `webgates-axum`.
 
 ## Related crates
 
 - `webgates-core`: domain model and authorization primitives
 - `webgates-codecs`: codec implementations such as JWT support
 - `webgates-secrets`: secret and hashing primitives
-- `webgates-axum`: Axum integration
-- `webgates-repositories`: repository traits and storage backends
+- `webgates-sessions`: framework-agnostic session lifecycle and renewal primitives
+- `webgates-axum`: Axum integration, including session-backed login/logout handlers and transparent cookie renewal middleware
+- `webgates-repositories`: repository traits and storage backends, including session repository backends
 
 ## Security checklist
 

@@ -514,11 +514,17 @@ mod tests {
         account.grant_permission("read:account");
         account.grant_permission("write:account");
 
-        let record = SurrealAccountRecord::try_from(account.clone()).unwrap();
+        let record = match SurrealAccountRecord::try_from(account.clone()) {
+            Ok(record) => record,
+            Err(error) => panic!("structured account conversion should succeed: {}", error),
+        };
         assert_eq!(record.roles, vec![json!("Admin")]);
         assert_eq!(record.groups, vec![json!("engineering")]);
 
-        let restored = Account::<StructuredRole, Group>::try_from(record).unwrap();
+        let restored = match Account::<StructuredRole, Group>::try_from(record) {
+            Ok(account) => account,
+            Err(error) => panic!("structured account restoration should succeed: {}", error),
+        };
 
         assert_eq!(restored, account);
     }
@@ -535,8 +541,10 @@ mod tests {
             },
         };
 
-        let error = Account::<StructuredRole, Group>::try_from(record)
-            .expect_err("invalid role payload should fail");
+        let error = match Account::<StructuredRole, Group>::try_from(record) {
+            Ok(_) => panic!("invalid role payload should fail"),
+            Err(error) => error,
+        };
 
         assert!(
             error
@@ -556,8 +564,14 @@ mod tests {
         account.account_id = Uuid::now_v7();
         account.grant_permission("read:account");
 
-        let record = SurrealAccountRecord::try_from(account.clone()).unwrap();
-        let restored = Account::<Role, Group>::try_from(record).unwrap();
+        let record = match SurrealAccountRecord::try_from(account.clone()) {
+            Ok(record) => record,
+            Err(error) => panic!("builtin account conversion should succeed: {}", error),
+        };
+        let restored = match Account::<Role, Group>::try_from(record) {
+            Ok(account) => account,
+            Err(error) => panic!("builtin account restoration should succeed: {}", error),
+        };
 
         assert_eq!(restored, account);
     }

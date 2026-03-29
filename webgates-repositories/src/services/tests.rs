@@ -23,14 +23,16 @@ impl AccessHierarchy for TestRole {}
 #[tokio::test]
 async fn account_insert_service_stores_account_and_secret() {
     let account_repository = Arc::new(MemoryAccountRepository::<TestRole, Group>::default());
-    let secret_repository =
-        Arc::new(MemorySecretRepository::new_with_argon2_hasher().expect("hasher setup"));
+    let secret_repository = Arc::new(match MemorySecretRepository::new_with_argon2_hasher() {
+        Ok(repository) => repository,
+        Err(error) => panic!("hasher setup should succeed: {}", error),
+    });
 
     let mut permissions = Permissions::new();
     permissions.grant("projects:read");
 
     let created: webgates_core::accounts::Account<TestRole, Group> =
-        AccountInsertService::insert("user@example.com", "password-123")
+        match AccountInsertService::insert("user@example.com", "password-123")
             .with_roles(vec![TestRole::User, TestRole::Admin])
             .with_groups(vec![Group::new("engineering")])
             .with_permissions(permissions.clone())
@@ -39,91 +41,115 @@ async fn account_insert_service_stores_account_and_secret() {
                 Arc::clone(&secret_repository),
             )
             .await
-            .expect("insert should succeed")
-            .expect("account should be returned");
+        {
+            Ok(Some(account)) => account,
+            Ok(None) => panic!("account should be returned"),
+            Err(error) => panic!("insert should succeed: {}", error),
+        };
 
     assert_eq!(created.user_id, "user@example.com");
     assert_eq!(created.roles, vec![TestRole::User, TestRole::Admin]);
     assert_eq!(created.groups, vec![Group::new("engineering")]);
     assert_eq!(created.permissions, permissions);
 
-    let stored_account: webgates_core::accounts::Account<TestRole, Group> = account_repository
+    let stored_account: webgates_core::accounts::Account<TestRole, Group> = match account_repository
         .query_account_by_id(&created.account_id)
         .await
-        .expect("account lookup should succeed")
-        .expect("stored account should exist");
+    {
+        Ok(Some(account)) => account,
+        Ok(None) => panic!("stored account should exist"),
+        Err(error) => panic!("account lookup should succeed: {}", error),
+    };
     assert_eq!(stored_account, created);
 
-    let removed_secret = secret_repository
-        .delete_secret(&created.account_id)
-        .await
-        .expect("secret lookup via delete should succeed")
-        .expect("secret should exist");
+    let removed_secret = match secret_repository.delete_secret(&created.account_id).await {
+        Ok(Some(secret)) => secret,
+        Ok(None) => panic!("secret should exist"),
+        Err(error) => panic!("secret lookup via delete should succeed: {}", error),
+    };
     assert_eq!(removed_secret.account_id, created.account_id);
 }
 
 #[tokio::test]
 async fn account_delete_service_removes_account_and_secret() {
     let account_repository = Arc::new(MemoryAccountRepository::<TestRole, Group>::default());
-    let secret_repository =
-        Arc::new(MemorySecretRepository::new_with_argon2_hasher().expect("hasher setup"));
+    let secret_repository = Arc::new(match MemorySecretRepository::new_with_argon2_hasher() {
+        Ok(repository) => repository,
+        Err(error) => panic!("hasher setup should succeed: {}", error),
+    });
 
-    let account = AccountInsertService::insert("deleteme@example.com", "password-123")
+    let account = match AccountInsertService::insert("deleteme@example.com", "password-123")
         .into_repositories(
             Arc::clone(&account_repository),
             Arc::clone(&secret_repository),
         )
         .await
-        .expect("insert should succeed")
-        .expect("account should be returned");
+    {
+        Ok(Some(account)) => account,
+        Ok(None) => panic!("account should be returned"),
+        Err(error) => panic!("insert should succeed: {}", error),
+    };
 
-    AccountDeleteService::delete(account.clone())
+    if let Err(error) = AccountDeleteService::delete(account.clone())
         .from_repositories(
             Arc::clone(&account_repository),
             Arc::clone(&secret_repository),
         )
         .await
-        .expect("delete should succeed");
+    {
+        panic!("delete should succeed: {}", error);
+    }
 
     let stored_account: Option<webgates_core::accounts::Account<TestRole, Group>> =
-        account_repository
+        match account_repository
             .query_account_by_id(&account.account_id)
             .await
-            .expect("account lookup should succeed");
+        {
+            Ok(account) => account,
+            Err(error) => panic!("account lookup should succeed: {}", error),
+        };
     assert!(stored_account.is_none());
 
-    let stored_secret = secret_repository
-        .delete_secret(&account.account_id)
-        .await
-        .expect("secret lookup via delete should succeed");
+    let stored_secret = match secret_repository.delete_secret(&account.account_id).await {
+        Ok(secret) => secret,
+        Err(error) => panic!("secret lookup via delete should succeed: {}", error),
+    };
     assert!(stored_secret.is_none());
 }
 
 #[tokio::test]
 async fn account_delete_service_returns_not_found_when_secret_is_missing() {
     let account_repository = Arc::new(MemoryAccountRepository::<TestRole, Group>::default());
-    let secret_repository =
-        Arc::new(MemorySecretRepository::new_with_argon2_hasher().expect("hasher setup"));
+    let secret_repository = Arc::new(match MemorySecretRepository::new_with_argon2_hasher() {
+        Ok(repository) => repository,
+        Err(error) => panic!("hasher setup should succeed: {}", error),
+    });
 
-    let account = AccountInsertService::insert("missing-secret@example.com", "password-123")
+    let account = match AccountInsertService::insert("missing-secret@example.com", "password-123")
         .into_repositories(
             Arc::clone(&account_repository),
             Arc::clone(&secret_repository),
         )
         .await
-        .expect("insert should succeed")
-        .expect("account should be returned");
+    {
+        Ok(Some(account)) => account,
+        Ok(None) => panic!("account should be returned"),
+        Err(error) => panic!("insert should succeed: {}", error),
+    };
 
-    let removed_secret = secret_repository
-        .delete_secret(&account.account_id)
-        .await
-        .expect("secret delete should succeed");
+    let removed_secret = match secret_repository.delete_secret(&account.account_id).await {
+        Ok(secret) => secret,
+        Err(error) => panic!("secret delete should succeed: {}", error),
+    };
     assert!(removed_secret.is_some());
 
-    let error = AccountDeleteService::delete(account.clone())
+    let error = match AccountDeleteService::delete(account.clone())
         .from_repositories(account_repository, secret_repository)
         .await
-        .expect_err("delete should fail when secret is missing");
+    {
+        Ok(()) => panic!("delete should fail when secret is missing"),
+        Err(error) => error,
+    };
 
     match error {
         Error::Repositories(RepositoriesError::NotFound { repository, key }) => {

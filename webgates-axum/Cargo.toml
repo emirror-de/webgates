@@ -36,8 +36,9 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tower = { version = "0.5", features = ["limit", "util", "timeout", "buffer", "load-shed"] }
 tower-http = { version = "0.6", features = ["trace"] }
 tracing = { workspace = true }
+futures-executor = "0.3"
 uuid = { workspace = true, features = ["serde", "v7"] }
-webgates = { path = "../webgates", features = ["authn", "codecs", "cookies", "oauth2", "repositories", "secrets"] }
+webgates = { path = "../webgates", features = ["authn", "codecs", "cookies", "oauth2", "repositories", "secrets", "sessions"] }
 webgates-codecs = { path = "../webgates-codecs" }
 webgates-repositories = { path = "../webgates-repositories" }
 

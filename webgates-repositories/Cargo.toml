@@ -23,11 +23,13 @@ surrealdb = [
     "dep:serde_json",
     "dep:surrealdb",
     "dep:surrealdb-types",
+    "dep:webgates-sessions",
 ]
 sea-orm = [
     "dep:sea-orm",
     "dep:sea-query",
     "dep:serde_json",
+    "dep:webgates-sessions",
 ]
 
 [dependencies]
@@ -46,6 +48,7 @@ tracing = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v7", "js"] }
 webgates-core = { path = "../webgates-core" }
 webgates-secrets = { path = "../webgates-secrets" }
+webgates-sessions = { path = "../webgates-sessions", optional = true }
 
 [dev-dependencies]
 tokio-test = "0.4.4"

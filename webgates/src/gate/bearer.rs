@@ -526,13 +526,19 @@ mod tests {
     #![allow(clippy::expect_used)]
     use super::*;
     use crate::accounts::Account;
+    use crate::codecs::jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER as JWT_CRYPTO_PROVIDER;
     use crate::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
     use crate::groups::Group;
     use crate::roles::Role;
     use chrono::Utc;
 
+    fn install_jwt_crypto_provider() {
+        let _ = JWT_CRYPTO_PROVIDER.install_default();
+    }
+
     #[test]
     fn jwt_runtime_authorizes_when_policy_allows() {
+        install_jwt_crypto_provider();
         let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
         let gate = BearerGate::<_, Role, Group, JwtConfig<Role, Group>>::new_with_codec(
             "issuer",
@@ -562,6 +568,7 @@ mod tests {
 
     #[test]
     fn static_runtime_matches_token() {
+        install_jwt_crypto_provider();
         let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
         let gate = BearerGate::<_, Role, Group, JwtConfig<Role, Group>>::new_with_codec(
             "issuer",

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER as JWT_CRYPTO_PROVIDER;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use uuid::Uuid;
 use webgates_codecs::Codec;
@@ -13,6 +14,10 @@ use webgates_core::roles::Role;
 
 type TestAccount = Account<Role, Group>;
 type TestClaims = JwtClaims<TestAccount>;
+
+fn install_jwt_crypto_provider() {
+    let _ = JWT_CRYPTO_PROVIDER.install_default();
+}
 
 fn sample_account() -> TestAccount {
     TestAccount {
@@ -50,6 +55,7 @@ fn codec_with_shared_secret(secret: &[u8]) -> JsonWebToken<TestClaims> {
 
 #[test]
 fn jwt_codec_round_trip_preserves_claims() {
+    install_jwt_crypto_provider();
     let codec = codec_with_shared_secret(b"integration-test-secret");
     let claims = sample_claims("issuer-a");
 
@@ -83,6 +89,7 @@ fn jwt_codec_round_trip_preserves_claims() {
 
 #[test]
 fn jwt_codec_rejects_token_signed_with_different_secret() {
+    install_jwt_crypto_provider();
     let encoder = codec_with_shared_secret(b"encoder-secret");
     let decoder = codec_with_shared_secret(b"decoder-secret");
     let claims = sample_claims("issuer-a");
@@ -98,6 +105,7 @@ fn jwt_codec_rejects_token_signed_with_different_secret() {
 
 #[test]
 fn jwt_validation_service_accepts_valid_token_with_expected_issuer() {
+    install_jwt_crypto_provider();
     let codec = Arc::new(codec_with_shared_secret(b"validation-secret"));
     let service = JwtValidationService::new(Arc::clone(&codec), "issuer-a");
     let claims = sample_claims("issuer-a");
@@ -124,6 +132,7 @@ fn jwt_validation_service_accepts_valid_token_with_expected_issuer() {
 
 #[test]
 fn jwt_validation_service_rejects_token_with_unexpected_issuer() {
+    install_jwt_crypto_provider();
     let codec = Arc::new(codec_with_shared_secret(b"validation-secret"));
     let service = JwtValidationService::new(Arc::clone(&codec), "issuer-b");
     let claims = sample_claims("issuer-a");
@@ -150,6 +159,7 @@ fn jwt_validation_service_rejects_token_with_unexpected_issuer() {
 
 #[test]
 fn jwt_validation_service_rejects_malformed_token() {
+    install_jwt_crypto_provider();
     let codec = Arc::new(codec_with_shared_secret(b"validation-secret"));
     let service = JwtValidationService::new(codec, "issuer-a");
 
@@ -160,6 +170,7 @@ fn jwt_validation_service_rejects_malformed_token() {
 
 #[test]
 fn jwt_codec_rejects_token_when_header_validation_configuration_differs() {
+    install_jwt_crypto_provider();
     let issuer = "issuer-a";
     let secret = b"header-secret";
     let claims = sample_claims(issuer);

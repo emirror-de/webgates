@@ -1,14 +1,19 @@
 use webgates::accounts::Account;
-use webgates::authn::{LoginResult, LoginService};
+use webgates::authn::{LoginResult, LoginService, SessionLoginResult, SessionLoginService};
 use webgates::authz::AccessHierarchy;
 use webgates::codecs::Codec;
 use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
 use webgates::cookie_template::CookieTemplate;
 use webgates::credentials::Credentials;
 use webgates::credentials::CredentialsVerifier;
+use webgates::sessions::config::SessionConfig;
+use webgates::sessions::repository::SessionRepository;
+use webgates::sessions::session::Session;
+use webgates::sessions::tokens::AuthTokenIssuer;
 use webgates_repositories::account_repository::AccountRepository;
 
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use axum::http::StatusCode;
 use axum_extra::extract::CookieJar;
@@ -143,5 +148,591 @@ where
             }
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
+    }
+}
+
+/// Dependencies required for session-backed login.
+///
+/// This groups the inner-layer services and repositories so the HTTP adapter
+/// can pass one explicit dependency object instead of a long argument list.
+pub struct SessionLoginDependencies<CredVeri, AccRepo, SessRepo, A> {
+    /// Repository used to verify submitted credentials.
+    pub secret_verifier: Arc<CredVeri>,
+    /// Repository used to load the authenticated account.
+    pub account_repository: Arc<AccRepo>,
+    /// Repository used to persist session state.
+    pub session_repository: SessRepo,
+    /// Issuer used to mint auth tokens bound to session state.
+    pub auth_token_issuer: A,
+}
+
+/// Session-backed login configuration for cookie issuance.
+///
+/// This keeps deterministic issuance inputs and cookie templates together at the
+/// HTTP boundary.
+pub struct SessionLoginRequest {
+    /// User credentials submitted for authentication.
+    pub credentials: Credentials<String>,
+    /// Session issuance configuration.
+    pub session_config: SessionConfig,
+    /// Template for the auth cookie written after successful login.
+    pub auth_cookie_template: CookieTemplate,
+    /// Template for the refresh-token cookie written after successful login.
+    pub refresh_cookie_template: CookieTemplate,
+    /// Current wall-clock time used for deterministic session issuance.
+    pub now: SystemTime,
+}
+
+/// Authenticates user credentials and creates auth and refresh-token cookies.
+///
+/// This handler is the session-backed variant of [`login`]. It validates the
+/// provided credentials against the secret repository, loads the account from
+/// the account repository, issues a session-backed auth and refresh token pair,
+/// and writes both cookies in the HTTP adapter layer.
+///
+/// # Arguments
+/// * `cookie_jar` - The incoming cookie jar to add cookies to
+/// * `request` - Session-backed login request data and cookie templates
+/// * `dependencies` - Session-backed login repositories and token issuer
+///
+/// # Returns
+/// * `Ok(CookieJar)` - Updated cookie jar with auth and refresh cookies
+/// * `Err(StatusCode)` - HTTP error code indicating failure reason
+pub async fn login_with_sessions<CredVeri, AccRepo, SessRepo, A, R, G>(
+    cookie_jar: CookieJar,
+    request: SessionLoginRequest,
+    dependencies: SessionLoginDependencies<CredVeri, AccRepo, SessRepo, A>,
+) -> Result<CookieJar, StatusCode>
+where
+    R: AccessHierarchy + Eq,
+    G: Eq + Clone,
+    CredVeri: CredentialsVerifier,
+    AccRepo: AccountRepository<R, G>,
+    SessRepo: SessionRepository,
+    A: AuthTokenIssuer<Session>,
+    A::Error: std::fmt::Display,
+{
+    let SessionLoginRequest {
+        credentials,
+        session_config,
+        auth_cookie_template,
+        refresh_cookie_template,
+        now,
+    } = request;
+    let SessionLoginDependencies {
+        secret_verifier,
+        account_repository,
+        session_repository,
+        auth_token_issuer,
+    } = dependencies;
+
+    #[cfg(feature = "audit-logging")]
+    let user_id = credentials.id.clone();
+    #[cfg(feature = "audit-logging")]
+    let _audit_span =
+        tracing::span!(tracing::Level::INFO, "auth.login.session", user_id = %user_id);
+    #[cfg(feature = "audit-logging")]
+    let _audit_enter = _audit_span.enter();
+    #[cfg(feature = "audit-logging")]
+    tracing::info!(user_id = %user_id, "session_login_attempt");
+
+    let login_service = SessionLoginService::<R, G>::new();
+
+    let result = login_service
+        .authenticate_with_sessions(
+            credentials,
+            secret_verifier,
+            account_repository,
+            session_repository,
+            auth_token_issuer,
+            session_config,
+            now,
+        )
+        .await;
+
+    match result {
+        SessionLoginResult::Success(issued_session) => {
+            let auth_cookie = auth_cookie_template
+                .build_with_value(issued_session.tokens.token_pair.auth_token.as_str());
+            let refresh_cookie = refresh_cookie_template
+                .build_with_value(issued_session.tokens.token_pair.refresh_token.as_str());
+            #[cfg(feature = "audit-logging")]
+            tracing::info!(user_id = %user_id, "session_login_success");
+            Ok(cookie_jar.add(auth_cookie).add(refresh_cookie))
+        }
+        SessionLoginResult::InvalidCredentials {
+            user_message: _,
+            support_code,
+        } => {
+            match support_code.as_deref() {
+                Some(code) => {
+                    error!(
+                        "Session login failed - Invalid credentials [Support Code: {}]",
+                        code
+                    );
+                }
+                None => {
+                    error!("Session login failed - Invalid credentials");
+                }
+            }
+            #[cfg(feature = "audit-logging")]
+            {
+                match support_code.as_deref() {
+                    Some(code) => {
+                        tracing::warn!(user_id = %user_id, support_code = %code, "session_login_failed_invalid_credentials")
+                    }
+                    None => {
+                        tracing::warn!(user_id = %user_id, "session_login_failed_invalid_credentials")
+                    }
+                }
+            }
+            Err(StatusCode::UNAUTHORIZED)
+        }
+        SessionLoginResult::InternalError {
+            user_message: _,
+            technical_message,
+            support_code,
+            retryable,
+        } => {
+            let code_info = support_code
+                .as_deref()
+                .map(|c| format!(" [Support Code: {}]", c))
+                .unwrap_or_default();
+            let retry_info = if retryable {
+                " [Retryable]"
+            } else {
+                " [Non-retryable]"
+            };
+            error!(
+                "Session login internal error{}{}: {}",
+                code_info, retry_info, technical_message
+            );
+            #[cfg(feature = "audit-logging")]
+            {
+                match support_code.as_deref() {
+                    Some(code) => {
+                        tracing::error!(user_id = %user_id, support_code = %code, retryable = retryable, error = %technical_message, "session_login_internal_error")
+                    }
+                    None => {
+                        tracing::error!(user_id = %user_id, retryable = retryable, error = %technical_message, "session_login_internal_error")
+                    }
+                }
+            }
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+    use std::time::{Duration, SystemTime};
+
+    use axum_extra::extract::cookie::Cookie;
+    use tokio::sync::RwLock;
+    use uuid::Uuid;
+    use webgates::groups::Group;
+    use webgates::roles::Role;
+    use webgates::secrets::Secret;
+    use webgates::secrets::hashing::HashingService;
+    use webgates::secrets::hashing::argon2::Argon2Hasher;
+    use webgates::sessions::lease::{LeaseAcquisition, RenewalLease};
+    use webgates::sessions::repository::{
+        CreateSession, RepositoryResult, RevokeSessionScope, RotateRefreshToken,
+        RotateRefreshTokenOutcome,
+    };
+    use webgates::sessions::session::{
+        SessionFamilyId, SessionFamilyRecord, SessionId, SessionLookup, SessionRecord,
+        SessionRefreshRecord, SessionTouch,
+    };
+    use webgates::sessions::tokens::{AuthToken, RefreshTokenHashRef};
+    use webgates::verification_result::VerificationResult;
+    use webgates_repositories::secret_repository::SecretRepository;
+
+    #[derive(Clone, Default)]
+    struct DummyAccountRepository {
+        store: Arc<RwLock<HashMap<String, Account<Role, Group>>>>,
+    }
+
+    #[derive(Clone)]
+    struct DummySecretRepository {
+        store: Arc<RwLock<HashMap<Uuid, Secret>>>,
+        dummy_hash: String,
+    }
+
+    impl DummySecretRepository {
+        fn new() -> Self {
+            let hasher = match Argon2Hasher::new_recommended() {
+                Ok(hasher) => hasher,
+                Err(error) => panic!("hasher construction should succeed: {}", error),
+            };
+            let dummy_hash = match hasher.hash_value("dummy_password") {
+                Ok(hash) => hash,
+                Err(error) => panic!("dummy hash generation should succeed: {}", error),
+            };
+            Self {
+                store: Arc::new(RwLock::new(HashMap::new())),
+                dummy_hash,
+            }
+        }
+    }
+
+    #[derive(Clone, Default)]
+    struct DummySessionRepository {
+        created_sessions: Arc<RwLock<Vec<CreateSession>>>,
+    }
+
+    #[derive(Clone, Copy, Default)]
+    struct StaticSessionAuthTokenIssuer;
+
+    impl AuthTokenIssuer<Session> for StaticSessionAuthTokenIssuer {
+        type Error = webgates::sessions::errors::TokenError;
+
+        fn issue_auth_token(
+            &self,
+            session: &Session,
+        ) -> std::result::Result<AuthToken, Self::Error> {
+            AuthToken::new(format!("auth-{}", session.subject_id))
+        }
+    }
+
+    impl AccountRepository<Role, Group> for DummyAccountRepository {
+        type Error = webgates::errors::Error;
+
+        async fn bootstrap(&self) -> Result<(), Self::Error> {
+            Ok(())
+        }
+
+        async fn store_account(
+            &self,
+            account: Account<Role, Group>,
+        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
+            let mut write = self.store.write().await;
+            let inserted = write
+                .insert(account.user_id.clone(), account.clone())
+                .is_none();
+            Ok(inserted.then_some(account))
+        }
+
+        async fn delete_account(
+            &self,
+            account_id: &Uuid,
+        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
+            let mut write = self.store.write().await;
+            let to_remove = write
+                .iter()
+                .find(|(_, acc)| acc.account_id == *account_id)
+                .map(|(key, acc)| (key.clone(), acc.clone()));
+
+            if let Some((key, account)) = to_remove {
+                write.remove(&key);
+                Ok(Some(account))
+            } else {
+                Ok(None)
+            }
+        }
+
+        async fn update_account(
+            &self,
+            account: Account<Role, Group>,
+        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
+            let mut write = self.store.write().await;
+            let exists = write.contains_key(&account.user_id);
+            write.insert(account.user_id.clone(), account.clone());
+            Ok(exists.then_some(account))
+        }
+
+        async fn query_account_by_user_id(
+            &self,
+            user_id: &str,
+        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
+            let read = self.store.read().await;
+            Ok(read.get(user_id).cloned())
+        }
+
+        async fn query_account_by_id(
+            &self,
+            account_id: &Uuid,
+        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
+            let read = self.store.read().await;
+            Ok(read
+                .values()
+                .find(|account| &account.account_id == account_id)
+                .cloned())
+        }
+
+        async fn query_all_accounts(&self) -> Result<Vec<Account<Role, Group>>, Self::Error> {
+            let read = self.store.read().await;
+            Ok(read.values().cloned().collect())
+        }
+    }
+
+    impl SecretRepository for DummySecretRepository {
+        type Error = webgates::errors::Error;
+
+        async fn bootstrap(&self) -> Result<(), Self::Error> {
+            Ok(())
+        }
+
+        async fn store_secret(&self, secret: Secret) -> Result<bool, Self::Error> {
+            let mut write = self.store.write().await;
+            let existed = write.insert(secret.account_id, secret).is_some();
+            Ok(!existed)
+        }
+
+        async fn delete_secret(&self, id: &Uuid) -> Result<Option<Secret>, Self::Error> {
+            let mut write = self.store.write().await;
+            Ok(write.remove(id))
+        }
+
+        async fn update_secret(&self, secret: Secret) -> Result<(), Self::Error> {
+            let mut write = self.store.write().await;
+            write.insert(secret.account_id, secret);
+            Ok(())
+        }
+    }
+
+    impl CredentialsVerifier for DummySecretRepository {
+        async fn verify_credentials(
+            &self,
+            credentials: Credentials<Uuid>,
+        ) -> webgates::errors_core::Result<VerificationResult> {
+            let read = self.store.read().await;
+            let (hash_to_check, user_exists) = match read.get(&credentials.id) {
+                Some(stored) => (stored.secret.clone(), true),
+                None => (self.dummy_hash.clone(), false),
+            };
+
+            let hasher = match Argon2Hasher::new_recommended() {
+                Ok(hasher) => hasher,
+                Err(error) => {
+                    panic!(
+                        "hasher construction should succeed during verification: {}",
+                        error
+                    )
+                }
+            };
+            let matches = hasher
+                .verify_value(&credentials.secret, &hash_to_check)
+                .unwrap_or(VerificationResult::Unauthorized);
+            let is_ok = matches == VerificationResult::Ok && user_exists;
+
+            Ok(if is_ok {
+                VerificationResult::Ok
+            } else {
+                VerificationResult::Unauthorized
+            })
+        }
+    }
+
+    impl SessionRepository for DummySessionRepository {
+        async fn create_session(&self, input: CreateSession) -> RepositoryResult<()> {
+            self.created_sessions.write().await.push(input);
+            Ok(())
+        }
+
+        async fn find_session_by_refresh_token_hash<'a>(
+            &'a self,
+            _refresh_token_hash: RefreshTokenHashRef<'a>,
+        ) -> RepositoryResult<Option<SessionLookup>> {
+            Ok(None)
+        }
+
+        async fn find_session(
+            &self,
+            _session_id: SessionId,
+        ) -> RepositoryResult<Option<SessionRecord>> {
+            Ok(None)
+        }
+
+        async fn find_family(
+            &self,
+            _family_id: SessionFamilyId,
+        ) -> RepositoryResult<Option<SessionFamilyRecord>> {
+            Ok(None)
+        }
+
+        async fn find_refresh_record(
+            &self,
+            _session_id: SessionId,
+        ) -> RepositoryResult<Option<SessionRefreshRecord>> {
+            Ok(None)
+        }
+
+        async fn try_acquire_renewal_lease(
+            &self,
+            _session_id: SessionId,
+            lease: RenewalLease,
+        ) -> RepositoryResult<LeaseAcquisition> {
+            Ok(LeaseAcquisition::Acquired(lease))
+        }
+
+        async fn rotate_refresh_token(
+            &self,
+            _input: RotateRefreshToken,
+        ) -> RepositoryResult<RotateRefreshTokenOutcome> {
+            Ok(RotateRefreshTokenOutcome::Rotated)
+        }
+
+        async fn revoke_session(
+            &self,
+            _session_id: SessionId,
+            _scope: RevokeSessionScope,
+        ) -> RepositoryResult<()> {
+            Ok(())
+        }
+
+        async fn revoke_family(&self, _family_id: SessionFamilyId) -> RepositoryResult<()> {
+            Ok(())
+        }
+
+        async fn touch_session(&self, _touch: SessionTouch) -> RepositoryResult<()> {
+            Ok(())
+        }
+    }
+
+    async fn build_login_dependencies() -> (
+        Arc<DummySecretRepository>,
+        Arc<DummyAccountRepository>,
+        DummySessionRepository,
+    ) {
+        let account_repo = Arc::new(DummyAccountRepository::default());
+        let secret_repo = Arc::new(DummySecretRepository::new());
+        let session_repo = DummySessionRepository::default();
+
+        let account = Account::new(
+            "user@example.com".to_string(),
+            vec![Role::User],
+            vec![Group::new("staff")],
+        );
+        let stored_account = match account_repo.store_account(account).await {
+            Ok(Some(account)) => account,
+            Ok(None) => panic!("stored account should be returned"),
+            Err(error) => panic!("account storage should succeed: {}", error),
+        };
+
+        let secret = match Secret::new(
+            &stored_account.account_id,
+            "correct-password",
+            match Argon2Hasher::new_recommended() {
+                Ok(hasher) => hasher,
+                Err(error) => panic!("hasher construction should succeed: {}", error),
+            },
+        ) {
+            Ok(secret) => secret,
+            Err(error) => panic!("secret construction should succeed: {}", error),
+        };
+        if let Err(error) = secret_repo.store_secret(secret).await {
+            panic!("secret storage should succeed: {}", error);
+        }
+
+        (secret_repo, account_repo, session_repo)
+    }
+
+    fn cookie_value<'a>(jar: &'a CookieJar, name: &str) -> Option<&'a str> {
+        jar.get(name).map(Cookie::value)
+    }
+
+    #[tokio::test]
+    async fn login_with_sessions_sets_auth_and_refresh_cookies() {
+        let (secret_repo, account_repo, session_repo) = build_login_dependencies().await;
+        let cookie_jar = CookieJar::new();
+        let auth_cookie_template = CookieTemplate::recommended().name("auth-token");
+        let refresh_cookie_template = CookieTemplate::recommended().name("refresh-token");
+        let now = SystemTime::UNIX_EPOCH + Duration::from_secs(10_000);
+
+        let result = login_with_sessions::<_, _, _, _, Role, Group>(
+            cookie_jar,
+            SessionLoginRequest {
+                credentials: Credentials::new(&"user@example.com".to_string(), "correct-password"),
+                session_config: SessionConfig::default(),
+                auth_cookie_template,
+                refresh_cookie_template,
+                now,
+            },
+            SessionLoginDependencies {
+                secret_verifier: secret_repo,
+                account_repository: account_repo,
+                session_repository: session_repo.clone(),
+                auth_token_issuer: StaticSessionAuthTokenIssuer,
+            },
+        )
+        .await;
+
+        let updated_jar = match result {
+            Ok(cookie_jar) => cookie_jar,
+            Err(status) => panic!("session-backed login should succeed: {}", status),
+        };
+        let auth_cookie = match cookie_value(&updated_jar, "auth-token") {
+            Some(cookie) => cookie,
+            None => panic!("auth cookie should be present after login"),
+        };
+        let refresh_cookie = match cookie_value(&updated_jar, "refresh-token") {
+            Some(cookie) => cookie,
+            None => panic!("refresh cookie should be present after login"),
+        };
+
+        assert_eq!(auth_cookie, "auth-user@example.com");
+        assert!(!refresh_cookie.is_empty());
+        assert_eq!(session_repo.created_sessions.read().await.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn login_with_sessions_rejects_invalid_credentials() {
+        let (secret_repo, account_repo, session_repo) = build_login_dependencies().await;
+        let cookie_jar = CookieJar::new();
+
+        let result = login_with_sessions::<_, _, _, _, Role, Group>(
+            cookie_jar,
+            SessionLoginRequest {
+                credentials: Credentials::new(&"user@example.com".to_string(), "wrong-password"),
+                session_config: SessionConfig::default(),
+                auth_cookie_template: CookieTemplate::recommended().name("auth-token"),
+                refresh_cookie_template: CookieTemplate::recommended().name("refresh-token"),
+                now: SystemTime::UNIX_EPOCH + Duration::from_secs(10_000),
+            },
+            SessionLoginDependencies {
+                secret_verifier: secret_repo,
+                account_repository: account_repo,
+                session_repository: session_repo,
+                auth_token_issuer: StaticSessionAuthTokenIssuer,
+            },
+        )
+        .await;
+
+        assert!(matches!(result, Err(StatusCode::UNAUTHORIZED)));
+    }
+
+    #[tokio::test]
+    async fn login_with_sessions_issues_persisted_session_for_authenticated_user() {
+        let (secret_repo, account_repo, session_repo) = build_login_dependencies().await;
+
+        let result = login_with_sessions::<_, _, _, _, Role, Group>(
+            CookieJar::new(),
+            SessionLoginRequest {
+                credentials: Credentials::new(&"user@example.com".to_string(), "correct-password"),
+                session_config: SessionConfig::default(),
+                auth_cookie_template: CookieTemplate::recommended().name("auth-token"),
+                refresh_cookie_template: CookieTemplate::recommended().name("refresh-token"),
+                now: SystemTime::UNIX_EPOCH + Duration::from_secs(20_000),
+            },
+            SessionLoginDependencies {
+                secret_verifier: secret_repo,
+                account_repository: account_repo,
+                session_repository: session_repo.clone(),
+                auth_token_issuer: StaticSessionAuthTokenIssuer,
+            },
+        )
+        .await;
+
+        if let Err(status) = result {
+            panic!("session-backed login should succeed: {}", status);
+        }
+
+        let created_sessions = session_repo.created_sessions.read().await;
+        assert_eq!(created_sessions.len(), 1);
+        assert_eq!(created_sessions[0].session.subject_id, "user@example.com");
+        assert!(!created_sessions[0].refresh_token_hash.as_str().is_empty());
     }
 }

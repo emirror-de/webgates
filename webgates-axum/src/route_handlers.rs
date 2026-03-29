@@ -1,12 +1,14 @@
 //! Axum route handlers for login and logout flows.
 //!
-//! This module exposes two direct handler functions:
-//! [`login`] and [`logout`].
+//! This module exposes direct handler functions for both cookie-only and
+//! session-backed authentication flows:
+//! [`login`], [`login_with_sessions`], [`logout`], and
+//! [`logout_with_sessions`].
 //!
 //! The handlers are thin Axum adapters around the framework-agnostic services in
 //! `webgates`. They do not implement authentication logic themselves. Credential
-//! verification, account lookup, token creation, and logout semantics remain
-//! owned by the core crates.
+//! verification, account lookup, token creation, session issuance, and logout
+//! semantics remain owned by the core crates.
 //!
 //! # Typical usage
 //!
@@ -82,9 +84,12 @@
 //!
 //! # Public API notes
 //!
-//! - Import handlers via `webgates_axum::route_handlers::{login, logout}`.
+//! - Import handlers via
+//!   `webgates_axum::route_handlers::{login, login_with_sessions, logout, logout_with_sessions}`.
 //! - The module keeps the implementation submodules private and exposes only the
 //!   direct handler functions.
+//! - Use the session-backed variants when you want auth-cookie plus
+//!   refresh-cookie flows coordinated by `webgates::sessions`.
 //!
 //! # Security
 //!
@@ -94,5 +99,5 @@
 mod login;
 mod logout;
 
-pub use self::login::login;
-pub use self::logout::logout;
+pub use self::login::{login, login_with_sessions};
+pub use self::logout::{logout, logout_with_sessions};

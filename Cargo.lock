@@ -6002,6 +6002,7 @@ dependencies = [
  "webgates-core",
  "webgates-repositories",
  "webgates-secrets",
+ "webgates-sessions",
 ]
 
 [[package]]
@@ -6012,6 +6013,7 @@ dependencies = [
  "axum-extra",
  "chrono",
  "cookie",
+ "futures-executor",
  "http",
  "jsonwebtoken",
  "oauth2",
@@ -6082,6 +6084,7 @@ dependencies = [
  "uuid",
  "webgates-core",
  "webgates-secrets",
+ "webgates-sessions",
 ]
 
 [[package]]
@@ -6094,6 +6097,24 @@ dependencies = [
  "tokio-test",
  "uuid",
  "webgates-core",
+]
+
+[[package]]
+name = "webgates-sessions"
+version = "0.1.0-dev"
+dependencies = [
+ "chrono",
+ "rand 0.9.2",
+ "serde",
+ "sha2",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-test",
+ "tracing",
+ "uuid",
+ "webgates-codecs",
+ "webgates-core",
+ "webgates-secrets",
 ]
 
 [[package]]

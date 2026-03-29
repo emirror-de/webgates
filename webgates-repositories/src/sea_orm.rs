@@ -12,7 +12,7 @@ use crate::{
     errors::{DatabaseError, DatabaseOperation, Error, Result},
 };
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Schema};
-use std::future::Future;
+
 use webgates_secrets::hashing::{
     HashingService,
     argon2::Argon2Hasher,
@@ -29,6 +29,7 @@ mod account;
 mod group;
 mod permission_mapping;
 mod secret;
+pub mod session;
 
 /// Repository implementation for [SeaORM](sea_orm).
 ///
@@ -63,41 +64,39 @@ impl SeaOrmRepository {
     }
 
     /// Create all repository tables if they do not exist yet.
-    pub fn bootstrap(&self) -> impl Future<Output = Result<()>> + Send + '_ {
-        async move {
-            let backend = self.db.get_database_backend();
-            let schema = Schema::new(backend);
+    pub async fn bootstrap(&self) -> Result<()> {
+        let backend = self.db.get_database_backend();
+        let schema = Schema::new(backend);
 
-            self.create_table_if_missing(
-                backend,
-                schema.create_table_from_entity(models::credentials::Entity),
-                TableName::WebgatesCredentials,
-            )
-            .await?;
+        self.create_table_if_missing(
+            backend,
+            schema.create_table_from_entity(models::credentials::Entity),
+            TableName::WebgatesCredentials,
+        )
+        .await?;
 
-            self.create_table_if_missing(
-                backend,
-                schema.create_table_from_entity(models::account::Entity),
-                TableName::WebgatesAccounts,
-            )
-            .await?;
+        self.create_table_if_missing(
+            backend,
+            schema.create_table_from_entity(models::account::Entity),
+            TableName::WebgatesAccounts,
+        )
+        .await?;
 
-            self.create_table_if_missing(
-                backend,
-                schema.create_table_from_entity(models::group::Entity),
-                TableName::WebgatesGroups,
-            )
-            .await?;
+        self.create_table_if_missing(
+            backend,
+            schema.create_table_from_entity(models::group::Entity),
+            TableName::WebgatesGroups,
+        )
+        .await?;
 
-            self.create_table_if_missing(
-                backend,
-                schema.create_table_from_entity(models::permission_mapping::Entity),
-                TableName::WebgatesPermissionMappings,
-            )
-            .await?;
+        self.create_table_if_missing(
+            backend,
+            schema.create_table_from_entity(models::permission_mapping::Entity),
+            TableName::WebgatesPermissionMappings,
+        )
+        .await?;
 
-            Ok(())
-        }
+        Ok(())
     }
 
     async fn create_table_if_missing(

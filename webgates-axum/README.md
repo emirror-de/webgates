@@ -6,6 +6,8 @@ This crate is the Axum-facing adapter layer for `webgates`. It exposes a small p
 
 - `webgates_axum::gate::Gate` as the canonical entry point for cookie, bearer, and OAuth2 integration
 - `webgates_axum::route_handlers::login` and `webgates_axum::route_handlers::logout` for ready-made auth cookie handlers
+- `webgates_axum::route_handlers::login_with_sessions` and `webgates_axum::route_handlers::logout_with_sessions` for session-backed auth and refresh-cookie handlers
+- `webgates_axum::session::CookieSessionLayer` for transparent cookie-backed session renewal
 - `webgates_axum::gate::bearer::StaticTokenAuthorized` for optional static-token routes
 
 It does not replace `webgates`. You still depend on `webgates` for domain types, codecs, policies, claims, cookie templates, and repository contracts.
@@ -52,6 +54,8 @@ These builders are the intended integration surface for Axum applications.
 
 Use `webgates_axum::route_handlers::login` and `webgates_axum::route_handlers::logout` when you want simple cookie-based login/logout endpoints that plug into the `webgates` core services.
 
+Use `webgates_axum::route_handlers::login_with_sessions` and `webgates_axum::route_handlers::logout_with_sessions` when you want session-backed auth and refresh cookies with framework-agnostic session issuance and revocation handled by `webgates::sessions`.
+
 ### Optional static-token extraction
 
 If you use optional static bearer token mode, handlers can read:
@@ -68,6 +72,9 @@ Prefer direct imports from stable module paths:
 use webgates_axum::gate::Gate;
 use webgates_axum::route_handlers::login;
 use webgates_axum::route_handlers::logout;
+use webgates_axum::route_handlers::login_with_sessions;
+use webgates_axum::route_handlers::logout_with_sessions;
+use webgates_axum::session::CookieSessionLayer;
 use webgates_axum::gate::bearer::StaticTokenAuthorized;
 ```
 
@@ -149,6 +156,8 @@ Use `with_cookie_template(...)` or `configure_cookie_template(...)` to keep the 
 
 `webgates_axum::route_handlers::login` and `webgates_axum::route_handlers::logout` are thin HTTP adapters around the core `webgates` authentication services.
 
+`webgates_axum::route_handlers::login_with_sessions` and `webgates_axum::route_handlers::logout_with_sessions` are the session-backed variants. They issue and revoke auth and refresh cookies while leaving session-state orchestration in `webgates::sessions`.
+
 `login(...)`:
 
 - verifies submitted credentials
@@ -161,6 +170,20 @@ Use `with_cookie_template(...)` or `configure_cookie_template(...)` to keep the 
 - removes the auth cookie using the supplied `CookieTemplate`
 
 The cookie template and issuer must match the rest of your authentication setup.
+
+`login_with_sessions(...)`:
+
+- verifies submitted credentials
+- loads the matching account
+- issues a session-backed auth token plus opaque refresh token
+- writes both cookies into the returned `CookieJar`
+
+`logout_with_sessions(...)`:
+
+- revokes either the current session or the full session family
+- removes both auth and refresh cookies from the returned `CookieJar`
+
+For transparent renewal, compose `webgates_axum::session::CookieSessionLayer` outside `Gate::cookie(...)`. The session layer handles refresh-cookie extraction, proactive near-expiry renewal, expired-token renewal requirements, and response `Set-Cookie` updates, while the inner cookie gate remains focused on auth-token validation and authorization.
 
 ## OAuth2
 
@@ -223,6 +246,13 @@ SurrealDB support is optional and subject to SurrealDB’s BUSL-1.1 licensing. R
 - `examples/rate-limiting`
 - `webgates-repositories/examples/sea-orm`
 - `webgates-repositories/examples/surrealdb`
+
+Session-backed Axum integrations typically combine:
+
+- `webgates::authn::SessionLoginService` and `webgates::authn::SessionLogoutService` in the core layer
+- `webgates_axum::route_handlers::login_with_sessions` and `webgates_axum::route_handlers::logout_with_sessions` at the HTTP boundary
+- `webgates_axum::session::CookieSessionLayer` as the outer middleware around `Gate::cookie(...)`
+- a `webgates::sessions::repository::SessionRepository` implementation such as the in-memory backend for tests or the SurrealDB backend from `webgates-repositories`
 
 ## License
 

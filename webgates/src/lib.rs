@@ -30,6 +30,8 @@ enabled:
 
 - `codecs` enables `webgates-codecs`
 - `secrets` enables `webgates-secrets`
+- `sessions` enables `webgates-sessions`
+- `sessions` enables `webgates-sessions`
 
 ## Feature model
 
@@ -43,6 +45,7 @@ Available features:
 - `cookies` — cookie templates and cookie-dependent gate helpers
 - `oauth2` — OAuth2 gate support; depends on `codecs`, `cookies`, and `repositories`
 - `secrets` — re-export `webgates-secrets`
+- `sessions` — framework-agnostic session lifecycle and renewal primitives
 - `repositories` — repository contracts used by higher-level workflows
 - `audit-logging` — structured audit events
 - `prometheus` — Prometheus metrics for audit logging
@@ -123,3 +126,5 @@ pub mod gate;
 pub use webgates_core::prelude;
 #[cfg(feature = "secrets")]
 pub use webgates_secrets as secrets;
+#[cfg(feature = "sessions")]
+pub use webgates_sessions as sessions;

@@ -84,3 +84,6 @@ pub mod group;
 pub mod permission_mapping;
 /// In-memory secret repository implementation.
 pub mod secret;
+#[cfg(feature = "surrealdb")]
+/// In-memory session repository implementation for `webgates-sessions`.
+pub mod session;

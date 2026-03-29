@@ -22,6 +22,7 @@ paths:
 - [`surrealdb`] *(feature: `surrealdb`)* — SurrealDB-backed repositories
 - [`sea_orm`] *(feature: `sea-orm`)* — SQL-backed repositories via SeaORM
 - [`services`] — repository-level account workflows
+- session backend modules under `memory`, `surrealdb`, and `sea_orm` for `webgates-sessions` integration
 
 Use these canonical module paths instead of crate-root shortcuts.
 

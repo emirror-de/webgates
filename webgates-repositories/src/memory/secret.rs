@@ -192,84 +192,153 @@ mod tests {
 
     #[tokio::test]
     async fn store_secret_returns_false_for_duplicates() {
-        let repository = MemorySecretRepository::new_with_argon2_hasher().unwrap();
+        let repository = match MemorySecretRepository::new_with_argon2_hasher() {
+            Ok(repository) => repository,
+            Err(error) => panic!("repository construction should succeed: {}", error),
+        };
         let account_id = Uuid::now_v7();
 
-        let first_secret = Secret::new(
+        let first_secret = match Secret::new(
             &account_id,
             "first-password",
-            Argon2Hasher::new_recommended().unwrap(),
-        )
-        .unwrap();
-        let second_secret = Secret::new(
+            match Argon2Hasher::new_recommended() {
+                Ok(hasher) => hasher,
+                Err(error) => panic!("hasher construction should succeed: {}", error),
+            },
+        ) {
+            Ok(secret) => secret,
+            Err(error) => panic!("secret construction should succeed: {}", error),
+        };
+        let second_secret = match Secret::new(
             &account_id,
             "second-password",
-            Argon2Hasher::new_recommended().unwrap(),
-        )
-        .unwrap();
+            match Argon2Hasher::new_recommended() {
+                Ok(hasher) => hasher,
+                Err(error) => panic!("hasher construction should succeed: {}", error),
+            },
+        ) {
+            Ok(secret) => secret,
+            Err(error) => panic!("secret construction should succeed: {}", error),
+        };
 
-        assert!(repository.store_secret(first_secret).await.unwrap());
-        assert!(!repository.store_secret(second_secret).await.unwrap());
+        let first_store = match repository.store_secret(first_secret).await {
+            Ok(stored) => stored,
+            Err(error) => panic!("first store should succeed: {}", error),
+        };
+        assert!(first_store);
 
-        let verification = repository
+        let second_store = match repository.store_secret(second_secret).await {
+            Ok(stored) => stored,
+            Err(error) => panic!("second store should succeed: {}", error),
+        };
+        assert!(!second_store);
+
+        let verification = match repository
             .verify_credentials(Credentials::new(&account_id, "first-password"))
             .await
-            .unwrap();
+        {
+            Ok(verification) => verification,
+            Err(error) => panic!("verification should succeed: {}", error),
+        };
         assert_eq!(verification, VerificationResult::Ok);
     }
 
     #[tokio::test]
     async fn update_secret_replaces_existing_secret() {
-        let repository = MemorySecretRepository::new_with_argon2_hasher().unwrap();
+        let repository = match MemorySecretRepository::new_with_argon2_hasher() {
+            Ok(repository) => repository,
+            Err(error) => panic!("repository construction should succeed: {}", error),
+        };
         let account_id = Uuid::now_v7();
 
-        let initial_secret = Secret::new(
+        let initial_secret = match Secret::new(
             &account_id,
             "initial-password",
-            Argon2Hasher::new_recommended().unwrap(),
-        )
-        .unwrap();
-        let updated_secret = Secret::new(
+            match Argon2Hasher::new_recommended() {
+                Ok(hasher) => hasher,
+                Err(error) => panic!("hasher construction should succeed: {}", error),
+            },
+        ) {
+            Ok(secret) => secret,
+            Err(error) => panic!("secret construction should succeed: {}", error),
+        };
+        let updated_secret = match Secret::new(
             &account_id,
             "updated-password",
-            Argon2Hasher::new_recommended().unwrap(),
-        )
-        .unwrap();
+            match Argon2Hasher::new_recommended() {
+                Ok(hasher) => hasher,
+                Err(error) => panic!("hasher construction should succeed: {}", error),
+            },
+        ) {
+            Ok(secret) => secret,
+            Err(error) => panic!("secret construction should succeed: {}", error),
+        };
 
-        assert!(repository.store_secret(initial_secret).await.unwrap());
-        repository.update_secret(updated_secret).await.unwrap();
+        let stored = match repository.store_secret(initial_secret).await {
+            Ok(stored) => stored,
+            Err(error) => panic!("initial store should succeed: {}", error),
+        };
+        assert!(stored);
 
-        let old_verification = repository
+        if let Err(error) = repository.update_secret(updated_secret).await {
+            panic!("update should succeed: {}", error);
+        }
+
+        let old_verification = match repository
             .verify_credentials(Credentials::new(&account_id, "initial-password"))
             .await
-            .unwrap();
+        {
+            Ok(verification) => verification,
+            Err(error) => panic!("old verification should succeed: {}", error),
+        };
         assert_eq!(old_verification, VerificationResult::Unauthorized);
 
-        let new_verification = repository
+        let new_verification = match repository
             .verify_credentials(Credentials::new(&account_id, "updated-password"))
             .await
-            .unwrap();
+        {
+            Ok(verification) => verification,
+            Err(error) => panic!("new verification should succeed: {}", error),
+        };
         assert_eq!(new_verification, VerificationResult::Ok);
     }
 
     #[tokio::test]
     async fn delete_secret_returns_removed_secret() {
-        let repository = MemorySecretRepository::new_with_argon2_hasher().unwrap();
+        let repository = match MemorySecretRepository::new_with_argon2_hasher() {
+            Ok(repository) => repository,
+            Err(error) => panic!("repository construction should succeed: {}", error),
+        };
         let account_id = Uuid::now_v7();
 
-        let secret = Secret::new(
+        let secret = match Secret::new(
             &account_id,
             "password",
-            Argon2Hasher::new_recommended().unwrap(),
-        )
-        .unwrap();
+            match Argon2Hasher::new_recommended() {
+                Ok(hasher) => hasher,
+                Err(error) => panic!("hasher construction should succeed: {}", error),
+            },
+        ) {
+            Ok(secret) => secret,
+            Err(error) => panic!("secret construction should succeed: {}", error),
+        };
 
-        assert!(repository.store_secret(secret).await.unwrap());
+        let stored = match repository.store_secret(secret).await {
+            Ok(stored) => stored,
+            Err(error) => panic!("store should succeed: {}", error),
+        };
+        assert!(stored);
 
-        let removed_secret = repository.delete_secret(&account_id).await.unwrap();
+        let removed_secret = match repository.delete_secret(&account_id).await {
+            Ok(secret) => secret,
+            Err(error) => panic!("delete should succeed: {}", error),
+        };
         assert!(removed_secret.is_some());
 
-        let missing_secret = repository.delete_secret(&account_id).await.unwrap();
+        let missing_secret = match repository.delete_secret(&account_id).await {
+            Ok(secret) => secret,
+            Err(error) => panic!("second delete should succeed: {}", error),
+        };
         assert!(missing_secret.is_none());
     }
 }

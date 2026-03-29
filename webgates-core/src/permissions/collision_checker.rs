@@ -237,9 +237,13 @@ mod tests {
         ];
 
         let mut checker = PermissionCollisionChecker::new(permissions);
-        let report = checker
-            .validate()
-            .expect("valid permissions should produce a validation report");
+        let report = match checker.validate() {
+            Ok(report) => report,
+            Err(error) => panic!(
+                "valid permissions should produce a validation report: {}",
+                error
+            ),
+        };
 
         assert!(report.is_valid());
         assert!(report.duplicates().is_empty());
@@ -255,9 +259,13 @@ mod tests {
         ];
 
         let mut checker = PermissionCollisionChecker::new(permissions);
-        let report = checker
-            .validate()
-            .expect("duplicate permissions should still produce a validation report");
+        let report = match checker.validate() {
+            Ok(report) => report,
+            Err(error) => panic!(
+                "duplicate permissions should still produce a validation report: {}",
+                error
+            ),
+        };
 
         assert!(!report.is_valid());
         let duplicates = report.duplicates();
@@ -271,9 +279,13 @@ mod tests {
         let permissions = vec!["user:read".to_string(), "user:write".to_string()];
 
         let mut checker = PermissionCollisionChecker::new(permissions);
-        checker
-            .validate()
-            .expect("distinct permissions should validate without processing errors");
+        match checker.validate() {
+            Ok(_) => {}
+            Err(error) => panic!(
+                "distinct permissions should validate without processing errors: {}",
+                error
+            ),
+        };
 
         let conflicts = checker.get_conflicting_permissions("user:read");
         assert!(conflicts.is_empty());
@@ -288,9 +300,13 @@ mod tests {
         ];
 
         let mut checker = PermissionCollisionChecker::new(permissions);
-        checker
-            .validate()
-            .expect("valid permissions should populate the collision map");
+        match checker.validate() {
+            Ok(_) => {}
+            Err(error) => panic!(
+                "valid permissions should populate the collision map: {}",
+                error
+            ),
+        };
 
         assert_eq!(checker.permission_count(), 3);
         assert_eq!(checker.unique_id_count(), 3);

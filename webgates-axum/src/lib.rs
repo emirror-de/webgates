@@ -54,6 +54,9 @@ let app = Router::<()>::new()
 /// Gate builders and middleware for Axum.
 pub mod gate;
 
+/// Session middleware for transparent cookie-backed renewal.
+pub mod session;
+
 /// Pre-built route handlers for login and logout flows.
 ///
 /// ```rust,ignore

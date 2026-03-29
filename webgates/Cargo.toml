@@ -35,6 +35,13 @@ secrets = [
 
 repositories = ["dep:webgates-repositories"]
 
+sessions = [
+    "codecs",
+    "repositories",
+    "secrets",
+    "dep:webgates-sessions",
+]
+
 cookies = ["dep:cookie"]
 
 oauth2 = [
@@ -77,6 +84,7 @@ webgates-core = { path = "../webgates-core" }
 webgates-codecs = { path = "../webgates-codecs", optional = true }
 webgates-repositories = { path = "../webgates-repositories", optional = true }
 webgates-secrets = { path = "../webgates-secrets", optional = true }
+webgates-sessions = { path = "../webgates-sessions", optional = true }
 
 [dev-dependencies]
 surrealdb = { workspace = true, features = ["kv-mem"] }
