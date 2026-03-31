@@ -29,6 +29,7 @@ mod account;
 mod group;
 mod permission_mapping;
 mod secret;
+#[cfg(feature = "sessions")]
 pub mod session;
 
 /// Repository implementation for [SeaORM](sea_orm).

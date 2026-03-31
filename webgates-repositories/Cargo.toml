@@ -19,17 +19,16 @@ features = ["audit-logging", "surrealdb", "sea-orm"]
 [features]
 default = []
 audit-logging = []
+sessions = ["dep:webgates-sessions"]
 surrealdb = [
     "dep:serde_json",
     "dep:surrealdb",
     "dep:surrealdb-types",
-    "dep:webgates-sessions",
 ]
 sea-orm = [
     "dep:sea-orm",
     "dep:sea-query",
     "dep:serde_json",
-    "dep:webgates-sessions",
 ]
 
 [dependencies]

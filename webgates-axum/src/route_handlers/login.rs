@@ -326,16 +326,13 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use std::time::{Duration, SystemTime};
 
     use axum_extra::extract::cookie::Cookie;
     use tokio::sync::RwLock;
-    use uuid::Uuid;
     use webgates::groups::Group;
     use webgates::roles::Role;
     use webgates::secrets::Secret;
-    use webgates::secrets::hashing::HashingService;
     use webgates::secrets::hashing::argon2::Argon2Hasher;
     use webgates::sessions::lease::{LeaseAcquisition, RenewalLease};
     use webgates::sessions::repository::{
@@ -347,36 +344,9 @@ mod tests {
         SessionRefreshRecord, SessionTouch,
     };
     use webgates::sessions::tokens::{AuthToken, RefreshTokenHashRef};
-    use webgates::verification_result::VerificationResult;
+    use webgates_repositories::memory::account::MemoryAccountRepository;
+    use webgates_repositories::memory::secret::MemorySecretRepository;
     use webgates_repositories::secret_repository::SecretRepository;
-
-    #[derive(Clone, Default)]
-    struct DummyAccountRepository {
-        store: Arc<RwLock<HashMap<String, Account<Role, Group>>>>,
-    }
-
-    #[derive(Clone)]
-    struct DummySecretRepository {
-        store: Arc<RwLock<HashMap<Uuid, Secret>>>,
-        dummy_hash: String,
-    }
-
-    impl DummySecretRepository {
-        fn new() -> Self {
-            let hasher = match Argon2Hasher::new_recommended() {
-                Ok(hasher) => hasher,
-                Err(error) => panic!("hasher construction should succeed: {}", error),
-            };
-            let dummy_hash = match hasher.hash_value("dummy_password") {
-                Ok(hash) => hash,
-                Err(error) => panic!("dummy hash generation should succeed: {}", error),
-            };
-            Self {
-                store: Arc::new(RwLock::new(HashMap::new())),
-                dummy_hash,
-            }
-        }
-    }
 
     #[derive(Clone, Default)]
     struct DummySessionRepository {
@@ -394,135 +364,6 @@ mod tests {
             session: &Session,
         ) -> std::result::Result<AuthToken, Self::Error> {
             AuthToken::new(format!("auth-{}", session.subject_id))
-        }
-    }
-
-    impl AccountRepository<Role, Group> for DummyAccountRepository {
-        type Error = webgates::errors::Error;
-
-        async fn bootstrap(&self) -> Result<(), Self::Error> {
-            Ok(())
-        }
-
-        async fn store_account(
-            &self,
-            account: Account<Role, Group>,
-        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
-            let mut write = self.store.write().await;
-            let inserted = write
-                .insert(account.user_id.clone(), account.clone())
-                .is_none();
-            Ok(inserted.then_some(account))
-        }
-
-        async fn delete_account(
-            &self,
-            account_id: &Uuid,
-        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
-            let mut write = self.store.write().await;
-            let to_remove = write
-                .iter()
-                .find(|(_, acc)| acc.account_id == *account_id)
-                .map(|(key, acc)| (key.clone(), acc.clone()));
-
-            if let Some((key, account)) = to_remove {
-                write.remove(&key);
-                Ok(Some(account))
-            } else {
-                Ok(None)
-            }
-        }
-
-        async fn update_account(
-            &self,
-            account: Account<Role, Group>,
-        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
-            let mut write = self.store.write().await;
-            let exists = write.contains_key(&account.user_id);
-            write.insert(account.user_id.clone(), account.clone());
-            Ok(exists.then_some(account))
-        }
-
-        async fn query_account_by_user_id(
-            &self,
-            user_id: &str,
-        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
-            let read = self.store.read().await;
-            Ok(read.get(user_id).cloned())
-        }
-
-        async fn query_account_by_id(
-            &self,
-            account_id: &Uuid,
-        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
-            let read = self.store.read().await;
-            Ok(read
-                .values()
-                .find(|account| &account.account_id == account_id)
-                .cloned())
-        }
-
-        async fn query_all_accounts(&self) -> Result<Vec<Account<Role, Group>>, Self::Error> {
-            let read = self.store.read().await;
-            Ok(read.values().cloned().collect())
-        }
-    }
-
-    impl SecretRepository for DummySecretRepository {
-        type Error = webgates::errors::Error;
-
-        async fn bootstrap(&self) -> Result<(), Self::Error> {
-            Ok(())
-        }
-
-        async fn store_secret(&self, secret: Secret) -> Result<bool, Self::Error> {
-            let mut write = self.store.write().await;
-            let existed = write.insert(secret.account_id, secret).is_some();
-            Ok(!existed)
-        }
-
-        async fn delete_secret(&self, id: &Uuid) -> Result<Option<Secret>, Self::Error> {
-            let mut write = self.store.write().await;
-            Ok(write.remove(id))
-        }
-
-        async fn update_secret(&self, secret: Secret) -> Result<(), Self::Error> {
-            let mut write = self.store.write().await;
-            write.insert(secret.account_id, secret);
-            Ok(())
-        }
-    }
-
-    impl CredentialsVerifier for DummySecretRepository {
-        async fn verify_credentials(
-            &self,
-            credentials: Credentials<Uuid>,
-        ) -> webgates::errors_core::Result<VerificationResult> {
-            let read = self.store.read().await;
-            let (hash_to_check, user_exists) = match read.get(&credentials.id) {
-                Some(stored) => (stored.secret.clone(), true),
-                None => (self.dummy_hash.clone(), false),
-            };
-
-            let hasher = match Argon2Hasher::new_recommended() {
-                Ok(hasher) => hasher,
-                Err(error) => {
-                    panic!(
-                        "hasher construction should succeed during verification: {}",
-                        error
-                    )
-                }
-            };
-            let matches = hasher
-                .verify_value(&credentials.secret, &hash_to_check)
-                .unwrap_or(VerificationResult::Unauthorized);
-            let is_ok = matches == VerificationResult::Ok && user_exists;
-
-            Ok(if is_ok {
-                VerificationResult::Ok
-            } else {
-                VerificationResult::Unauthorized
-            })
         }
     }
 
@@ -593,12 +434,15 @@ mod tests {
     }
 
     async fn build_login_dependencies() -> (
-        Arc<DummySecretRepository>,
-        Arc<DummyAccountRepository>,
+        Arc<MemorySecretRepository>,
+        Arc<MemoryAccountRepository<Role, Group>>,
         DummySessionRepository,
     ) {
-        let account_repo = Arc::new(DummyAccountRepository::default());
-        let secret_repo = Arc::new(DummySecretRepository::new());
+        let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+        let secret_repo = Arc::new(match MemorySecretRepository::new_with_argon2_hasher() {
+            Ok(repo) => repo,
+            Err(error) => panic!("secret repository construction should succeed: {}", error),
+        });
         let session_repo = DummySessionRepository::default();
 
         let mut account = Account::new("user@example.com");

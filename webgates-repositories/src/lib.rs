@@ -18,7 +18,8 @@ paths:
 - [`group_repository`] — group persistence trait
 - [`permission_mapping_repository`] — permission mapping persistence traits
 - [`secret_repository`] — secret persistence trait
-- [`memory`] — zero-configuration, in-memory stores for development and testing
+- [`memory`] — zero-configuration, in-memory stores for development and testing; includes
+  [`memory::session`] when the `sessions` feature is enabled
 - [`surrealdb`] *(feature: `surrealdb`)* — SurrealDB-backed repositories
 - [`sea_orm`] *(feature: `sea-orm`)* — SQL-backed repositories via SeaORM
 - [`services`] — repository-level account workflows
@@ -28,8 +29,10 @@ Use these canonical module paths instead of crate-root shortcuts.
 
 ## Feature flags
 
-- `surrealdb`: enable SurrealDB repositories.
-- `sea-orm`: enable SeaORM repositories.
+- `sessions`: enable `webgates-sessions` integration and expose
+  [`memory::session::MemorySessionRepository`] for zero-config in-process session storage.
+- `surrealdb`: enable SurrealDB repositories. Add `sessions` to also include the SurrealDB session backend.
+- `sea-orm`: enable SeaORM repositories. Add `sessions` to also include the SeaORM session backend.
 - `audit-logging`: enable structured audit events for repository workflows.
 
 ## Quick start

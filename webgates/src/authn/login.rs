@@ -632,15 +632,13 @@ mod tests {
     use super::*;
     use crate::codecs::jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER as JWT_CRYPTO_PROVIDER;
     use crate::codecs::jwt::{JsonWebToken, JwtClaims};
-    use crate::credentials::CredentialsVerifier;
     use crate::groups::Group;
     use crate::roles::Role;
     use crate::secrets::Secret;
-    use crate::secrets::hashing::HashingService;
     use crate::secrets::hashing::argon2::Argon2Hasher;
-    use std::collections::HashMap;
     use std::time::{Duration, Instant};
-    use tokio::sync::RwLock;
+    use webgates_repositories::memory::account::MemoryAccountRepository;
+    use webgates_repositories::memory::secret::MemorySecretRepository;
     use webgates_repositories::secret_repository::SecretRepository;
 
     fn median(durs: &[Duration]) -> Duration {
@@ -653,150 +651,13 @@ mod tests {
         let _ = JWT_CRYPTO_PROVIDER.install_default();
     }
 
-    #[derive(Clone, Default)]
-    struct DummyAccountRepository {
-        store: Arc<RwLock<HashMap<String, Account<Role, Group>>>>,
-    }
-
-    #[derive(Clone)]
-    struct DummySecretRepository {
-        store: Arc<RwLock<HashMap<Uuid, Secret>>>,
-        dummy_hash: String,
-    }
-
-    impl DummySecretRepository {
-        fn new() -> Self {
-            let hasher = Argon2Hasher::new_recommended().unwrap();
-            let dummy_hash = hasher.hash_value("dummy_password").unwrap();
-            Self {
-                store: Arc::new(RwLock::new(HashMap::new())),
-                dummy_hash,
-            }
-        }
-    }
-
-    impl AccountRepository<Role, Group> for DummyAccountRepository {
-        type Error = crate::errors::Error;
-
-        async fn bootstrap(&self) -> Result<(), Self::Error> {
-            Ok(())
-        }
-
-        async fn store_account(
-            &self,
-            account: Account<Role, Group>,
-        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
-            let mut write = self.store.write().await;
-            let inserted = write
-                .insert(account.user_id.clone(), account.clone())
-                .is_none();
-            Ok(inserted.then_some(account))
-        }
-
-        async fn delete_account(
-            &self,
-            account_id: &Uuid,
-        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
-            let mut write = self.store.write().await;
-            let to_remove = write
-                .iter()
-                .find(|(_, acc)| acc.account_id == *account_id)
-                .map(|(k, acc)| (k.clone(), acc.clone()));
-            if let Some((key, acc)) = to_remove {
-                write.remove(&key);
-                Ok(Some(acc))
-            } else {
-                Ok(None)
-            }
-        }
-
-        async fn update_account(
-            &self,
-            account: Account<Role, Group>,
-        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
-            let mut write = self.store.write().await;
-            let exists = write.contains_key(&account.user_id);
-            write.insert(account.user_id.clone(), account.clone());
-            Ok(exists.then_some(account))
-        }
-
-        async fn query_account_by_user_id(
-            &self,
-            user_id: &str,
-        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
-            let read = self.store.read().await;
-            Ok(read.get(user_id).cloned())
-        }
-
-        async fn query_account_by_id(
-            &self,
-            account_id: &Uuid,
-        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
-            let read = self.store.read().await;
-            Ok(read.values().find(|a| &a.account_id == account_id).cloned())
-        }
-
-        async fn query_all_accounts(&self) -> Result<Vec<Account<Role, Group>>, Self::Error> {
-            let read = self.store.read().await;
-            Ok(read.values().cloned().collect())
-        }
-    }
-
-    impl SecretRepository for DummySecretRepository {
-        type Error = crate::errors::Error;
-
-        async fn bootstrap(&self) -> Result<(), Self::Error> {
-            Ok(())
-        }
-
-        async fn store_secret(&self, secret: Secret) -> Result<bool, Self::Error> {
-            let mut write = self.store.write().await;
-            let existed = write.insert(secret.account_id, secret).is_some();
-            Ok(!existed)
-        }
-
-        async fn delete_secret(&self, id: &Uuid) -> Result<Option<Secret>, Self::Error> {
-            let mut write = self.store.write().await;
-            Ok(write.remove(id))
-        }
-
-        async fn update_secret(&self, secret: Secret) -> Result<(), Self::Error> {
-            let mut write = self.store.write().await;
-            write.insert(secret.account_id, secret);
-            Ok(())
-        }
-    }
-
-    impl CredentialsVerifier for DummySecretRepository {
-        async fn verify_credentials(
-            &self,
-            credentials: Credentials<Uuid>,
-        ) -> crate::errors_core::Result<VerificationResult> {
-            let read = self.store.read().await;
-            let (hash_to_check, user_exists) = match read.get(&credentials.id) {
-                Some(stored) => (stored.secret.clone(), true),
-                None => (self.dummy_hash.clone(), false),
-            };
-            let hasher = Argon2Hasher::new_recommended().unwrap();
-            let matches = hasher
-                .verify_value(&credentials.secret, &hash_to_check)
-                .unwrap_or(VerificationResult::Unauthorized);
-            let is_ok = matches == VerificationResult::Ok && user_exists;
-            Ok(if is_ok {
-                VerificationResult::Ok
-            } else {
-                VerificationResult::Unauthorized
-            })
-        }
-    }
-
     #[tokio::test]
     #[allow(clippy::unwrap_used)]
     #[allow(clippy::expect_used)]
     async fn test_timing_attack_protection() {
         install_jwt_crypto_provider();
-        let account_repo = Arc::new(DummyAccountRepository::default());
-        let secret_repo = Arc::new(DummySecretRepository::new());
+        let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+        let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
         let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
         let login_service = LoginService::new();
 
@@ -949,8 +810,8 @@ mod tests {
     #[allow(clippy::unwrap_used)]
     async fn test_login_result_no_user_enumeration() {
         install_jwt_crypto_provider();
-        let account_repo = Arc::new(DummyAccountRepository::default());
-        let secret_repo = Arc::new(DummySecretRepository::new());
+        let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+        let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
         let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
         let login_service = LoginService::new();
 

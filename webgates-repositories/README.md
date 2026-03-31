@@ -18,6 +18,8 @@ Pick only the backend features you need:
 ```toml
 [dependencies]
 webgates-repositories = { version = "0.1" }
+# or — session-backed auth without a persistent backend (e.g. tests, local dev)
+webgates-repositories = { version = "0.1", features = ["sessions"] }
 # or
 webgates-repositories = { version = "0.1", features = ["sea-orm"] }
 # or
@@ -69,7 +71,7 @@ use webgates_repositories::services::account_insert::AccountInsertService;
 
 For session-backed login, logout, and transparent renewal, use:
 
-- `webgates_repositories::memory::session::InMemorySessionRepository`
+- `webgates_repositories::memory::session::MemorySessionRepository` when the `sessions` feature is enabled
 - `webgates_repositories::surrealdb::session::SurrealDbSessionRepository` when the `surrealdb` feature is enabled
 
 These backends implement `webgates_sessions::repository::SessionRepository`
@@ -84,8 +86,10 @@ session revocation, family revocation, and session touch updates.
 ## Feature flags
 
 - `default = []`
-- `surrealdb`: enables the SurrealDB backend
-- `sea-orm`: enables the SeaORM backend
+- `sessions`: enables the `webgates-sessions` integration and exposes
+  `memory::session::MemorySessionRepository` for zero-config in-process session storage
+- `surrealdb`: enables the SurrealDB backend; combine with `sessions` to also include the SurrealDB session backend
+- `sea-orm`: enables the SeaORM backend; combine with `sessions` to also include the SeaORM session backend
 - `audit-logging`: enables repository audit events
 
 Enable only the features you need to keep dependency scope smaller.
@@ -161,9 +165,9 @@ let db = Surreal::new::<Mem>(()).await?;
 let repo = SurrealDbRepository::new(db, DatabaseScope::default())?;
 ```
 
-The `surrealdb` feature also enables the SurrealDB session repository backend
-for `webgates-sessions`, so the same database integration can back persistent
-session issuance, renewal, replay detection, and revocation flows.
+Combine the `surrealdb` and `sessions` features together to also enable the SurrealDB
+session repository backend for `webgates-sessions`, so the same database integration
+can back persistent session issuance, renewal, replay detection, and revocation flows.
 
 ## Errors
 

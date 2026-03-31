@@ -22,6 +22,7 @@ pub mod account;
 pub mod group;
 pub mod permission_mapping;
 pub mod secret;
+#[cfg(feature = "sessions")]
 pub mod session;
 
 /// Scope configuration (namespace, database, table names) used by `SurrealDbRepository`.
