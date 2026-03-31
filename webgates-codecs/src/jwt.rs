@@ -57,13 +57,17 @@ pub struct RegisteredClaims {
 impl RegisteredClaims {
     /// Creates new registered claims and sets `issued_at_time` to `Utc::now()`.
     pub fn new(issuer: &str, expiration_time: u64) -> Self {
+        // chrono::DateTime::timestamp() returns i64; use a checked conversion so a
+        // negative timestamp (clock correction, pre-epoch test date) does not wrap
+        // silently to a very large u64 and produce a malformed `iat` claim.
+        let issued_at_time = u64::try_from(Utc::now().timestamp()).unwrap_or(0);
         Self {
             issuer: issuer.to_string(),
             subject: None,
             audience: None,
             expiration_time,
             not_before_time: None,
-            issued_at_time: Utc::now().timestamp() as u64,
+            issued_at_time,
             jwt_id: None,
         }
     }
@@ -109,9 +113,18 @@ pub struct JsonWebTokenOptions {
 }
 
 impl Default for JsonWebTokenOptions {
-    /// Creates symmetric encoding/decoding keys from a random secret.
+    /// Creates symmetric encoding/decoding keys from a random secret using **HMAC-SHA256 (HS256)**.
     ///
     /// This is suitable for tests and ephemeral development only.
+    ///
+    /// # Algorithm guidance
+    ///
+    /// The default algorithm is HS256 (symmetric HMAC). For production use, prefer HS256,
+    /// ES256, or ES384 (ECDSA). **Do not use RSA-based algorithms** (RS256, RS384, RS512,
+    /// PS256, PS384, PS512) until [RUSTSEC-2023-0071] (Marvin Attack timing side-channel
+    /// in the `rsa` crate) is patched upstream — currently no fix is available.
+    ///
+    /// [RUSTSEC-2023-0071]: https://rustsec.org/advisories/RUSTSEC-2023-0071
     fn default() -> Self {
         use rand::{Rng, distr::Alphanumeric, rng};
 
@@ -226,16 +239,13 @@ where
         let claims =
             jsonwebtoken::decode::<Self::Payload>(encoded_value, &self.dec_key, &self.validation)
                 .map_err(|error| {
+                // Do not include token bytes in the error to avoid leaking token
+                // material into logs or error messages if log levels are
+                // misconfigured.  Report only the byte length for diagnostics.
                 Error::Jwt(JwtError::processing_with_preview(
                     JwtOperation::Decode,
                     format!("JWT decoding failed: {error}"),
-                    Some(
-                        String::from_utf8_lossy(encoded_value)
-                            .chars()
-                            .take(20)
-                            .collect::<String>()
-                            + "...",
-                    ),
+                    Some(format!("token_len={}", encoded_value.len())),
                 ))
             })?;
 

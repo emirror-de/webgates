@@ -2,17 +2,24 @@
 allow = ["MIT", "Apache-2.0", "Unicode-3.0", "ISC", "BSD-3-Clause", "BSD-2-Clause", "Unlicense", "MPL-2.0", "Zlib", "CC0-1.0", "CDLA-Permissive-2.0", "BUSL-1.1", "OpenSSL", "Apache-2.0 WITH LLVM-exception"]
 
 [advisories]
-# Temporarily ignore unmaintained advisory for paste (brought in transitively by surrealdb -> rmp).
-# Upstream (surrealdb) is aware and tracking a fix / replacement.
-# inline ignore removed; using structured [[advisories.ignore]] table below
 
-# Prefer structured ignore entry to document rationale (cargo-deny supports this form too):
+# Suppress unmaintained-crate advisories for transitive dependencies brought in via
+# surrealdb that cannot be resolved without an upstream surrealdb update.
+
 [[advisories.ignore]]
-id = "RUSTSEC-2024-0436"
-reason = "paste is only a transitive dep via surrealdb; awaiting upstream to drop/replace it."
+id = "RUSTSEC-2025-0141"
+reason = "bincode is unmaintained but reachable only via surrealdb->surrealmx; awaiting upstream surrealdb to replace it."
 
-# Ignore RUSTSEC-2023-0071 as it relates to aws-lc-rs but the current version has fixed it.
-# Users preferring to avoid this entirely can use the rust_crypto feature (default).
+[[advisories.ignore]]
+id = "RUSTSEC-2023-0089"
+reason = "atomic-polyfill is unmaintained but reachable only via surrealdb->heapless; awaiting upstream surrealdb to replace it."
+
+# Ignore RUSTSEC-2023-0071 (Marvin Attack timing side-channel in the `rsa` crate).
+# There is currently no upstream fix available for `rsa` 0.9.x.  The advisory is
+# suppressed here because `rsa` is only reachable as a transitive dependency via
+# jsonwebtoken and sqlx-mysql, and RSA-based JWT algorithms (RS*/PS*) are explicitly
+# discouraged in JsonWebTokenOptions::default().  Remove this ignore entry as soon
+# as a patched version of the `rsa` crate is released.
 [[advisories.ignore]]
 id = "RUSTSEC-2023-0071"
-reason = "This can be removed as soon as rsa crate received a fix."
+reason = "No fix available in rsa 0.9.x; RSA JWT algorithms are discouraged in the project defaults. Remove when rsa crate publishes a patched release."

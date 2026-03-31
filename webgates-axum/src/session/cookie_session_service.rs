@@ -150,10 +150,39 @@ where
         auth_cookie_template: &CookieTemplate,
         auth_token: &str,
     ) {
-        let new_cookie = auth_cookie_template.build_with_value(auth_token);
-        let cookie_pair = format!("{}={}", new_cookie.name(), new_cookie.value());
+        let auth_name = auth_cookie_template.cookie_name_ref();
+        let new_pair = format!("{}={}", auth_name, auth_token);
 
-        let header_value = match HeaderValue::from_str(&cookie_pair) {
+        // Parse the existing Cookie header and update only the auth cookie entry
+        // so that all other cookies (e.g., CSRF tokens, feature flags) reach the
+        // inner handler unchanged.  Using HeaderMap::insert with only the auth
+        // cookie would silently drop every other cookie on the request.
+        let updated = if let Some(existing) = req.headers().get(http::header::COOKIE) {
+            let existing_str = existing.to_str().unwrap_or("");
+            let mut replaced = false;
+            let mut parts: Vec<String> = existing_str
+                .split(';')
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .map(|pair| {
+                    let name = pair.split('=').next().unwrap_or("").trim();
+                    if name == auth_name {
+                        replaced = true;
+                        new_pair.clone()
+                    } else {
+                        pair.to_owned()
+                    }
+                })
+                .collect();
+            if !replaced {
+                parts.push(new_pair);
+            }
+            parts.join("; ")
+        } else {
+            new_pair
+        };
+
+        let header_value = match HeaderValue::from_str(&updated) {
             Ok(value) => value,
             Err(_) => return,
         };
@@ -197,7 +226,10 @@ where
 
 impl<S, C, R, G, Repo> Service<Request<Body>> for CookieSessionService<S, C, R, G, Repo>
 where
-    S: Service<Request<Body>, Response = Response<Body>, Error = Infallible> + Send + 'static,
+    S: Service<Request<Body>, Response = Response<Body>, Error = Infallible>
+        + Clone
+        + Send
+        + 'static,
     S::Future: Send + 'static,
     Account<R, G>: Clone,
     C: Codec<Payload = JwtClaims<Account<R, G>>>
@@ -292,38 +324,38 @@ where
             }
         };
 
-        let renewal_outcome = match futures_executor::block_on(renewer.renew_session(
-            auth_token_state,
-            requirement,
-            &refresh_token,
-            now,
-        )) {
-            Ok(outcome) => outcome,
-            Err(_) => {
-                if matches!(requirement, RenewalRequirement::Required) {
-                    return Box::pin(async move { Ok(Self::unauthorized()) });
+        // Clone the inner service so ownership can be moved into the async
+        // future below. This avoids blocking the executor thread with a nested
+        // synchronous runtime (which would deadlock or panic under Tokio).
+        let mut inner = self.inner.clone();
+        let auth_cookie_template = self.auth_cookie_template.clone();
+        let refresh_cookie_template = self.refresh_cookie_template.clone();
+
+        Box::pin(async move {
+            let renewal_outcome = match renewer
+                .renew_session(auth_token_state, requirement, &refresh_token, now)
+                .await
+            {
+                Ok(outcome) => outcome,
+                Err(_) => {
+                    if matches!(requirement, RenewalRequirement::Required) {
+                        return Ok(Self::unauthorized());
+                    }
+                    return inner.call(req).await;
                 }
-                let inner = self.inner.call(req);
-                return Box::pin(inner);
-            }
-        };
+            };
 
-        match renewal_outcome {
-            RenewalOutcome::Renewed { tokens, .. } => {
-                Self::rewrite_request_auth_cookie(
-                    &mut req,
-                    &self.auth_cookie_template,
-                    tokens.auth_token.as_str(),
-                );
+            match renewal_outcome {
+                RenewalOutcome::Renewed { tokens, .. } => {
+                    Self::rewrite_request_auth_cookie(
+                        &mut req,
+                        &auth_cookie_template,
+                        tokens.auth_token.as_str(),
+                    );
 
-                let auth_cookie_template = self.auth_cookie_template.clone();
-                let refresh_cookie_template = self.refresh_cookie_template.clone();
-                let auth_token = tokens.auth_token.into_inner();
-                let refresh_token = tokens.refresh_token.into_inner();
-                let inner = self.inner.call(req);
-
-                Box::pin(async move {
-                    let mut response = inner.await?;
+                    let auth_token = tokens.auth_token.into_inner();
+                    let refresh_token = tokens.refresh_token.into_inner();
+                    let mut response = inner.call(req).await?;
                     let _ = Self::apply_renewal_cookies(
                         &mut response,
                         &auth_cookie_template,
@@ -332,21 +364,19 @@ where
                         &refresh_token,
                     );
                     Ok(response)
-                })
-            }
-            RenewalOutcome::NotNeeded | RenewalOutcome::LeaseUnavailable { .. } => {
-                let inner = self.inner.call(req);
-                Box::pin(inner)
-            }
-            RenewalOutcome::Rejected | RenewalOutcome::ReplayDetected { .. } => {
-                if matches!(requirement, RenewalRequirement::Required) {
-                    Box::pin(async move { Ok(Self::unauthorized()) })
-                } else {
-                    let inner = self.inner.call(req);
-                    Box::pin(inner)
+                }
+                RenewalOutcome::NotNeeded | RenewalOutcome::LeaseUnavailable { .. } => {
+                    inner.call(req).await
+                }
+                RenewalOutcome::Rejected | RenewalOutcome::ReplayDetected { .. } => {
+                    if matches!(requirement, RenewalRequirement::Required) {
+                        Ok(Self::unauthorized())
+                    } else {
+                        inner.call(req).await
+                    }
                 }
             }
-        }
+        })
     }
 }
 
@@ -1036,5 +1066,122 @@ mod tests {
             Err(error) => panic!("repository state lock should not be poisoned: {}", error),
         };
         assert_eq!(state.revoke_family_calls, 1);
+    }
+
+    /// Verifies that cookies unrelated to the auth token (e.g., CSRF tokens,
+    /// feature flags) are still present on the request received by the inner
+    /// handler after a near-expiry renewal rewrites the auth cookie.
+    ///
+    /// Previously `rewrite_request_auth_cookie` used `HeaderMap::insert` which
+    /// replaced the entire Cookie header, silently dropping every other cookie.
+    #[tokio::test]
+    async fn non_auth_cookies_survive_renewal_cookie_rewrite() {
+        install_jwt_crypto_provider();
+        let codec = Arc::new(SessionCodec::new());
+        let repository = RecordingSessionRepository::default();
+        let now = SystemTime::now();
+
+        {
+            let mut state = match repository.state.lock() {
+                Ok(state) => state,
+                Err(error) => panic!("repository state lock should not be poisoned: {}", error),
+            };
+            state.lookup = Some(sample_lookup(now));
+            let session_id = match state.lookup.as_ref() {
+                Some(lookup) => lookup.session.session_id,
+                None => panic!("sample lookup should be present"),
+            };
+            state.lease_result = Some(LeaseAcquisition::Acquired(RenewalLease::from_ttl(
+                session_id,
+                LeaseId::new(),
+                now,
+                LeaseTtl::new(Duration::from_secs(30)),
+            )));
+            state.rotate_outcome = RotateRefreshTokenOutcome::Rotated;
+        }
+
+        let service = CookieSessionService::<_, _, Role, Group, _>::new(
+            tower::service_fn(|req: Request<Body>| async move {
+                // Echo the raw Cookie header back so the test can inspect it.
+                let cookie_header = req
+                    .headers()
+                    .get(http::header::COOKIE)
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or_default()
+                    .to_string();
+
+                Ok::<_, Infallible>(
+                    match Response::builder()
+                        .status(StatusCode::OK)
+                        .header("x-cookie-seen", cookie_header)
+                        .body(Body::empty())
+                    {
+                        Ok(response) => response,
+                        Err(error) => panic!("response construction should succeed: {}", error),
+                    },
+                )
+            }),
+            Arc::clone(&codec),
+            repository,
+            SessionConfig::default(),
+            auth_cookie_template(),
+            refresh_cookie_template(),
+        );
+
+        // Near-expiry auth token so the service triggers renewal.
+        let auth_token = make_auth_token(
+            &codec,
+            unix_seconds(SystemTime::now() + Duration::from_secs(30)),
+        );
+
+        // Request carries an auth cookie, a refresh cookie, AND an extra csrf-token.
+        let req = match Request::builder()
+            .uri("/protected")
+            .header(
+                http::header::COOKIE,
+                format!(
+                    "auth-token={}; csrf-token=abc123; refresh-token=r1",
+                    auth_token
+                ),
+            )
+            .body(Body::empty())
+        {
+            Ok(req) => req,
+            Err(error) => panic!("request construction should succeed: {}", error),
+        };
+
+        let response = service.oneshot(req).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let seen_cookie = response
+            .headers()
+            .get("x-cookie-seen")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or_default();
+
+        // The csrf-token must still be visible to the inner handler.
+        assert!(
+            seen_cookie.contains("csrf-token=abc123"),
+            "csrf-token was dropped from the Cookie header after renewal rewrite; \
+             actual Cookie header seen by inner service: {seen_cookie:?}"
+        );
+
+        // The auth-token entry must have been updated (new JWT issued on renewal).
+        assert!(
+            seen_cookie.contains("auth-token="),
+            "auth-token cookie missing from rewritten Cookie header: {seen_cookie:?}"
+        );
+        assert!(
+            !seen_cookie.contains(&format!("auth-token={auth_token}")),
+            "auth-token was not updated to the renewed token; \
+             Cookie header seen by inner service: {seen_cookie:?}"
+        );
+
+        // Renewal must have issued Set-Cookie headers on the response.
+        assert!(
+            response.headers().get_all(SET_COOKIE).iter().count() >= 2,
+            "expected at least 2 Set-Cookie headers on a renewed response"
+        );
     }
 }

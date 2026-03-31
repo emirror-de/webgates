@@ -773,15 +773,18 @@ where
             }
         };
 
-        // State must match and be present
-        match input.state.as_deref() {
-            Some(state) if state_cookie.value() == state => {}
-            _ => {
-                return CallbackOutcome::Failure {
-                    cookies,
-                    error: OAuth2Error::StateMismatch,
-                };
-            }
+        // State must match and be present.
+        // Use constant-time comparison to prevent timing side-channels on CSRF
+        // state values (subtle::ConstantTimeEq avoids early-exit on mismatch).
+        let state_valid = input.state.as_deref().is_some_and(|state| {
+            use subtle::ConstantTimeEq;
+            bool::from(state_cookie.value().as_bytes().ct_eq(state.as_bytes()))
+        });
+        if !state_valid {
+            return CallbackOutcome::Failure {
+                cookies,
+                error: OAuth2Error::StateMismatch,
+            };
         }
 
         // Authorization code must be present

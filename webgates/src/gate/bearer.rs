@@ -450,15 +450,21 @@ where
     }
 
     /// Evaluate an optional bearer token string.
+    ///
+    /// Both the strict and optional paths use constant-time byte comparison via
+    /// [`subtle::ConstantTimeEq`] to eliminate timing side-channels that could
+    /// allow an attacker to reconstruct the static secret character-by-character.
     pub fn evaluate(&self, token: Option<&str>) -> BearerEvaluation<R, G> {
+        use subtle::ConstantTimeEq as _;
+
         if self.optional {
-            return BearerEvaluation::StaticOptionalAuthorized {
-                matched: token.is_some() && token == Some(self.token.as_str()),
-            };
+            let matched =
+                token.is_some_and(|t| bool::from(t.as_bytes().ct_eq(self.token.as_bytes())));
+            return BearerEvaluation::StaticOptionalAuthorized { matched };
         }
 
-        if let Some(token) = token
-            && token == self.token
+        if let Some(t) = token
+            && bool::from(t.as_bytes().ct_eq(self.token.as_bytes()))
         {
             return BearerEvaluation::StaticAuthorized;
         }
@@ -589,6 +595,65 @@ mod tests {
         assert!(matches!(
             runtime.evaluate(None),
             BearerEvaluation::StaticDenied
+        ));
+    }
+
+    /// A token that differs only in the last byte must still be rejected.
+    ///
+    /// This test guards against partial-match bugs that would appear if
+    /// the comparison were prefix-based or improperly length-checked.
+    #[test]
+    fn static_runtime_rejects_last_byte_different_token() {
+        install_jwt_crypto_provider();
+        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let gate = BearerGate::<_, Role, Group, JwtConfig<Role, Group>>::new_with_codec(
+            "issuer",
+            Arc::clone(&codec),
+        )
+        .with_static_token("secret-tokenX");
+
+        let runtime = gate.runtime();
+
+        // Identical prefix, different final byte → must be denied.
+        assert!(matches!(
+            runtime.evaluate(Some("secret-tokenY")),
+            BearerEvaluation::StaticDenied
+        ));
+        // Correct token → must be authorized.
+        assert!(matches!(
+            runtime.evaluate(Some("secret-tokenX")),
+            BearerEvaluation::StaticAuthorized
+        ));
+    }
+
+    /// Optional mode: the `matched` flag must reflect constant-time comparison.
+    #[test]
+    fn static_optional_runtime_constant_time_comparison() {
+        install_jwt_crypto_provider();
+        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let gate = BearerGate::<_, Role, Group, JwtConfig<Role, Group>>::new_with_codec(
+            "issuer",
+            Arc::clone(&codec),
+        )
+        .with_static_token("my-secret")
+        .allow_anonymous_with_optional_user();
+
+        let runtime = gate.runtime();
+
+        // Correct token in optional mode → matched = true.
+        assert!(matches!(
+            runtime.evaluate(Some("my-secret")),
+            BearerEvaluation::StaticOptionalAuthorized { matched: true }
+        ));
+        // Wrong token in optional mode → matched = false (not blocked, just unmatched).
+        assert!(matches!(
+            runtime.evaluate(Some("my-secreX")),
+            BearerEvaluation::StaticOptionalAuthorized { matched: false }
+        ));
+        // No token in optional mode → matched = false.
+        assert!(matches!(
+            runtime.evaluate(None),
+            BearerEvaluation::StaticOptionalAuthorized { matched: false }
         ));
     }
 }

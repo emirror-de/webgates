@@ -65,6 +65,20 @@ pub const DEFAULT_COOKIE_NAME: &str = "webgates";
 /// - **SameSite=Strict**: Prevents CSRF attacks in production
 /// - **Session cookies**: No persistent storage by default (privacy)
 ///
+/// # Production Safety
+///
+/// Debug builds relax `Secure` and `SameSite` settings for local development ergonomics.
+/// Call [`CookieTemplate::assert_production_secure`] at application startup to detect
+/// accidental deployment of a debug binary to staging or production:
+///
+/// ```rust,no_run
+/// use webgates::cookie_template::CookieTemplate;
+///
+/// let template = CookieTemplate::recommended().name("auth-token");
+/// // Panics if Secure=false, preventing silent insecure deployment.
+/// template.assert_production_secure();
+/// ```
+///
 /// # Common Customizations
 ///
 /// - `name("my-auth-cookie")` - Set custom cookie name
@@ -87,6 +101,16 @@ pub struct CookieTemplate {
 }
 
 impl Default for CookieTemplate {
+    /// Returns default cookie settings adjusted for the current build profile.
+    ///
+    /// **Debug builds** (`cfg(debug_assertions)`): `Secure=false`, `SameSite=Lax` — suitable for
+    /// `http://localhost` development only. These settings **must not** be used in staging or
+    /// production.
+    ///
+    /// **Release builds**: `Secure=true`, `SameSite=Strict` — the recommended production posture.
+    ///
+    /// Call [`CookieTemplate::assert_production_secure`] at startup to enforce that debug
+    /// defaults are never accidentally served outside a local development context.
     fn default() -> Self {
         // In debug (development) builds we relax a couple of flags to improve local ergonomics
         // (allow http and slightly looser cross-site navigation) while still keeping HttpOnly
@@ -217,6 +241,41 @@ impl CookieTemplate {
     #[must_use]
     pub fn short_lived(self) -> Self {
         self.max_age(Duration::minutes(15))
+    }
+
+    /// Asserts that the template is configured with production-safe cookie attributes.
+    ///
+    /// Panics if [`CookieTemplate::secure`] is `false`, which indicates that the debug-build
+    /// defaults are active. Call this once at application startup (before binding a listener)
+    /// to prevent accidental deployment of a debug binary to staging or production environments.
+    ///
+    /// This is a no-op in tests or any context where you explicitly need `Secure=false`
+    /// (e.g., local development). Simply do not call it in those environments.
+    ///
+    /// # Panics
+    ///
+    /// Panics with a descriptive message when `Secure=false`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use webgates::cookie_template::CookieTemplate;
+    ///
+    /// let auth_template = CookieTemplate::recommended().name("auth-token");
+    /// // Panics in debug builds, ensuring they are never deployed to production.
+    /// auth_template.assert_production_secure();
+    /// ```
+    pub fn assert_production_secure(&self) {
+        assert!(
+            self.secure,
+            "CookieTemplate '{}' has Secure=false. \
+             This indicates debug-build defaults are active. \
+             Do NOT deploy debug builds (compiled with debug_assertions) to \
+             production or staging environments. \
+             Either build in release mode or explicitly call `.secure(true)` \
+             after confirming the deployment context.",
+            self.name
+        );
     }
 
     /// Validate the template configuration. Returns `Ok(())` if fine.

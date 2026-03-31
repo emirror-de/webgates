@@ -29,7 +29,6 @@ codecs = [
 
 secrets = [
     "dep:rand",
-    "dep:subtle",
     "dep:webgates-secrets",
 ]
 
@@ -75,7 +74,7 @@ serde = { workspace = true }
 serde_json = { workspace = true, optional = true }
 serde_with = { version = "3", optional = true }
 strum = { workspace = true }
-subtle = { workspace = true, optional = true }
+subtle = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true }
 tracing = { workspace = true, optional = true }

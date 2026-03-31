@@ -9,9 +9,25 @@ use serde::{Deserialize, Serialize};
 /// policy APIs. Callers typically construct it from a stable permission name such
 /// as `"read:file"` or `"admin:system"`.
 ///
-/// Normalization rules:
+/// # Normalization rules
+///
 /// - Trim leading and trailing whitespace
 /// - Convert to lowercase
+///
+/// # Collision bound
+///
+/// The identifier is derived from the first 8 bytes (64 bits) of a SHA-256
+/// digest (see [`const_sha256_u64`]). By the birthday paradox, the probability
+/// of any collision reaches ~50 % at roughly **2³² ≈ 4 billion** distinct
+/// permission names. For practical permission registries (typically fewer than
+/// 100 000 distinct names) the collision risk is negligible.
+///
+/// However, because permission names are typically developer-defined constants
+/// rather than user-supplied strings, collisions will surface in tests during
+/// development. If your application uses dynamically generated permission names,
+/// consider checking for collisions at registration time by maintaining an
+/// external `HashMap<PermissionId, &str>` of known names and asserting
+/// uniqueness before inserting.
 ///
 /// # Examples
 ///
@@ -87,8 +103,18 @@ fn normalize_permission(input: &str) -> String {
 
 /// Computes a deterministic 64-bit identifier from a normalized permission name.
 ///
-/// The identifier is derived from the first 8 bytes of the SHA-256 digest. This
-/// function is `const` so it can be used in compile-time validation contexts.
+/// The identifier is derived from the **first 8 bytes (64 bits)** of the SHA-256
+/// digest. Truncating the full 256-bit hash to 64 bits is safe for permission
+/// registries with up to ~100 000 distinct names; beyond that the birthday-bound
+/// collision probability grows non-trivially (50 % at ~4 billion entries).
+///
+/// This function is `const` so it can be used in compile-time validation contexts.
+///
+/// # Security note
+///
+/// This truncation is intentional for compact bitmap storage. It is **not**
+/// intended to be used as a general-purpose cryptographic hash. Do not use the
+/// output as a MAC, HMAC, or any other security-critical digest.
 pub const fn const_sha256_u64(input: &str) -> u64 {
     let hash = Sha256::new().update(input.as_bytes()).finalize();
     u64::from_be_bytes([
