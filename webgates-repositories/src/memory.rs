@@ -31,8 +31,8 @@
 //! let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
 //! let _mapping_repo = Arc::new(MemoryPermissionMappingRepository::default());
 //!
-//! let mut account = Account::new("user@example.com");
-//! account.groups.push(Group::new("staff"));
+//! let account = Account::<Role, Group>::new("user@example.com")
+//!     .with_groups(vec![Group::new("staff")]);
 //! let stored_account: Account<Role, Group> = account_repo.store_account(account).await.unwrap().unwrap();
 //!
 //! let secret = Secret::new(
@@ -60,16 +60,8 @@
 //! use webgates_repositories::memory::secret::MemorySecretRepository;
 //!
 //! let accounts = vec![
-//!     {
-//!         let mut account = Account::new("admin@example.com");
-//!         account.roles = vec![Role::Admin];
-//!         account
-//!     },
-//!     {
-//!         let mut account = Account::new("user@example.com");
-//!         account.groups = vec![Group::new("staff")];
-//!         account
-//!     },
+//!     Account::<Role, Group>::new("admin@example.com").with_roles(vec![Role::Admin]),
+//!     Account::<Role, Group>::new("user@example.com").with_groups(vec![Group::new("staff")]),
 //! ];
 //! let account_repo = MemoryAccountRepository::from(accounts);
 //!

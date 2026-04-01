@@ -35,7 +35,7 @@ use uuid::Uuid;
 /// let repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
 ///
 /// // Store an account
-/// let account = Account::new("user@example.com");
+/// let account = Account::<Role, Group>::new("user@example.com");
 /// let stored: Option<Account<Role, Group>> = repo.store_account(account).await.unwrap();
 ///
 /// // Query the account
