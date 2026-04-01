@@ -41,8 +41,6 @@ pub mod errors;
 pub mod lease;
 /// Logout and revocation intent types.
 pub mod logout;
-/// In-memory session repository for tests and local composition.
-pub mod memory;
 /// Renewal flow inputs and outcomes.
 pub mod renewal;
 /// Persistence contracts for session storage.
