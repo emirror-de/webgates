@@ -435,8 +435,8 @@ impl<A, G, H> TokenPairIssuer<A, G, H> {
 mod tests {
     use super::*;
     use serde::{Deserialize, Serialize};
-    use webgates_codecs::Codec;
     use webgates_codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
+    use webgates_codecs::{Codec, jsonwebtoken};
 
     #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     struct TestClaims {
@@ -559,6 +559,9 @@ mod tests {
 
     #[test]
     fn codec_auth_token_issuer_encodes_claims_with_codec() {
+        jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER
+            .install_default()
+            .expect("Installation of default crypto provider.");
         let codec = JsonWebToken::<JwtClaims<TestClaims>>::default();
         let issuer = CodecAuthTokenIssuer::new(codec.clone(), |subject: &String| {
             JwtClaims::new(
