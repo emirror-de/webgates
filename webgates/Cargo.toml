@@ -61,6 +61,18 @@ authn = [
 audit-logging = ["dep:tracing"]
 prometheus = ["audit-logging", "dep:prometheus"]
 
+full = [
+    "authn",
+    "audit-logging",
+    "codecs",
+    "cookies",
+    "oauth2",
+    "prometheus",
+    "repositories",
+    "secrets",
+    "sessions",
+]
+
 [dependencies]
 chrono = { workspace = true, optional = true }
 const-crypto = "0.3"
