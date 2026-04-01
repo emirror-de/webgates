@@ -16,6 +16,7 @@ members = [
     "webgates-repositories",
     "webgates-repositories/examples/sea-orm",
     "webgates-repositories/examples/surrealdb",
+    "webgates-secrets",
     "webgates-sessions",
 ]
 
