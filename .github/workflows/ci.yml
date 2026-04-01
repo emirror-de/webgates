@@ -144,6 +144,21 @@ jobs:
                       cmd: cargo test --workspace --all-features
                       desc: workspace-all-features
 
+                    # webgates-codecs crate: default
+                    - pkg: webgates-codecs
+                      cmd: cargo test -p webgates-codecs
+                      desc: codecs-default
+
+                    # webgates-sessions crate: default
+                    - pkg: webgates-sessions
+                      cmd: cargo test -p webgates-sessions
+                      desc: sessions-default
+
+                    # webgates-secrets crate: default
+                    - pkg: webgates-secrets
+                      cmd: cargo test -p webgates-secrets
+                      desc: secrets-default
+
         steps:
             - name: Checkout
               uses: actions/checkout@v4
@@ -460,7 +475,7 @@ jobs:
               shell: bash
               run: |
                   if [ "${{ matrix.all_features }}" = "true" ]; then
-                    cargo test -p "${{ matrix.pkg }}"
+                    cargo test -p "${{ matrix.pkg }}" --all-features
                   else
                     cargo test -p "${{ matrix.pkg }}"
                   fi
