@@ -29,7 +29,7 @@ use webgates::sessions::tokens::{
 /// - outer: `CookieSessionLayer` / `CookieSessionService`
 /// - inner: `webgates_axum::gate::Gate::cookie(...)`
 ///
-/// This service implements the agreed option B behavior:
+/// This service implements the following behavior:
 /// - valid auth token outside the proactive renewal window: pass through
 /// - near-expiry auth token: try renewal opportunistically, continue on failure
 /// - expired auth token: require successful renewal before continuing
