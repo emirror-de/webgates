@@ -35,6 +35,36 @@ use crate::tokens::{
 ///
 /// This value keeps the persisted session record together with the client-facing
 /// token material that was produced for it.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::{Duration, SystemTime};
+/// use webgates_sessions::services::IssuedSession;
+/// use webgates_sessions::session::{Session, SessionFamilyId};
+/// use webgates_sessions::tokens::{
+///     AuthToken, IssuedSessionTokens, IssuedTokenPair, RefreshTokenHash,
+///     RefreshTokenPlaintext,
+/// };
+///
+/// let now = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000);
+/// let session = Session::new(
+///     SessionFamilyId::new(),
+///     "user-42",
+///     now,
+///     now + Duration::from_secs(3_600),
+/// );
+/// let tokens = IssuedSessionTokens::new(
+///     IssuedTokenPair::new(
+///         AuthToken::new("auth-token-value").unwrap(),
+///         RefreshTokenPlaintext::new("a".repeat(64)).unwrap(),
+///     ),
+///     RefreshTokenHash::new("abc123def456").unwrap(),
+/// );
+///
+/// let issued = IssuedSession::new(session.clone(), tokens);
+/// assert_eq!(issued.session, session);
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IssuedSession {
     /// Newly created session state.
@@ -52,6 +82,59 @@ impl IssuedSession {
 }
 
 /// Service that issues new session state and token pairs.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::config::SessionConfig;
+/// use webgates_sessions::services::SessionIssuer;
+/// use webgates_sessions::tokens::{
+///     OpaqueRefreshTokenGenerator, RefreshTokenLength, Sha256RefreshTokenHasher,
+///     TokenPairIssuer, AuthToken, AuthTokenIssuer,
+/// };
+/// use webgates_sessions::session::Session;
+///
+/// #[derive(Debug, Clone, Copy)]
+/// struct NoopIssuer;
+///
+/// impl AuthTokenIssuer<Session> for NoopIssuer {
+///     type Error = webgates_sessions::errors::TokenError;
+///     fn issue_auth_token(&self, s: &Session) -> Result<AuthToken, Self::Error> {
+///         AuthToken::new(format!("auth-{}", s.subject_id))
+///     }
+/// }
+///
+/// # use webgates_sessions::repository::*;
+/// # use webgates_sessions::lease::{LeaseAcquisition, RenewalLease};
+/// # use webgates_sessions::session::*;
+/// # #[derive(Clone)] struct Noop;
+/// # impl SessionRepository for Noop {
+/// #     fn create_session(&self, _: CreateSession) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
+/// #     fn find_session_by_refresh_token_hash<'a>(&'a self, _: webgates_sessions::tokens::RefreshTokenHashRef<'a>) -> impl std::future::Future<Output = RepositoryResult<Option<SessionLookup>>> + Send + 'a { async { Ok(None) } }
+/// #     fn find_session(&self, _: SessionId) -> impl std::future::Future<Output = RepositoryResult<Option<SessionRecord>>> + Send { async { Ok(None) } }
+/// #     fn find_family(&self, _: SessionFamilyId) -> impl std::future::Future<Output = RepositoryResult<Option<SessionFamilyRecord>>> + Send { async { Ok(None) } }
+/// #     fn find_refresh_record(&self, _: SessionId) -> impl std::future::Future<Output = RepositoryResult<Option<SessionRefreshRecord>>> + Send { async { Ok(None) } }
+/// #     fn try_acquire_renewal_lease(&self, _: SessionId, l: RenewalLease) -> impl std::future::Future<Output = RepositoryResult<LeaseAcquisition>> + Send { async move { Ok(LeaseAcquisition::Acquired(l)) } }
+/// #     fn rotate_refresh_token(&self, _: RotateRefreshToken) -> impl std::future::Future<Output = RepositoryResult<RotateRefreshTokenOutcome>> + Send { async { Ok(RotateRefreshTokenOutcome::Rotated) } }
+/// #     fn revoke_session(&self, _: SessionId, _: RevokeSessionScope) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
+/// #     fn revoke_family(&self, _: SessionFamilyId) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
+/// #     fn touch_session(&self, _: SessionTouch) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
+/// # }
+///
+/// let length = RefreshTokenLength::new(64).unwrap();
+/// let token_pair_issuer = TokenPairIssuer::new(
+///     NoopIssuer,
+///     OpaqueRefreshTokenGenerator::new(length),
+///     Sha256RefreshTokenHasher,
+/// );
+///
+/// let issuer = SessionIssuer::new(
+///     SessionConfig::default(),
+///     Noop,
+///     token_pair_issuer,
+/// )
+/// .unwrap();
+/// ```
 #[derive(Debug, Clone)]
 pub struct SessionIssuer<R, A, G, H> {
     config: SessionConfig,
@@ -117,6 +200,59 @@ where
 }
 
 /// Service that renews existing sessions using refresh-token rotation.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::config::SessionConfig;
+/// use webgates_sessions::services::SessionRenewer;
+/// use webgates_sessions::tokens::{
+///     OpaqueRefreshTokenGenerator, RefreshTokenLength, Sha256RefreshTokenHasher,
+///     TokenPairIssuer, AuthToken, AuthTokenIssuer,
+/// };
+/// use webgates_sessions::session::Session;
+///
+/// #[derive(Debug, Clone, Copy)]
+/// struct NoopIssuer;
+///
+/// impl AuthTokenIssuer<Session> for NoopIssuer {
+///     type Error = webgates_sessions::errors::TokenError;
+///     fn issue_auth_token(&self, s: &Session) -> Result<AuthToken, Self::Error> {
+///         AuthToken::new(format!("auth-{}", s.subject_id))
+///     }
+/// }
+///
+/// # use webgates_sessions::repository::*;
+/// # use webgates_sessions::lease::{LeaseAcquisition, RenewalLease};
+/// # use webgates_sessions::session::*;
+/// # #[derive(Clone)] struct Noop;
+/// # impl SessionRepository for Noop {
+/// #     fn create_session(&self, _: CreateSession) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
+/// #     fn find_session_by_refresh_token_hash<'a>(&'a self, _: webgates_sessions::tokens::RefreshTokenHashRef<'a>) -> impl std::future::Future<Output = RepositoryResult<Option<SessionLookup>>> + Send + 'a { async { Ok(None) } }
+/// #     fn find_session(&self, _: SessionId) -> impl std::future::Future<Output = RepositoryResult<Option<SessionRecord>>> + Send { async { Ok(None) } }
+/// #     fn find_family(&self, _: SessionFamilyId) -> impl std::future::Future<Output = RepositoryResult<Option<SessionFamilyRecord>>> + Send { async { Ok(None) } }
+/// #     fn find_refresh_record(&self, _: SessionId) -> impl std::future::Future<Output = RepositoryResult<Option<SessionRefreshRecord>>> + Send { async { Ok(None) } }
+/// #     fn try_acquire_renewal_lease(&self, _: SessionId, l: RenewalLease) -> impl std::future::Future<Output = RepositoryResult<LeaseAcquisition>> + Send { async move { Ok(LeaseAcquisition::Acquired(l)) } }
+/// #     fn rotate_refresh_token(&self, _: RotateRefreshToken) -> impl std::future::Future<Output = RepositoryResult<RotateRefreshTokenOutcome>> + Send { async { Ok(RotateRefreshTokenOutcome::Rotated) } }
+/// #     fn revoke_session(&self, _: SessionId, _: RevokeSessionScope) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
+/// #     fn revoke_family(&self, _: SessionFamilyId) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
+/// #     fn touch_session(&self, _: SessionTouch) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
+/// # }
+///
+/// let length = RefreshTokenLength::new(64).unwrap();
+/// let token_pair_issuer = TokenPairIssuer::new(
+///     NoopIssuer,
+///     OpaqueRefreshTokenGenerator::new(length),
+///     Sha256RefreshTokenHasher,
+/// );
+///
+/// let renewer = SessionRenewer::new(
+///     SessionConfig::default(),
+///     Noop,
+///     token_pair_issuer,
+/// )
+/// .unwrap();
+/// ```
 #[derive(Debug, Clone)]
 pub struct SessionRenewer<R, A, G, H> {
     config: SessionConfig,
@@ -263,6 +399,32 @@ where
 }
 
 /// Service that revokes session state during logout flows.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::services::SessionRevoker;
+///
+/// # use webgates_sessions::repository::*;
+/// # use webgates_sessions::lease::{LeaseAcquisition, RenewalLease};
+/// # use webgates_sessions::session::*;
+/// # #[derive(Clone)] struct Noop;
+/// # impl SessionRepository for Noop {
+/// #     fn create_session(&self, _: CreateSession) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
+/// #     fn find_session_by_refresh_token_hash<'a>(&'a self, _: webgates_sessions::tokens::RefreshTokenHashRef<'a>) -> impl std::future::Future<Output = RepositoryResult<Option<SessionLookup>>> + Send + 'a { async { Ok(None) } }
+/// #     fn find_session(&self, _: SessionId) -> impl std::future::Future<Output = RepositoryResult<Option<SessionRecord>>> + Send { async { Ok(None) } }
+/// #     fn find_family(&self, _: SessionFamilyId) -> impl std::future::Future<Output = RepositoryResult<Option<SessionFamilyRecord>>> + Send { async { Ok(None) } }
+/// #     fn find_refresh_record(&self, _: SessionId) -> impl std::future::Future<Output = RepositoryResult<Option<SessionRefreshRecord>>> + Send { async { Ok(None) } }
+/// #     fn try_acquire_renewal_lease(&self, _: SessionId, l: RenewalLease) -> impl std::future::Future<Output = RepositoryResult<LeaseAcquisition>> + Send { async move { Ok(LeaseAcquisition::Acquired(l)) } }
+/// #     fn rotate_refresh_token(&self, _: RotateRefreshToken) -> impl std::future::Future<Output = RepositoryResult<RotateRefreshTokenOutcome>> + Send { async { Ok(RotateRefreshTokenOutcome::Rotated) } }
+/// #     fn revoke_session(&self, _: SessionId, _: RevokeSessionScope) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
+/// #     fn revoke_family(&self, _: SessionFamilyId) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
+/// #     fn touch_session(&self, _: SessionTouch) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
+/// # }
+///
+/// // Create a revoker from any SessionRepository implementation.
+/// let revoker = SessionRevoker::new(Noop);
+/// ```
 #[derive(Debug, Clone)]
 pub struct SessionRevoker<R> {
     repository: R,

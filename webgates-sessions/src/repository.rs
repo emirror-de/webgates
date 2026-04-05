@@ -57,6 +57,32 @@ impl RepositoryError {
 }
 
 /// Input required to persist a newly issued session.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::{Duration, SystemTime};
+/// use webgates_sessions::repository::CreateSession;
+/// use webgates_sessions::session::{Session, SessionFamilyId};
+/// use webgates_sessions::tokens::RefreshTokenHash;
+///
+/// let now = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000);
+/// let session = Session::new(
+///     SessionFamilyId::new(),
+///     "user-42",
+///     now,
+///     now + Duration::from_secs(3_600),
+/// );
+/// let hash = RefreshTokenHash::new("abc123def456").unwrap();
+///
+/// let input = CreateSession {
+///     session: session.clone(),
+///     refresh_token_hash: hash.clone(),
+/// };
+///
+/// assert_eq!(input.session, session);
+/// assert_eq!(input.refresh_token_hash, hash);
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateSession {
     /// Full session record to persist.
@@ -66,6 +92,43 @@ pub struct CreateSession {
 }
 
 /// Input required to atomically rotate a refresh token.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::{Duration, SystemTime};
+/// use webgates_sessions::lease::{LeaseId, LeaseTtl, RenewalLease};
+/// use webgates_sessions::repository::RotateRefreshToken;
+/// use webgates_sessions::session::{Session, SessionFamilyId, SessionFamilyRecord};
+/// use webgates_sessions::tokens::RefreshTokenHash;
+///
+/// let now = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000);
+/// let family_id = SessionFamilyId::new();
+/// let session = Session::new(
+///     family_id,
+///     "user-42",
+///     now,
+///     now + Duration::from_secs(3_600),
+/// );
+/// let family = SessionFamilyRecord::new(family_id, "user-42", now);
+/// let lease = RenewalLease::from_ttl(
+///     session.session_id,
+///     LeaseId::new(),
+///     now,
+///     LeaseTtl::new(Duration::from_secs(30)),
+/// );
+///
+/// let input = RotateRefreshToken {
+///     session_id: session.session_id,
+///     family,
+///     lease,
+///     previous_refresh_token_hash: RefreshTokenHash::new("prev-hash-abc").unwrap(),
+///     next_refresh_token_hash: RefreshTokenHash::new("next-hash-xyz").unwrap(),
+///     next_session: session.clone().touched(now),
+/// };
+///
+/// assert_eq!(input.session_id, session.session_id);
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RotateRefreshToken {
     /// Session that is being renewed.

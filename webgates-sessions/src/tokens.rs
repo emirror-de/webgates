@@ -14,6 +14,18 @@ use webgates_codecs::Codec;
 /// The concrete auth-token format is owned by the issuing implementation
 /// (for example a JWT), while this type provides a stable boundary for the
 /// session domain.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::tokens::AuthToken;
+///
+/// let token = AuthToken::new("eyJhbGciOiJIUzI1NiJ9.payload.sig").unwrap();
+/// assert_eq!(token.as_str(), "eyJhbGciOiJIUzI1NiJ9.payload.sig");
+///
+/// let raw = token.into_inner();
+/// assert_eq!(raw, "eyJhbGciOiJIUzI1NiJ9.payload.sig");
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthToken {
     value: String,
@@ -53,6 +65,18 @@ impl AuthToken {
 ///
 /// Callers should treat this value as sensitive. Persistence layers are expected
 /// to store only a derived hash rather than this plaintext value.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::tokens::RefreshTokenPlaintext;
+///
+/// let token = RefreshTokenPlaintext::new("a".repeat(64)).unwrap();
+/// assert_eq!(token.as_str().len(), 64);
+///
+/// // Empty or whitespace-only strings are rejected.
+/// assert!(RefreshTokenPlaintext::new("   ").is_err());
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RefreshTokenPlaintext {
     value: String,
@@ -93,6 +117,18 @@ impl RefreshTokenPlaintext {
 /// The hashing algorithm is intentionally abstracted away from this type so the
 /// sessions domain can depend on the hash value without committing to a
 /// particular implementation strategy here.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::tokens::RefreshTokenHash;
+///
+/// let hash = RefreshTokenHash::new("abc123def456").unwrap();
+/// assert_eq!(hash.as_str(), "abc123def456");
+///
+/// // Empty strings are rejected.
+/// assert!(RefreshTokenHash::new("").is_err());
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RefreshTokenHash {
     value: String,
@@ -138,6 +174,18 @@ pub const MIN_REFRESH_TOKEN_LENGTH: usize = 32;
 pub const DEFAULT_REFRESH_TOKEN_LENGTH: usize = 64;
 
 /// Validated refresh-token length used by [`OpaqueRefreshTokenGenerator`].
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::tokens::{RefreshTokenLength, MIN_REFRESH_TOKEN_LENGTH};
+///
+/// let length = RefreshTokenLength::new(64).unwrap();
+/// assert_eq!(length.get(), 64);
+///
+/// // Values shorter than the minimum are rejected.
+/// assert!(RefreshTokenLength::new(MIN_REFRESH_TOKEN_LENGTH - 1).is_err());
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RefreshTokenLength(usize);
 
@@ -174,6 +222,20 @@ impl Default for RefreshTokenLength {
 /// The generated tokens are intentionally high-entropy, framework-agnostic
 /// values that can be returned to clients and later transformed into a
 /// deterministic persisted fingerprint.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::tokens::{
+///     OpaqueRefreshTokenGenerator, RefreshTokenGenerator, RefreshTokenLength,
+/// };
+///
+/// let length = RefreshTokenLength::new(64).unwrap();
+/// let generator = OpaqueRefreshTokenGenerator::new(length);
+/// let token = generator.generate_refresh_token().unwrap();
+///
+/// assert_eq!(token.as_str().len(), 64);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OpaqueRefreshTokenGenerator {
     length: RefreshTokenLength,
@@ -220,6 +282,22 @@ impl RefreshTokenGenerator for OpaqueRefreshTokenGenerator {
 /// token material. This hasher therefore fingerprints only opaque,
 /// high-entropy random refresh tokens and must not be reused for user-chosen
 /// secrets such as passwords.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::tokens::{
+///     RefreshTokenHasher, RefreshTokenPlaintext, Sha256RefreshTokenHasher,
+/// };
+///
+/// let token = RefreshTokenPlaintext::new("a".repeat(64)).unwrap();
+/// let hasher = Sha256RefreshTokenHasher;
+/// let hash = hasher.hash_refresh_token(&token).unwrap();
+///
+/// // The same plaintext always produces the same hash.
+/// let hash2 = hasher.hash_refresh_token(&token).unwrap();
+/// assert_eq!(hash, hash2);
+/// ```
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Sha256RefreshTokenHasher;
 
@@ -247,6 +325,23 @@ impl RefreshTokenHasher for Sha256RefreshTokenHasher {
 ///
 /// This output keeps the client-facing token pair alongside the persisted
 /// refresh-token hash that repositories need for lookup and rotation.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::tokens::{
+///     AuthToken, IssuedSessionTokens, IssuedTokenPair, RefreshTokenHash,
+///     RefreshTokenPlaintext,
+/// };
+///
+/// let auth = AuthToken::new("eyJhbGciOiJIUzI1NiJ9.payload.sig").unwrap();
+/// let refresh = RefreshTokenPlaintext::new("a".repeat(64)).unwrap();
+/// let hash = RefreshTokenHash::new("abc123def456").unwrap();
+/// let pair = IssuedTokenPair::new(auth, refresh);
+/// let issued = IssuedSessionTokens::new(pair, hash.clone());
+///
+/// assert_eq!(issued.refresh_token_hash, hash);
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IssuedSessionTokens {
     /// Newly issued client-facing auth and refresh tokens.
@@ -267,6 +362,19 @@ impl IssuedSessionTokens {
 }
 
 /// Auth and refresh tokens issued together for a session lifecycle step.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::tokens::{AuthToken, IssuedTokenPair, RefreshTokenPlaintext};
+///
+/// let auth = AuthToken::new("eyJhbGciOiJIUzI1NiJ9.payload.sig").unwrap();
+/// let refresh = RefreshTokenPlaintext::new("a".repeat(64)).unwrap();
+/// let pair = IssuedTokenPair::new(auth.clone(), refresh.clone());
+///
+/// assert_eq!(pair.auth_token, auth);
+/// assert_eq!(pair.refresh_token, refresh);
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IssuedTokenPair {
     /// Newly issued short-lived auth token.
@@ -320,6 +428,35 @@ pub trait RefreshTokenHasher {
 ///
 /// Callers provide a claims factory so this issuer can stay generic over both
 /// the subject type and the encoded claim shape.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
+/// use webgates_sessions::tokens::{AuthTokenIssuer, CodecAuthTokenIssuer};
+/// use serde::{Deserialize, Serialize};
+///
+/// #[derive(Debug, Clone, Serialize, Deserialize)]
+/// struct MyClaims {
+///     sub: String,
+/// }
+///
+/// // Install a crypto provider required by jsonwebtoken before using the codec.
+/// webgates_codecs::jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER
+///     .install_default()
+///     .ok();
+///
+/// let codec = JsonWebToken::<JwtClaims<MyClaims>>::default();
+/// let issuer = CodecAuthTokenIssuer::new(codec, |subject: &String| {
+///     JwtClaims::new(
+///         MyClaims { sub: subject.clone() },
+///         RegisteredClaims::new("my-service", 4_102_444_800),
+///     )
+/// });
+///
+/// let token = issuer.issue_auth_token(&String::from("user-42")).unwrap();
+/// assert!(!token.as_str().is_empty());
+/// ```
 #[derive(Clone)]
 pub struct CodecAuthTokenIssuer<C, F> {
     codec: C,
@@ -360,6 +497,38 @@ where
 ///
 /// This type combines auth-token issuance, refresh-token generation, and
 /// persisted refresh-token hashing behind one deterministic boundary.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::tokens::{
+///     AuthToken, AuthTokenIssuer, OpaqueRefreshTokenGenerator, RefreshTokenGenerator,
+///     RefreshTokenLength, Sha256RefreshTokenHasher, TokenPairIssuer,
+/// };
+///
+/// #[derive(Debug, Clone, Copy)]
+/// struct PrefixAuthTokenIssuer;
+///
+/// impl AuthTokenIssuer<String> for PrefixAuthTokenIssuer {
+///     type Error = webgates_sessions::errors::TokenError;
+///
+///     fn issue_auth_token(&self, subject: &String) -> Result<AuthToken, Self::Error> {
+///         AuthToken::new(format!("auth-{subject}"))
+///     }
+/// }
+///
+/// let length = RefreshTokenLength::new(64).unwrap();
+/// let issuer = TokenPairIssuer::new(
+///     PrefixAuthTokenIssuer,
+///     OpaqueRefreshTokenGenerator::new(length),
+///     Sha256RefreshTokenHasher,
+/// );
+///
+/// let subject = String::from("user-42");
+/// let issued = issuer.issue_for_subject(&subject).unwrap();
+/// assert_eq!(issued.token_pair.auth_token.as_str(), "auth-user-42");
+/// assert_eq!(issued.token_pair.refresh_token.as_str().len(), 64);
+/// ```
 #[derive(Debug, Clone)]
 pub struct TokenPairIssuer<A, G, H> {
     auth_token_issuer: A,

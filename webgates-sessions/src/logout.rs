@@ -19,6 +19,24 @@ pub enum LogoutScope {
 ///
 /// Higher-level adapters and services populate this value from the currently
 /// authenticated session context.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::logout::{LogoutRequest, LogoutScope};
+/// use webgates_sessions::session::{SessionFamilyId, SessionId};
+///
+/// let session_id = SessionId::new();
+/// let family_id = SessionFamilyId::new();
+///
+/// // Revoke only the current session.
+/// let request = LogoutRequest::new(session_id, family_id, LogoutScope::CurrentSession);
+/// assert_eq!(request.scope, LogoutScope::CurrentSession);
+///
+/// // Revoke the entire session family (all devices).
+/// let request = LogoutRequest::new(session_id, family_id, LogoutScope::SessionFamily);
+/// assert_eq!(request.scope, LogoutScope::SessionFamily);
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LogoutRequest {
     /// The session targeted by the logout operation.

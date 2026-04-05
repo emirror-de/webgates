@@ -79,6 +79,28 @@ impl AuthTokenState {
 ///
 /// This request captures only the deterministic, framework-agnostic inputs
 /// needed to decide whether renewal should be attempted.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::{Duration, SystemTime};
+/// use webgates_sessions::renewal::{
+///     AuthTokenState, RenewalDecision, RenewalOrchestrator, RenewalRequest,
+///     RenewalRequirement,
+/// };
+/// use webgates_sessions::session::SessionId;
+///
+/// let now = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000);
+/// let request = RenewalRequest::new(
+///     SessionId::new(),
+///     AuthTokenState::NearExpiry { expires_in: Duration::from_secs(60) },
+///     RenewalRequirement::Proactive,
+///     now,
+/// );
+///
+/// let decision = RenewalOrchestrator::new().decide(&request);
+/// assert_eq!(decision, RenewalDecision::AttemptProactiveRenewal);
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RenewalRequest {
     /// Session currently associated with the caller.
@@ -124,6 +146,33 @@ pub enum RenewalDecision {
 }
 
 /// Context captured while a renewal attempt is in progress.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::{Duration, SystemTime};
+/// use webgates_sessions::renewal::{
+///     AuthTokenState, RenewalAttempt, RenewalRequest, RenewalRequirement,
+/// };
+/// use webgates_sessions::session::{Session, SessionFamilyId, SessionId};
+///
+/// let now = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000);
+/// let session = Session::new(
+///     SessionFamilyId::new(),
+///     "user-42",
+///     now,
+///     now + Duration::from_secs(3_600),
+/// );
+/// let request = RenewalRequest::new(
+///     session.session_id,
+///     AuthTokenState::Expired { expired_for: Duration::from_secs(5) },
+///     RenewalRequirement::Required,
+///     now,
+/// );
+/// let attempt = RenewalAttempt::new(session.clone(), request);
+///
+/// assert_eq!(attempt.session_id(), session.session_id);
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RenewalAttempt {
     /// Session selected for renewal.
@@ -200,6 +249,33 @@ impl RenewalOutcome {
 }
 
 /// Stateless decision helper for renewal orchestration.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::Duration;
+/// use webgates_sessions::renewal::{
+///     AuthTokenState, RenewalDecision, RenewalOrchestrator, RenewalRequirement,
+/// };
+///
+/// let orchestrator = RenewalOrchestrator::new();
+///
+/// assert_eq!(
+///     orchestrator.decide_for_state(
+///         AuthTokenState::Valid { expires_in: Duration::from_secs(300) },
+///         RenewalRequirement::Proactive,
+///     ),
+///     RenewalDecision::NoRenewal,
+/// );
+///
+/// assert_eq!(
+///     orchestrator.decide_for_state(
+///         AuthTokenState::Expired { expired_for: Duration::from_secs(10) },
+///         RenewalRequirement::Required,
+///     ),
+///     RenewalDecision::RequireRenewal,
+/// );
+/// ```
 #[derive(Debug, Default, Clone, Copy)]
 pub struct RenewalOrchestrator;
 

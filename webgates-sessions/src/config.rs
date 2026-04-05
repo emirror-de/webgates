@@ -16,6 +16,31 @@ pub type ConfigResult<T> = std::result::Result<T, ConfigError>;
 /// This type intentionally stays free of HTTP-specific concerns such as cookie
 /// names, headers, or response mutation. Adapter crates should translate these
 /// values into transport-specific behavior at the system edge.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::Duration;
+/// use webgates_sessions::config::SessionConfig;
+/// use webgates_sessions::lease::LeaseTtl;
+///
+/// // Use defaults for a typical production setup.
+/// let config = SessionConfig::default();
+/// assert!(config.is_valid());
+///
+/// // Or supply explicit values.
+/// let config = SessionConfig::new(
+///     Duration::from_secs(15 * 60),     // auth token TTL: 15 min
+///     Duration::from_secs(30 * 24 * 3600), // refresh token TTL: 30 days
+///     Duration::from_secs(2 * 60),      // proactive renewal window: 2 min
+///     LeaseTtl::new(Duration::from_secs(30)),
+///     Duration::from_secs(5),           // clock-skew tolerance: 5 s
+/// )
+/// .validate()
+/// .unwrap();
+///
+/// assert!(config.is_valid());
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionConfig {
     /// Lifetime of the short-lived authentication token.

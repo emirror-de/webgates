@@ -7,6 +7,19 @@ use uuid::Uuid;
 use crate::session::SessionId;
 
 /// Uniquely identifies a single lease acquisition attempt.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::lease::LeaseId;
+///
+/// let id = LeaseId::new();
+/// let uuid = id.into_uuid();
+///
+/// // Round-trip through UUID.
+/// let restored = LeaseId::from(uuid);
+/// assert_eq!(restored.into_uuid(), uuid);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LeaseId(Uuid);
 
@@ -37,6 +50,20 @@ impl From<Uuid> for LeaseId {
 }
 
 /// Configuration for how long a renewal lease remains valid.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::Duration;
+/// use webgates_sessions::lease::LeaseTtl;
+///
+/// let ttl = LeaseTtl::new(Duration::from_secs(30));
+/// assert_eq!(ttl.duration(), Duration::from_secs(30));
+/// assert!(!ttl.is_zero());
+///
+/// let zero = LeaseTtl::new(Duration::ZERO);
+/// assert!(zero.is_zero());
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LeaseTtl(Duration);
 
@@ -67,6 +94,20 @@ impl Default for LeaseTtl {
 }
 
 /// Timestamp until which a lease remains valid.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::{Duration, SystemTime};
+/// use webgates_sessions::lease::{LeaseTtl, LeaseUntil};
+///
+/// let acquired_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000);
+/// let ttl = LeaseTtl::new(Duration::from_secs(30));
+/// let lease_until = LeaseUntil::from_acquired_at(acquired_at, ttl);
+///
+/// assert!(lease_until.is_active_at(acquired_at));
+/// assert!(lease_until.is_expired_at(acquired_at + Duration::from_secs(31)));
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LeaseUntil(SystemTime);
 
@@ -103,6 +144,26 @@ impl LeaseUntil {
 }
 
 /// Represents an active renewal lease stored for a session.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::{Duration, SystemTime};
+/// use webgates_sessions::lease::{LeaseId, LeaseTtl, RenewalLease};
+/// use webgates_sessions::session::SessionId;
+///
+/// let now = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000);
+/// let session_id = SessionId::new();
+/// let lease = RenewalLease::from_ttl(
+///     session_id,
+///     LeaseId::new(),
+///     now,
+///     LeaseTtl::new(Duration::from_secs(30)),
+/// );
+///
+/// assert!(lease.is_active_at(now));
+/// assert!(lease.is_expired_at(now + Duration::from_secs(31)));
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RenewalLease {
     /// Session currently guarded by this lease.

@@ -16,6 +16,26 @@ use std::collections::BTreeMap;
 /// This type is transport agnostic by design. Adapters may derive values from
 /// HTTP requests, RPC metadata, CLI invocations, or background jobs before
 /// passing them into session services.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::context::{SessionActor, SessionClientContext, SessionContext};
+///
+/// let context = SessionContext::new()
+///     .with_actor(SessionActor::Subject {
+///         subject_id: "user-42".to_string(),
+///     })
+///     .with_correlation_id("req-abc-123")
+///     .with_client(
+///         SessionClientContext::new()
+///             .with_ip_address("203.0.113.5")
+///             .with_user_agent("MyApp/2.0"),
+///     )
+///     .with_attribute("entrypoint", "login");
+///
+/// assert!(!context.is_empty());
+/// ```
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SessionContext {
     /// Stable identifier for the logical actor that initiated the operation.
@@ -100,6 +120,20 @@ pub enum SessionActor {
 ///
 /// Fields are optional because not every adapter or runtime can provide every
 /// value safely or reliably.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::context::SessionClientContext;
+///
+/// let client = SessionClientContext::new()
+///     .with_ip_address("203.0.113.5")
+///     .with_user_agent("MyApp/2.0")
+///     .with_device_id("device-abc");
+///
+/// assert!(!client.is_empty());
+/// assert_eq!(client.ip_address.as_deref(), Some("203.0.113.5"));
+/// ```
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SessionClientContext {
     /// User agent or equivalent client identifier.

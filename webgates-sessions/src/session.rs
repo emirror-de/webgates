@@ -8,6 +8,17 @@ use std::time::SystemTime;
 use uuid::Uuid;
 
 /// Unique identifier for a single session record.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::session::SessionId;
+///
+/// let id = SessionId::new();
+/// let uuid = id.into_uuid();
+/// let restored = SessionId::from_uuid(uuid);
+/// assert_eq!(restored.into_uuid(), uuid);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SessionId(Uuid);
 
@@ -41,6 +52,17 @@ impl Default for SessionId {
 ///
 /// A session family groups related sessions so higher-level logic can revoke
 /// them together when replay or broader logout behavior requires it.
+///
+/// # Examples
+///
+/// ```
+/// use webgates_sessions::session::SessionFamilyId;
+///
+/// let family_id = SessionFamilyId::new();
+/// let uuid = family_id.into_uuid();
+/// let restored = SessionFamilyId::from_uuid(uuid);
+/// assert_eq!(restored.into_uuid(), uuid);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SessionFamilyId(Uuid);
 
@@ -74,6 +96,28 @@ impl Default for SessionFamilyId {
 ///
 /// This is the canonical framework-agnostic session record used by repository
 /// contracts and higher-level renewal services.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::{Duration, SystemTime};
+/// use webgates_sessions::session::{Session, SessionFamilyId};
+///
+/// let now = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000);
+/// let session = Session::new(
+///     SessionFamilyId::new(),
+///     "user-42",
+///     now,
+///     now + Duration::from_secs(3_600),
+/// );
+///
+/// assert_eq!(session.subject_id, "user-42");
+/// assert!(session.is_active_at(now));
+/// assert!(!session.is_expired_at(now));
+///
+/// let revoked = session.revoked();
+/// assert!(!revoked.is_active_at(now));
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Session {
     /// Stable session identifier.
@@ -149,6 +193,21 @@ pub type SessionRecord = Session;
 ///
 /// This view captures the minimum metadata needed for family-wide revocation and
 /// replay handling.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::{Duration, SystemTime};
+/// use webgates_sessions::session::{SessionFamilyId, SessionFamilyRecord};
+///
+/// let now = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000);
+/// let family = SessionFamilyRecord::new(SessionFamilyId::new(), "user-42", now);
+///
+/// assert!(family.is_active());
+///
+/// let revoked = family.revoked();
+/// assert!(!revoked.is_active());
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionFamilyRecord {
     /// Stable family identifier.
@@ -192,6 +251,23 @@ impl SessionFamilyRecord {
 }
 
 /// Repository-facing record for the currently active refresh token of a session.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::{Duration, SystemTime};
+/// use webgates_sessions::session::{SessionFamilyId, SessionId, SessionRefreshRecord};
+///
+/// let now = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000);
+/// let expires_at = now + Duration::from_secs(3_600);
+/// let refresh = SessionRefreshRecord::new(SessionId::new(), SessionFamilyId::new(), expires_at);
+///
+/// assert!(refresh.is_active_at(now));
+/// assert!(!refresh.is_expired_at(now));
+///
+/// let revoked = refresh.revoked();
+/// assert!(!revoked.is_active_at(now));
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionRefreshRecord {
     /// Session that owns the refresh token.
@@ -238,6 +314,32 @@ impl SessionRefreshRecord {
 
 /// Combined repository lookup result used when locating session state by a
 /// refresh token hash.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::{Duration, SystemTime};
+/// use webgates_sessions::session::{
+///     Session, SessionFamilyId, SessionFamilyRecord, SessionLookup, SessionRefreshRecord,
+/// };
+///
+/// let now = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000);
+/// let family = SessionFamilyRecord::new(SessionFamilyId::new(), "user-42", now);
+/// let session = Session::new(
+///     family.family_id,
+///     "user-42",
+///     now,
+///     now + Duration::from_secs(3_600),
+/// );
+/// let refresh = SessionRefreshRecord::new(
+///     session.session_id,
+///     family.family_id,
+///     now + Duration::from_secs(3_600),
+/// );
+///
+/// let lookup = SessionLookup::new(session, family, refresh);
+/// assert!(lookup.is_active_at(now));
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionLookup {
     /// Session matched by the lookup.
@@ -271,6 +373,18 @@ impl SessionLookup {
 }
 
 /// Input used to record session activity updates.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::{Duration, SystemTime};
+/// use webgates_sessions::session::{SessionId, SessionTouch};
+///
+/// let now = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000);
+/// let touch = SessionTouch::new(SessionId::new(), now);
+///
+/// assert_eq!(touch.last_seen_at, now);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SessionTouch {
     /// Session to update.
