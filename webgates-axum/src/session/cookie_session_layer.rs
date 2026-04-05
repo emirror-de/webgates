@@ -29,6 +29,106 @@ use super::cookie_session_service::CookieSessionService;
 /// - auth-token validation
 /// - issuer checks
 /// - authorization policy enforcement
+///
+/// # Examples
+///
+/// The codec type must implement both [`webgates::codecs::Codec`] and
+/// [`webgates::sessions::tokens::AuthTokenIssuer`]. The example below uses
+/// [`webgates_repositories::memory::session::MemorySessionRepository`] for
+/// the session store, which is suitable for tests and local development.
+///
+/// ```rust
+/// use std::sync::Arc;
+///
+/// use axum::{Router, routing::get};
+/// use webgates::accounts::Account;
+/// use webgates::authz::AccessPolicy;
+/// use webgates::codecs::Codec;
+/// use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
+/// use webgates::cookie_template::CookieTemplate;
+/// use webgates::groups::Group;
+/// use webgates::roles::Role;
+/// use webgates::sessions::config::SessionConfig;
+/// use webgates::sessions::errors::TokenError;
+/// use webgates::sessions::session::Session;
+/// use webgates::sessions::tokens::{AuthToken, AuthTokenIssuer};
+/// use webgates_axum::gate::Gate;
+/// use webgates_axum::session::CookieSessionLayer;
+/// use webgates_codecs::jwt::{JsonWebToken, JsonWebTokenOptions};
+/// use webgates_repositories::memory::session::MemorySessionRepository;
+///
+/// // A codec that satisfies both the JWT encoding contract and the session
+/// // auth-token issuance contract. In production this wraps your app's JWT
+/// // configuration; here it uses the default options.
+/// #[derive(Clone)]
+/// struct AppCodec {
+///     jwt: JsonWebToken<JwtClaims<Account<Role, Group>>>,
+/// }
+///
+/// impl AppCodec {
+///     fn new() -> Self {
+///         Self {
+///             jwt: JsonWebToken::new_with_options(JsonWebTokenOptions::default()),
+///         }
+///     }
+/// }
+///
+/// impl Codec for AppCodec {
+///     type Payload = JwtClaims<Account<Role, Group>>;
+///
+///     fn encode(&self, payload: &Self::Payload) -> webgates::codecs::Result<Vec<u8>> {
+///         self.jwt.encode(payload)
+///     }
+///
+///     fn decode(&self, encoded: &[u8]) -> webgates::codecs::Result<Self::Payload> {
+///         self.jwt.decode(encoded)
+///     }
+/// }
+///
+/// impl AuthTokenIssuer<Session> for AppCodec {
+///     type Error = TokenError;
+///
+///     fn issue_auth_token(&self, session: &Session) -> Result<AuthToken, TokenError> {
+///         let account = Account::<Role, Group>::new(&session.subject_id);
+///         // Set a 15-minute expiry; replace with your own claims builder.
+///         let exp = std::time::SystemTime::now()
+///             .duration_since(std::time::UNIX_EPOCH)
+///             .unwrap_or_default()
+///             .as_secs()
+///             + 900;
+///         let claims = JwtClaims::new(account, RegisteredClaims::new("my-app", exp));
+///         let encoded = self
+///             .jwt
+///             .encode(&claims)
+///             .map_err(|_| TokenError::AuthIssuanceFailed)?;
+///         let token =
+///             String::from_utf8(encoded).map_err(|_| TokenError::AuthIssuanceFailed)?;
+///         AuthToken::new(token)
+///     }
+/// }
+///
+/// let codec = Arc::new(AppCodec::new());
+/// let session_repo = MemorySessionRepository::new();
+/// let session_config = SessionConfig::default();
+/// let auth_cookie = CookieTemplate::recommended().name("auth-token");
+/// let refresh_cookie = CookieTemplate::recommended().name("refresh-token");
+///
+/// // Compose the session layer (outer) around the cookie gate (inner).
+/// let session_layer = CookieSessionLayer::<_, Role, Group, _>::new(
+///     Arc::clone(&codec),
+///     session_repo,
+///     session_config,
+///     auth_cookie.clone(),
+///     refresh_cookie,
+/// );
+/// let gate = Gate::cookie("my-app", Arc::clone(&codec))
+///     .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));
+///
+/// let _app: Router = Router::new()
+///     .route("/protected", get(|| async { "ok" }))
+///     .layer(session_layer)
+///     .layer(gate);
+/// ```
 #[derive(Clone)]
 pub struct CookieSessionLayer<C, R, G, Repo>
 where

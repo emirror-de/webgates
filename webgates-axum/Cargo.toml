@@ -39,9 +39,9 @@ tracing = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v7"] }
 webgates = { path = "../webgates", features = ["authn", "codecs", "cookies", "oauth2", "repositories", "secrets", "sessions"] }
 webgates-codecs = { path = "../webgates-codecs" }
-webgates-repositories = { path = "../webgates-repositories" }
+webgates-repositories = { path = "../webgates-repositories", features = ["sessions"] }
 
 [dev-dependencies]
 axum = "0.8"
 tokio-test = "0.4.4"
-webgates-repositories = { path = "../webgates-repositories" }
+webgates-repositories = { path = "../webgates-repositories", features = ["sessions"] }
