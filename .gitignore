@@ -5,6 +5,7 @@ result*
 .direnv
 
 .rules
+AGENTS.md
 .ai-workspace
 
 # Ignored secrets within examples
