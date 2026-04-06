@@ -59,11 +59,19 @@ use thiserror::Error;
 pub use crate::errors_core::{ErrorSeverity, UserFriendlyError};
 
 // Category-based error re-exports for ergonomic imports.
+// Guard re-exports by the feature that enables the underlying modules so
+// this file can be compiled when only a subset of features is active.
+#[cfg(feature = "authn")]
 pub use crate::authn::{AuthenticationError, AuthnError};
+
 pub use crate::authz::AuthzError;
 pub use crate::codecs::errors::{CodecOperation, CodecsError, JwtError, JwtOperation};
 pub use crate::permissions::PermissionsError;
+
+#[cfg(feature = "secrets")]
 pub use crate::secrets::errors::SecretError;
+
+#[cfg(feature = "secrets")]
 pub use crate::secrets::hashing::errors::{HashingError, HashingOperation};
 
 /// Result type alias using our comprehensive Error type.
@@ -99,6 +107,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Error)]
 pub enum Error {
     /// Authentication category errors
+    #[cfg(feature = "authn")]
     #[error(transparent)]
     Authn(#[from] AuthnError),
 
@@ -119,10 +128,12 @@ pub enum Error {
     Jwt(#[from] JwtError),
 
     /// Hashing/verification category errors
+    #[cfg(feature = "secrets")]
     #[error(transparent)]
     Hashing(#[from] HashingError),
 
     /// Secret storage/category errors
+    #[cfg(feature = "secrets")]
     #[error(transparent)]
     Secrets(#[from] SecretError),
 }
@@ -130,72 +141,90 @@ pub enum Error {
 impl UserFriendlyError for Error {
     fn user_message(&self) -> String {
         match self {
+            #[cfg(feature = "authn")]
             Error::Authn(err) => err.user_message(),
             Error::Authz(err) => err.user_message(),
             Error::Permissions(err) => err.user_message(),
             Error::Codecs(err) => err.user_message(),
             Error::Jwt(err) => err.user_message(),
+            #[cfg(feature = "secrets")]
             Error::Hashing(err) => err.user_message(),
+            #[cfg(feature = "secrets")]
             Error::Secrets(err) => err.user_message(),
         }
     }
 
     fn developer_message(&self) -> String {
         match self {
+            #[cfg(feature = "authn")]
             Error::Authn(err) => err.developer_message(),
             Error::Authz(err) => err.developer_message(),
             Error::Permissions(err) => err.developer_message(),
             Error::Codecs(err) => err.developer_message(),
             Error::Jwt(err) => err.developer_message(),
+            #[cfg(feature = "secrets")]
             Error::Hashing(err) => err.developer_message(),
+            #[cfg(feature = "secrets")]
             Error::Secrets(err) => err.developer_message(),
         }
     }
 
     fn support_code(&self) -> String {
         match self {
+            #[cfg(feature = "authn")]
             Error::Authn(err) => err.support_code(),
             Error::Authz(err) => err.support_code(),
             Error::Permissions(err) => err.support_code(),
             Error::Codecs(err) => err.support_code(),
             Error::Jwt(err) => err.support_code(),
+            #[cfg(feature = "secrets")]
             Error::Hashing(err) => err.support_code(),
+            #[cfg(feature = "secrets")]
             Error::Secrets(err) => err.support_code(),
         }
     }
 
     fn severity(&self) -> ErrorSeverity {
         match self {
+            #[cfg(feature = "authn")]
             Error::Authn(err) => err.severity(),
             Error::Authz(err) => err.severity(),
             Error::Permissions(err) => err.severity(),
             Error::Codecs(err) => err.severity(),
             Error::Jwt(err) => err.severity(),
+            #[cfg(feature = "secrets")]
             Error::Hashing(err) => err.severity(),
+            #[cfg(feature = "secrets")]
             Error::Secrets(err) => err.severity(),
         }
     }
 
     fn suggested_actions(&self) -> Vec<String> {
         match self {
+            #[cfg(feature = "authn")]
             Error::Authn(err) => err.suggested_actions(),
             Error::Authz(err) => err.suggested_actions(),
             Error::Permissions(err) => err.suggested_actions(),
             Error::Codecs(err) => err.suggested_actions(),
             Error::Jwt(err) => err.suggested_actions(),
+            #[cfg(feature = "secrets")]
             Error::Hashing(err) => err.suggested_actions(),
+            #[cfg(feature = "secrets")]
             Error::Secrets(err) => err.suggested_actions(),
         }
     }
 
     fn is_retryable(&self) -> bool {
         match self {
+            #[cfg(feature = "authn")]
             Error::Authn(err) => err.is_retryable(),
             Error::Authz(err) => err.is_retryable(),
             Error::Permissions(err) => err.is_retryable(),
             Error::Codecs(err) => err.is_retryable(),
             Error::Jwt(err) => err.is_retryable(),
+            #[cfg(feature = "secrets")]
             Error::Hashing(err) => err.is_retryable(),
+            #[cfg(feature = "secrets")]
             Error::Secrets(err) => err.is_retryable(),
         }
     }

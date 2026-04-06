@@ -9,7 +9,9 @@ use crate::codecs::Codec;
 
 pub mod adapter;
 pub mod bearer;
+#[cfg(feature = "cookies")]
 pub mod cookie;
+#[cfg(feature = "oauth2")]
 pub mod oauth2;
 
 /// Entry point for constructing gate configurations.
@@ -18,6 +20,7 @@ pub struct Gate;
 
 impl Gate {
     /// Create a cookie-based gate configuration (deny-all policy by default).
+    #[cfg(feature = "cookies")]
     pub fn cookie<C, R, G>(issuer: &str, codec: Arc<C>) -> cookie::CookieGate<C, R, G>
     where
         C: Codec,
@@ -41,6 +44,7 @@ impl Gate {
     }
 
     /// Create an OAuth2 gate configuration.
+    #[cfg(feature = "oauth2")]
     pub fn oauth2<R, G>() -> oauth2::OAuth2Gate<R, G>
     where
         R: AccessHierarchy + Eq + Display + Default + Send + Sync + 'static,

@@ -728,9 +728,7 @@ mod tests {
 
     #[test]
     fn codec_auth_token_issuer_encodes_claims_with_codec() {
-        jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER
-            .install_default()
-            .expect("Installation of default crypto provider.");
+        let _ = jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER.install_default();
         let codec = JsonWebToken::<JwtClaims<TestClaims>>::default();
         let issuer = CodecAuthTokenIssuer::new(codec.clone(), |subject: &String| {
             JwtClaims::new(

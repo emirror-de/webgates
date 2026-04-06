@@ -41,7 +41,7 @@ sessions = [
     "dep:webgates-sessions",
 ]
 
-cookies = ["dep:cookie"]
+cookies = ["codecs", "dep:cookie"]
 
 oauth2 = [
     "codecs",

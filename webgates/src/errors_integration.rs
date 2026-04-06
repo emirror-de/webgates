@@ -1,3 +1,4 @@
+#![cfg(feature = "cookies")]
 //! Integration-layer error conversions and adapters.
 //!
 //! This module hosts conversions from external/library errors into the crate-wide
