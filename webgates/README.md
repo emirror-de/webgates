@@ -119,14 +119,15 @@ If you use another framework, build an adapter around the gate runtime APIs.
 
 ## Features
 
-`webgates` is the composition surface for end users.
+The `webgates` crate ships with no enabled default features. Enable only the features you need.
 
-- `default = ["full"]`
+- `default = []` (no default features)
 - `full`: enables the standard composed stack
 - `authn`: authentication services
 - `codecs`: JWT codec support via `webgates-codecs`
 - `cookies`: cookie templates and cookie-backed helpers
 - `oauth2`: OAuth2 support
+- `repositories`: repository contracts used by higher-level workflows
 - `secrets`: hashing and secret handling via `webgates-secrets`
 - `sessions`: framework-agnostic session lifecycle and renewal primitives via `webgates-sessions`
 - `audit-logging`: structured audit events with `tracing`
@@ -136,50 +137,21 @@ If you use another framework, build an adapter around the gate runtime APIs.
 `full` currently enables:
 
 - `authn`
+- `audit-logging`
 - `codecs`
 - `cookies`
 - `oauth2`
+- `prometheus`
+- `repositories`
 - `secrets`
 - `sessions`
 
 Typical choices:
 
-- most applications: use default features
+- most applications: enable `full` or explicitly list the runtime features you need
 - domain-only usage: `default-features = false`
 - session-backed authentication: enable `sessions` together with the auth and transport features you need
 - custom composition: disable defaults and enable only what you need
-
-## Session-backed authentication
-
-Enable the `sessions` feature when you want short-lived auth JWTs backed by
-long-lived refresh-token session state.
-
-This adds access to the framework-agnostic session layer through
-`webgates::sessions`, including:
-
-- typed session and session-family models
-- session issuance, renewal, and revocation services
-- opaque refresh-token generation and hashing primitives
-- repository contracts for session persistence, rotation, leases, and revocation
-- an in-memory repository for tests and local development
-
-Typical composition for session-backed login and renewal:
-
-```toml
-[dependencies]
-webgates = { version = "0.1", default-features = false, features = ["authn", "codecs", "cookies", "repositories", "secrets", "sessions"] }
-```
-
-For HTTP adapters, keep cookie extraction and response mutation in the adapter
-crate. In the Axum integration, use:
-
-- `webgates_axum::route_handlers::login_with_sessions`
-- `webgates_axum::route_handlers::logout_with_sessions`
-- `webgates_axum::session::CookieSessionLayer`
-
-This keeps token issuance, renewal rules, replay handling, and revocation in the
-framework-agnostic session layer while transport-specific cookie behavior stays
-in `webgates-axum`.
 
 ## Session-backed authentication
 

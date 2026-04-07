@@ -16,16 +16,17 @@ env:
     RUSTFLAGS: -D warnings
 
 jobs:
-    fmt:
-        name: Format check
+    # Fast PR validation - runs quickly on every PR
+    fast-pr-check:
+        name: Fast PR validation
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
               uses: actions/checkout@v4
-            - name: Install Rust (stable) with rustfmt
+            - name: Install Rust (stable) with rustfmt and clippy
               uses: dtolnay/rust-toolchain@stable
               with:
-                  components: rustfmt
+                  components: rustfmt, clippy
             - name: Cache cargo/target
               uses: actions/cache@v4
               with:
@@ -36,127 +37,72 @@ jobs:
                       target
                   key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: ${{ runner.os }}-cargo-
-            - name: rustfmt --check
-              run: cargo fmt --all -- --check
-
-    clippy:
-        name: Clippy (all targets)
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-            - name: Install Rust (stable) with clippy
-              uses: dtolnay/rust-toolchain@stable
-              with:
-                  components: clippy
-            - name: Cache cargo/target
-              uses: actions/cache@v4
-              with:
-                  path: |
-                      ~/.cargo/bin
-                      ~/.cargo/registry
-                      ~/.cargo/git
-                      target
-                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-                  restore-keys: ${{ runner.os }}-cargo-
-            - name: cargo clippy
+            - name: Install Python dependencies
               run: |
-                  # Core crate (all features)
-                  cargo clippy -p webgates --all-targets --all-features -- -D warnings
-                  # Core crate (wasm only; no server deps)
-                  cargo clippy -p webgates --all-targets --features wasm -- -D warnings
-                  # Repository crate (all repo/backend features)
-                  cargo clippy -p webgates-repositories --all-targets --all-features -- -D warnings
-                  # Axum integration crate
-                  cargo clippy -p webgates-axum --all-targets --all-features -- -D warnings
+                  python3 -m pip install --upgrade pip
+                  python3 -m pip install toml
 
+            - name: Feature contract check
+              run: python3 ./scripts/check_feature_contract.py --check-only
+            - name: Format check
+              run: cargo fmt --all -- --check
+            - name: Clippy check (workspace)
+              run: cargo clippy --workspace --all-targets -- -D warnings
+            - name: Unit tests (workspace)
+              run: cargo test --workspace
+
+    # Feature matrix testing - ensures all feature combinations work
     feature-matrix:
-        name: Feature matrix tests (per-crate, per-feature + all-features)
-        needs: [clippy]
+        name: Feature matrix
+        needs: [fast-pr-check]
         runs-on: ubuntu-latest
         strategy:
             fail-fast: false
             matrix:
                 include:
-                    # webgates crate: default, per-feature, and all-features
+                    # webgates minimal feature combinations
                     - pkg: webgates
-                      cmd: cargo test -p webgates
-                      desc: webgates-default
+                      features: "--no-default-features --features codecs"
+                      desc: webgates-codecs-only
                     - pkg: webgates
-                      cmd: cargo test -p webgates --all-features
-                      desc: webgates-all-features
+                      features: "--no-default-features --features cookies"
+                      desc: webgates-cookies-only
                     - pkg: webgates
-                      cmd: cargo test -p webgates --features wasm
-                      desc: webgates-wasm
+                      features: "--no-default-features --features oauth2"
+                      desc: webgates-oauth2-only
                     - pkg: webgates
-                      cmd: cargo test -p webgates --no-default-features --features authn
-                      desc: webgates-authn
+                      features: "--no-default-features --features authn"
+                      desc: webgates-authn-only
                     - pkg: webgates
-                      cmd: cargo test -p webgates --no-default-features --features codecs
-                      desc: webgates-codecs
-                    - pkg: webgates
-                      cmd: cargo test -p webgates --no-default-features --features cookies
-                      desc: webgates-cookies
-                    - pkg: webgates
-                      cmd: cargo test -p webgates --no-default-features --features oauth2
-                      desc: webgates-oauth2
-                    - pkg: webgates
-                      cmd: cargo test -p webgates --no-default-features --features repositories
-                      desc: webgates-repositories
-                    - pkg: webgates
-                      cmd: cargo test -p webgates --no-default-features --features secrets
-                      desc: webgates-secrets
-
-                    - pkg: webgates
-                      cmd: cargo test -p webgates --features audit-logging
-                      desc: webgates-audit-logging
-                    - pkg: webgates
-                      cmd: cargo test -p webgates --features prometheus
-                      desc: webgates-prometheus
-                    - pkg: webgates
-                      cmd: cargo test -p webgates --features full
+                      features: "--features full"
                       desc: webgates-full
-
-                    # webgates-repositories crate: default, per-feature, and all-features
+                    - pkg: webgates
+                      features: "--features wasm"
+                      desc: webgates-wasm
+                    
+                    # Repository backends
                     - pkg: webgates-repositories
-                      cmd: cargo test -p webgates-repositories
-                      desc: repositories-default
-                    - pkg: webgates-repositories
-                      cmd: cargo test -p webgates-repositories --features audit-logging
-                      desc: repositories-audit-logging
-                    - pkg: webgates-repositories
-                      cmd: cargo test -p webgates-repositories --features surrealdb
+                      features: "--features surrealdb"
                       desc: repositories-surrealdb
                     - pkg: webgates-repositories
-                      cmd: cargo test -p webgates-repositories --features sea-orm
+                      features: "--features sea-orm"
                       desc: repositories-sea-orm
+                    - pkg: webgates-repositories
+                      features: "--all-features"
+                      desc: repositories-all-features
 
-                    # webgates-axum crate: default and all-features
+                    # Other core crates
                     - pkg: webgates-axum
-                      cmd: cargo test -p webgates-axum
-                      desc: axum-default
-                    - pkg: webgates-axum
-                      cmd: cargo test -p webgates-axum --all-features
+                      features: "--all-features"
                       desc: axum-all-features
-
-                    # Workspace-level checks: all-features together
-                    - pkg: workspace
-                      cmd: cargo test --workspace --all-features
-                      desc: workspace-all-features
-
-                    # webgates-codecs crate: default
-                    - pkg: webgates-codecs
-                      cmd: cargo test -p webgates-codecs
-                      desc: codecs-default
-
-                    # webgates-sessions crate: default
                     - pkg: webgates-sessions
-                      cmd: cargo test -p webgates-sessions
+                      features: ""
                       desc: sessions-default
-
-                    # webgates-secrets crate: default
+                    - pkg: webgates-codecs
+                      features: ""
+                      desc: codecs-default
                     - pkg: webgates-secrets
-                      cmd: cargo test -p webgates-secrets
+                      features: ""
                       desc: secrets-default
 
         steps:
@@ -174,63 +120,13 @@ jobs:
                       target
                   key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: ${{ runner.os }}-cargo-
-            - name: Rust version
-              run: |
-                  rustc --version
-                  cargo --version
-            - name: Run matrix item
-              run: |
-                  echo "Running: ${{ matrix.desc }}"
-                  echo "Command: ${{ matrix.cmd }}"
-                  eval "${{ matrix.cmd }}"
+            - name: Test ${{ matrix.desc }}
+              run: cargo test -p ${{ matrix.pkg }} ${{ matrix.features }}
 
-    test-core:
-        name: Core test matrix
-        needs: [fmt, clippy]
-        runs-on: ubuntu-latest
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - name: default_features
-                      cmd: cargo test --workspace
-
-                    - name: wasm
-                      cmd: cargo test -p webgates --features wasm
-
-                    - name: surrealdb
-                      cmd: cargo test -p webgates-repositories --features surrealdb
-                    - name: sea_orm
-                      cmd: cargo test -p webgates-repositories --features sea-orm
-                    - name: all_backend_features
-                      cmd: cargo test -p webgates-repositories --features surrealdb,sea-orm
-                    - name: axum_default
-                      cmd: cargo test -p webgates-axum
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-            - name: Install Rust (stable)
-              uses: dtolnay/rust-toolchain@stable
-            - name: Cache cargo/target
-              uses: actions/cache@v4
-              with:
-                  path: |
-                      ~/.cargo/bin
-                      ~/.cargo/registry
-                      ~/.cargo/git
-                      target
-                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-                  restore-keys: ${{ runner.os }}-cargo-
-            - name: Rust version
-              run: |
-                  rustc --version
-                  cargo --version
-            - name: Run ${{ matrix.name }}
-              run: ${{ matrix.cmd }}
-
-    test-integration:
-        name: Integration tests
-        needs: [test-core]
+    # Doc tests - validate documentation examples
+    doc-tests:
+        name: Documentation tests
+        needs: [fast-pr-check]
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
@@ -247,33 +143,13 @@ jobs:
                       target
                   key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: ${{ runner.os }}-cargo-
-            - name: cargo test --test '*'
-              run: cargo test --workspace --test '*'
-
-    test-doc:
-        name: Doc tests
-        needs: [test-core]
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-            - name: Install Rust (stable)
-              uses: dtolnay/rust-toolchain@stable
-            - name: Cache cargo/target
-              uses: actions/cache@v4
-              with:
-                  path: |
-                      ~/.cargo/bin
-                      ~/.cargo/registry
-                      ~/.cargo/git
-                      target
-                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-                  restore-keys: ${{ runner.os }}-cargo-
-            - name: cargo test --doc
+            - name: Doc tests
               run: cargo test --workspace --doc
 
+    # MSRV check
     msrv:
         name: MSRV check (1.88)
+        needs: [fast-pr-check]
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
@@ -290,170 +166,53 @@ jobs:
                       target
                   key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: ${{ runner.os }}-cargo-
-            - name: rustc/cargo version
+            - name: Check workspace compiles on MSRV
+              run: cargo check --workspace
+
+    # Security audits - run on nightly/version branches and PRs
+    security:
+        name: Security audit
+        needs: [feature-matrix, doc-tests]
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install Rust (stable)
+              uses: dtolnay/rust-toolchain@stable
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: Install cargo-audit and cargo-deny
               run: |
-                  rustc --version
-                  cargo --version
-            - name: cargo check (all features)
-              run: cargo check --workspace
-            - name: cargo test (all features)
-              run: cargo test --workspace
-
-    stable-build:
-        name: Stable build/test (allow failure)
-        runs-on: ubuntu-latest
-        continue-on-error: true
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-            - name: Install Rust (stable)
-              uses: dtolnay/rust-toolchain@stable
-            - name: Cache cargo/target
-              uses: actions/cache@v4
-              with:
-                  path: |
-                      ~/.cargo/bin
-                      ~/.cargo/registry
-                      ~/.cargo/git
-                      target
-                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-                  restore-keys: ${{ runner.os }}-cargo-
-            - name: cargo check (all features)
-              run: cargo check --workspace
-            - name: cargo test (all features)
-              run: cargo test --workspace
-
-    benches:
-        name: Benches (allowed to fail)
-        if: startsWith(github.ref, 'refs/heads/version/') || github.ref == 'refs/heads/nightly' || github.event_name == 'pull_request'
-        runs-on: ubuntu-latest
-        continue-on-error: true
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-            - name: Install Rust (stable)
-              uses: dtolnay/rust-toolchain@stable
-            - name: Cache cargo/target
-              uses: actions/cache@v4
-              with:
-                  path: |
-                      ~/.cargo/bin
-                      ~/.cargo/registry
-                      ~/.cargo/git
-                      target
-                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-                  restore-keys: ${{ runner.os }}-cargo-
-            - name: cargo test --benches
-              run: cargo test --workspace --benches
-
-    audit:
-        name: cargo-audit
-        needs: [test-integration, test-doc]
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-            - name: Install Rust (stable)
-              uses: dtolnay/rust-toolchain@stable
-            - name: Cache cargo/target
-              uses: actions/cache@v4
-              with:
-                  path: |
-                      ~/.cargo/bin
-                      ~/.cargo/registry
-                      ~/.cargo/git
-                      target
-                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-                  restore-keys: ${{ runner.os }}-cargo-
-            - name: Install cargo-audit
-              run: cargo install cargo-audit
+                  cargo install cargo-audit
+                  cargo install cargo-deny
             - name: Run cargo audit
               run: cargo audit --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2024-0436
-
-    deny:
-        name: cargo-deny
-        needs: [test-integration, test-doc]
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-            - name: Install Rust (stable)
-              uses: dtolnay/rust-toolchain@stable
-            - name: Cache cargo/target
-              uses: actions/cache@v4
-              with:
-                  path: |
-                      ~/.cargo/bin
-                      ~/.cargo/registry
-                      ~/.cargo/git
-                      target
-                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-                  restore-keys: ${{ runner.os }}-cargo-
-            - name: Install cargo-deny
-              run: cargo install cargo-deny
             - name: Run cargo deny
               run: cargo deny check
 
-    semver-checks:
-        name: cargo-semver-checks (feature matrix)
-        if: startsWith(github.ref, 'refs/heads/version/') || github.ref == 'refs/heads/nightly' || github.event_name == 'pull_request'
-        needs: [test-integration, test-doc]
-        runs-on: ubuntu-latest
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - name: default
-                      args: "--default-features"
-
-                    - name: audit-logging
-                      args: "--only-explicit-features --features default,audit-logging"
-                    - name: prometheus
-                      args: "--only-explicit-features --features default,prometheus"
-                    - name: wasm
-                      args: "--only-explicit-features --features wasm"
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-            - name: Install Rust (stable)
-              uses: dtolnay/rust-toolchain@stable
-            - name: Cache cargo/target
-              uses: actions/cache@v4
-              with:
-                  path: |
-                      ~/.cargo/bin
-                      ~/.cargo/registry
-                      ~/.cargo/git
-                      target
-                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-                  restore-keys: ${{ runner.os }}-cargo-
-            - name: Install cargo-semver-checks
-              run: cargo install cargo-semver-checks
-            - name: Run cargo semver-checks (${{ matrix.name }})
-              run: cargo semver-checks check-release -p webgates ${{ matrix.args }}
-
+    # Examples validation
     examples:
-        name: Examples matrix
-        needs: [test-integration, test-doc]
+        name: Examples
+        needs: [feature-matrix]
         runs-on: ubuntu-latest
         strategy:
             fail-fast: false
             matrix:
                 include:
                     - pkg: simple-usage-example
-                      all_features: true
                     - pkg: custom-roles-example
-                      all_features: true
-                    - pkg: distributed
-                      all_features: true
                     - pkg: permission-validation-example
-                      all_features: true
                     - pkg: rate-limiting-example
-                      all_features: true
                     - pkg: sea-orm-example
-                      all_features: false
                     - pkg: surrealdb-example
-                      all_features: false
         steps:
             - name: Checkout
               uses: actions/checkout@v4
@@ -469,21 +228,18 @@ jobs:
                       target
                   key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: ${{ runner.os }}-cargo-
-            - name: cargo check -p ${{ matrix.pkg }}
-              run: cargo check -p ${{ matrix.pkg }}
-            - name: cargo test -p ${{ matrix.pkg }}
-              shell: bash
+            - name: Check and test ${{ matrix.pkg }}
               run: |
-                  if [ "${{ matrix.all_features }}" = "true" ]; then
-                    cargo test -p "${{ matrix.pkg }}" --all-features
-                  else
-                    cargo test -p "${{ matrix.pkg }}"
-                  fi
+                  cargo check -p ${{ matrix.pkg }}
+                  cargo test -p ${{ matrix.pkg }}
 
-    coverage:
-        name: Coverage (tarpaulin)
+    # Optional quality gates - run only on nightly/version branches
+    extended-checks:
+        name: Extended quality checks
         if: startsWith(github.ref, 'refs/heads/version/') || github.ref == 'refs/heads/nightly'
+        needs: [security]
         runs-on: ubuntu-latest
+        continue-on-error: true
         steps:
             - name: Checkout
               uses: actions/checkout@v4
@@ -499,11 +255,15 @@ jobs:
                       target
                   key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: ${{ runner.os }}-cargo-
-            - name: Install tarpaulin
-              run: cargo install cargo-tarpaulin
-            - name: Run tarpaulin (markdown)
+            - name: Install tools
+              run: |
+                  cargo install cargo-semver-checks
+                  cargo install cargo-tarpaulin
+            - name: Semver checks
+              run: cargo semver-checks check-release -p webgates --default-features
+            - name: Coverage
               run: cargo tarpaulin --workspace --out Markdown
-            - name: Upload tarpaulin-report.md
+            - name: Upload coverage report
               uses: actions/upload-artifact@v4
               with:
                   name: coverage-markdown

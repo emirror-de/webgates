@@ -48,7 +48,6 @@ The crate is organized around explicit domain modules:
 - `errors`: session-layer errors
 - `lease`: renewal lease coordination types
 - `logout`: logout and revocation intent types
-- `memory`: in-memory session repository for tests and local composition
 - `renewal`: renewal flow requests, decisions, and outcomes
 - `repository`: session persistence contracts
 - `services`: session issuance, renewal, and revocation workflows

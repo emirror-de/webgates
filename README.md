@@ -23,7 +23,7 @@ Feature highlights (available across the workspace):
 - Feature-gated audit logging and Prometheus metrics
 
 Note on feature defaults:
-- Crates in this workspace intentionally ship with no enabled default features. Enable the specific features you need (for example, enable the `server` feature on `webgates` to pull in runtime- and HTTP-related modules such as `gate`, `codecs`, and `cookie_template`). This keeps dependencies minimal when you only need core domain types.
+- Crates in this workspace intentionally ship with no enabled default features. Enable the specific features you need (for example, enable the `codecs` and `cookies` features on `webgates` to pull in runtime- and HTTP-related modules such as `gate`, `codecs`, and `cookie_template`). This keeps dependencies minimal when you only need core domain types.
 
 ## Install
 
@@ -47,7 +47,7 @@ webgates-axum = "0.1"
 Server-enabled core (if you want `Gate` and the JWT codec from the core crate directly):
 ```toml
 [dependencies]
-webgates = { version = "0.1", features = ["server"] }
+webgates = { version = "0.1", features = ["codecs", "cookies"] }
 ```
 
 Repository/backends and optional features:
@@ -55,8 +55,6 @@ Repository/backends and optional features:
 - Enable only the features you need to avoid pulling in large transitive dependencies.
 
 Common optional features across the workspace (examples):
-- `repo-surrealdb` — SurrealDB repositories (opt-in)
-- `repo-seaorm` — SeaORM repositories (opt-in)
 - `audit-logging` — structured audit events (`tracing`) (opt-in)
 - `prometheus` — Prometheus metrics (opt-in; depends on `audit-logging`)
 - `insecure-fast-hash` — development-only faster Argon2 preset (intended only for tests/dev)
@@ -111,12 +109,31 @@ JWT operations use the `rust_crypto` backend where applicable (see crate documen
 - License: MIT
 
 SurrealDB (BUSL-1.1) notice:
-- Enabling the optional SurrealDB-backed repository feature (`repo-surrealdb`) pulls in SurrealDB, which is distributed under the Business Source License 1.1 (BUSL). That license may impose restrictions on Production Use until its Change Date. If you enable this feature for development, CI, or distribution, review SurrealDB's license terms and comply with any obligations (including required notices).
+- Enabling the optional SurrealDB-backed repository feature (`surrealdb`) in `webgates-repositories` pulls in SurrealDB, which is distributed under the Business Source License 1.1 (BUSL). That license may impose restrictions on Production Use until its Change Date. If you enable this feature for development, CI, or distribution, review SurrealDB's license terms and comply with any obligations (including required notices).
 - The SurrealDB-backed repositories are opt-in and off by default. Prefer in-memory or SeaORM-backed repositories for fully open-source deployments where BUSL implications are a concern.
-- When enabling `repo-surrealdb` in your project, document the choice in your release and ensure your legal/compliance process accepts the license terms.
+- When enabling `surrealdb` in your project, document the choice in your release and ensure your legal/compliance process accepts the license terms.
 
 Subtle and other third-party license notices:
 - Some dependencies carry additional notices (see the repository `NOTICE` file when redistributing).
 
 ---
 For more details, examples, and API references, see the crate documentation and the `examples/` folder in this repository.
+
+## Development
+
+Quick notes for contributors and local development:
+
+- The workspace contains multiple crates: `webgates`, `webgates-axum`, and `webgates-repositories`.
+- Run the test suite for all crates with `cargo test --workspace`.
+- Example applications live under the `examples/` directory and demonstrate common setups (OAuth2, Prometheus, SurrealDB).
+- Crates intentionally ship without default features; enable only the features you need during development to keep dependency scope small.
+
+## Roadmap / Tasks
+
+This repository tracks small, focused tasks by short identifiers. "i01" is the next task to work on and represents the initial improvements to the developer experience and project docs. Planned steps for i01:
+
+1. Improve top-level documentation and add contributor/development notes (this change).
+2. Add a basic contributing guide and checklist for CI / local setup.
+3. Start a small developer-facing example that exercises the common Axum setup.
+
+If you'd like a different scope for i01, tell me which step to prioritise next.
