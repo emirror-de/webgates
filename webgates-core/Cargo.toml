@@ -22,6 +22,9 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v7"] }
 
+[features]
+default = []
+
 [target.'cfg(target_family = "wasm")'.dependencies]
 uuid = { workspace = true, features = ["js"] }
 
