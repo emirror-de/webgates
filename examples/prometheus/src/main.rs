@@ -24,10 +24,7 @@ use webgates::{
     groups::Group,
     roles::Role,
 };
-use webgates_axum::{
-    gate::Gate,
-    route_handlers::{login, logout},
-};
+use webgates_axum::{gate::Gate, route_handlers::login::login, route_handlers::logout::logout};
 use webgates_repositories::{
     memory::{account::MemoryAccountRepository, secret::MemorySecretRepository},
     services::account_insert::AccountInsertService,

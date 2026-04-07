@@ -245,7 +245,7 @@ async fn main() {
                 move |cookie_jar| async move {
                     let cookie_template =
                         webgates::cookie_template::CookieTemplate::recommended().name(name);
-                    let jar = route_handlers::logout(cookie_jar, cookie_template).await;
+                    let jar = route_handlers::logout::logout(cookie_jar, cookie_template).await;
                     (jar, axum::response::Redirect::to("/"))
                 }
             }),

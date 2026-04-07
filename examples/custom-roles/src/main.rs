@@ -366,7 +366,7 @@ async fn main() {
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar, Json(credentials): Json<Credentials<String>>| {
-                    route_handlers::login(
+                    route_handlers::login::login(
                         cookie_jar,
                         credentials,
                         registered_claims,
@@ -383,7 +383,7 @@ async fn main() {
             get({
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar| async move {
-                    let jar = route_handlers::logout(cookie_jar, cookie_template).await;
+                    let jar = route_handlers::logout::logout(cookie_jar, cookie_template).await;
                     (jar, axum::response::Redirect::to("/"))
                 }
             }),

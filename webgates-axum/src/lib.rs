@@ -22,8 +22,8 @@ The intended public entry points are:
 - `gate::bearer`
 - `gate::oauth2`
 - `route_handlers`
-- `route_handlers::login`
-- `route_handlers::logout`
+- `route_handlers::login` --- login handlers and session-login input types
+- `route_handlers::logout` --- logout handlers
 
 This crate does not provide a convenience prelude and does not re-export Axum.
 Use Axum directly from your own dependency list.
@@ -59,70 +59,15 @@ pub mod session;
 
 /// Pre-built route handlers for login and logout flows.
 ///
+/// Import handler functions and session-login input types from the public
+/// submodules:
+///
 /// ```rust,ignore
-/// use std::sync::Arc;
-///
-/// use axum::{Json, Router, extract::State, routing::post};
-/// use axum_extra::extract::CookieJar;
-/// use webgates::accounts::Account;
-/// use webgates::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
-/// use webgates::cookie_template::CookieTemplate;
-/// use webgates::credentials::Credentials;
-/// use webgates::groups::Group;
-/// use webgates::roles::Role;
-/// use webgates_axum::route_handlers::{login, logout};
-/// use webgates_repositories::memory::account::MemoryAccountRepository;
-/// use webgates_repositories::memory::secret::MemorySecretRepository;
-///
-/// type AppJwtCodec = JsonWebToken<JwtClaims<Account<Role, Group>>>;
-///
-/// #[derive(Clone)]
-/// struct AppState {
-///     account_repo: Arc<MemoryAccountRepository<Role, Group>>,
-///     secret_repo: Arc<MemorySecretRepository>,
-///     jwt_codec: Arc<AppJwtCodec>,
-///     cookie_template: CookieTemplate,
-/// }
-///
-/// async fn login_handler(
-///     State(state): State<AppState>,
-///     cookie_jar: CookieJar,
-///     Json(credentials): Json<Credentials<String>>,
-/// ) -> Result<CookieJar, axum::http::StatusCode> {
-///     let claims = RegisteredClaims::new(
-///         "my-app",
-///         chrono::Utc::now().timestamp() as u64 + 3600,
-///     );
-///
-///     login(
-///         cookie_jar,
-///         credentials,
-///         claims,
-///         Arc::clone(&state.secret_repo),
-///         Arc::clone(&state.account_repo),
-///         Arc::clone(&state.jwt_codec),
-///         state.cookie_template.clone(),
-///     )
-///     .await
-/// }
-///
-/// async fn logout_handler(
-///     State(state): State<AppState>,
-///     cookie_jar: CookieJar,
-/// ) -> CookieJar {
-///     logout(cookie_jar, state.cookie_template.clone()).await
-/// }
-///
-/// let app_state = AppState {
-///     account_repo: Arc::new(MemoryAccountRepository::<Role, Group>::default()),
-///     secret_repo: Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap()),
-///     jwt_codec: Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default()),
-///     cookie_template: CookieTemplate::recommended().name("auth-token"),
-/// };
-///
-/// let _app: Router<AppState> = Router::new()
-///     .route("/login", post(login_handler))
-///     .route("/logout", post(logout_handler))
-///     .with_state(app_state);
+/// use webgates_axum::route_handlers::login::login;
+/// use webgates_axum::route_handlers::login::login_with_sessions;
+/// use webgates_axum::route_handlers::login::SessionLoginRequest;
+/// use webgates_axum::route_handlers::login::SessionLoginDependencies;
+/// use webgates_axum::route_handlers::logout::logout;
+/// use webgates_axum::route_handlers::logout::logout_with_sessions;
 /// ```
 pub mod route_handlers;

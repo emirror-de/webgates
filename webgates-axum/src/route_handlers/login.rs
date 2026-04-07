@@ -1,3 +1,28 @@
+//! Login handlers and required input types for cookie-only and session-backed
+//! authentication flows.
+//!
+//! The two handlers in this module are thin Axum adapters around the
+//! framework-agnostic services in `webgates`. They do not own authentication
+//! logic. Credential verification, account lookup, and token issuance are
+//! delegated to the core crates.
+//!
+//! # Available handlers
+//!
+//! - [`login`] --- cookie-only: verifies credentials, mints a JWT, and writes
+//!   the auth cookie.
+//! - [`login_with_sessions`] --- session-backed: verifies credentials, issues a
+//!   session-backed auth and refresh token pair, and writes both cookies.
+//!
+//! # Session-backed login input types
+//!
+//! Downstream users must be able to name and construct both session-backed input
+//! types:
+//!
+//! - [`SessionLoginRequest`] --- carries credentials, session configuration,
+//!   cookie templates, and the issuance timestamp.
+//! - [`SessionLoginDependencies`] --- carries the credential verifier, account
+//!   repository, session repository, and auth-token issuer.
+
 use webgates::accounts::Account;
 use webgates::authn::{LoginResult, LoginService, SessionLoginResult, SessionLoginService};
 use webgates::authz::AccessHierarchy;

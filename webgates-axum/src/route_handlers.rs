@@ -1,14 +1,28 @@
 //! Axum route handlers for login and logout flows.
 //!
-//! This module exposes direct handler functions for both cookie-only and
-//! session-backed authentication flows:
-//! [`login`], [`login_with_sessions`], [`logout`], and
-//! [`logout_with_sessions`].
+//! This module exposes two public submodules that contain handler functions and
+//! their required input types for both cookie-only and session-backed
+//! authentication flows.
 //!
 //! The handlers are thin Axum adapters around the framework-agnostic services in
 //! `webgates`. They do not implement authentication logic themselves. Credential
 //! verification, account lookup, token creation, session issuance, and logout
 //! semantics remain owned by the core crates.
+//!
+//! # Public API
+//!
+//! - [`login`] --- handlers and input types for cookie-only and session-backed
+//!   login flows:
+//!   - [`login::login`] --- cookie-only login handler
+//!   - [`login::login_with_sessions`] --- session-backed login handler
+//!   - [`login::SessionLoginRequest`] --- input struct for
+//!     [`login::login_with_sessions`]
+//!   - [`login::SessionLoginDependencies`] --- dependency struct for
+//!     [`login::login_with_sessions`]
+//!
+//! - [`logout`] --- handlers for cookie-only and session-backed logout flows:
+//!   - [`logout::logout`] --- cookie-only logout handler
+//!   - [`logout::logout_with_sessions`] --- session-backed logout handler
 //!
 //! # Typical usage
 //!
@@ -26,7 +40,8 @@
 //! use webgates::credentials::Credentials;
 //! use webgates::groups::Group;
 //! use webgates::roles::Role;
-//! use webgates_axum::route_handlers::{login, logout};
+//! use webgates_axum::route_handlers::login::login;
+//! use webgates_axum::route_handlers::logout::logout;
 //! use webgates_repositories::memory::account::MemoryAccountRepository;
 //! use webgates_repositories::memory::secret::MemorySecretRepository;
 //!
@@ -82,22 +97,15 @@
 //!     .with_state(app_state);
 //! ```
 //!
-//! # Public API notes
-//!
-//! - Import handlers via
-//!   `webgates_axum::route_handlers::{login, login_with_sessions, logout, logout_with_sessions}`.
-//! - The module keeps the implementation submodules private and exposes only the
-//!   direct handler functions.
-//! - Use the session-backed variants when you want auth-cookie plus
-//!   refresh-cookie flows coordinated by `webgates::sessions`.
-//!
 //! # Security
 //!
 //! Security-sensitive behavior such as constant-time secret verification,
 //! enumeration resistance, and JWT issuance is provided by the underlying
 //! `webgates` services and repositories. This module is only the HTTP adapter.
-mod login;
-mod logout;
 
-pub use self::login::{login, login_with_sessions};
-pub use self::logout::{logout, logout_with_sessions};
+/// Login handlers and required input types for cookie-only and session-backed
+/// authentication flows.
+pub mod login;
+
+/// Logout handlers for cookie-only and session-backed authentication flows.
+pub mod logout;

@@ -1,3 +1,9 @@
+//! Logout handlers for cookie-only and session-backed authentication flows.
+//!
+//! - [`logout`] --- removes the auth cookie using the supplied cookie template.
+//! - [`logout_with_sessions`] --- revokes the targeted session in the session
+//!   repository and removes both the auth and refresh cookies.
+
 use webgates::authn::{LogoutService, SessionLogoutService};
 use webgates::sessions::logout::{LogoutRequest, LogoutScope};
 use webgates::sessions::repository::SessionRepository;
@@ -20,7 +26,7 @@ use axum_extra::extract::CookieJar;
 ///
 /// # Example
 /// ```rust
-/// use webgates_axum::route_handlers::logout;
+/// use webgates_axum::route_handlers::logout::logout;
 /// use axum_extra::extract::CookieJar;
 /// use webgates::cookie_template::CookieTemplate;
 ///

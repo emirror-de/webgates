@@ -132,7 +132,7 @@ async fn main() {
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar, Json(credentials): Json<Credentials<String>>| {
-                    route_handlers::login::<_, _, _, Role, Group>(
+                    route_handlers::login::login::<_, _, _, Role, Group>(
                         cookie_jar,
                         credentials,
                         registered_claims,
@@ -146,7 +146,7 @@ async fn main() {
         )
         .route(
             "/logout",
-            get(move |cookie_jar| route_handlers::logout(cookie_jar, cookie_template)),
+            get(move |cookie_jar| route_handlers::logout::logout(cookie_jar, cookie_template)),
         )
         .route(
             "/password",
