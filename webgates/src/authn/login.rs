@@ -20,13 +20,17 @@ use crate::verification_result::VerificationResult;
 use webgates_repositories::account_repository::AccountRepository;
 
 use std::sync::Arc;
+#[cfg(feature = "sessions")]
 use std::time::SystemTime;
 
 use subtle::Choice;
 use tracing::{debug, error};
 use uuid::Uuid;
+#[cfg(feature = "sessions")]
 use webgates_sessions::config::SessionConfig;
+#[cfg(feature = "sessions")]
 use webgates_sessions::services::{IssuedSession, SessionIssuer};
+#[cfg(feature = "sessions")]
 use webgates_sessions::tokens::{
     AuthTokenIssuer, OpaqueRefreshTokenGenerator, Sha256RefreshTokenHasher, TokenPairIssuer,
 };
@@ -130,6 +134,7 @@ impl LoginResult {
 /// Result of a session-backed login attempt produced by
 /// [`SessionLoginService::authenticate`].
 #[derive(Debug)]
+#[cfg(feature = "sessions")]
 pub enum SessionLoginResult {
     /// Authentication succeeded and returned an issued session plus client-facing
     /// auth and refresh tokens.
@@ -155,6 +160,7 @@ pub enum SessionLoginResult {
     },
 }
 
+#[cfg(feature = "sessions")]
 impl SessionLoginResult {
     /// Create an invalid credentials result with user-friendly messaging.
     pub fn invalid_credentials(user_message: Option<String>, support_code: Option<String>) -> Self {
@@ -242,20 +248,6 @@ where
     _phantom: std::marker::PhantomData<(R, G)>,
 }
 
-/// Stateless service implementing constant-time, enumeration-resistant
-/// authentication plus session-backed token-pair issuance.
-///
-/// This service preserves the same credential-verification behavior as
-/// [`LoginService`] but issues auth and refresh token pairs through
-/// `webgates-sessions` after successful authentication.
-pub struct SessionLoginService<R, G>
-where
-    R: AccessHierarchy + Eq,
-    G: Eq + Clone,
-{
-    _phantom: std::marker::PhantomData<(R, G)>,
-}
-
 impl<R, G> LoginService<R, G>
 where
     R: AccessHierarchy + Eq,
@@ -271,6 +263,22 @@ where
     }
 }
 
+#[cfg(feature = "sessions")]
+/// Stateless service implementing constant-time, enumeration-resistant
+/// authentication plus session-backed token-pair issuance.
+///
+/// This service preserves the same credential-verification behavior as
+/// [`LoginService`] but issues auth and refresh token pairs through
+/// `webgates-sessions` after successful authentication.
+pub struct SessionLoginService<R, G>
+where
+    R: AccessHierarchy + Eq,
+    G: Eq + Clone,
+{
+    _phantom: std::marker::PhantomData<(R, G)>,
+}
+
+#[cfg(feature = "sessions")]
 impl<R, G> SessionLoginService<R, G>
 where
     R: AccessHierarchy + Eq,
@@ -444,6 +452,7 @@ where
     }
 }
 
+#[cfg(feature = "sessions")]
 impl<R, G> SessionLoginService<R, G>
 where
     R: AccessHierarchy + Eq,
@@ -616,6 +625,7 @@ where
     }
 }
 
+#[cfg(feature = "sessions")]
 impl<R, G> Default for SessionLoginService<R, G>
 where
     R: AccessHierarchy + Eq,

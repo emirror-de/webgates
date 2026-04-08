@@ -93,7 +93,11 @@
 mod login;
 mod logout;
 
-pub use login::{LoginResult, LoginService, SessionLoginResult, SessionLoginService};
-pub use logout::{LogoutService, SessionLogoutService};
+pub use login::{LoginResult, LoginService};
+#[cfg(feature = "sessions")]
+pub use login::{SessionLoginResult, SessionLoginService};
+pub use logout::LogoutService;
+#[cfg(feature = "sessions")]
+pub use logout::SessionLogoutService;
 pub mod errors;
 pub use errors::{AuthenticationError, AuthnError};

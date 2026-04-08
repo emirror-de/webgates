@@ -42,7 +42,7 @@ subtle = { workspace = true }
 surrealdb = { workspace = true, optional = true }
 surrealdb-types = { version = "3", optional = true }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync"] }
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v7", "js"] }
 webgates-core = { path = "../webgates-core" }

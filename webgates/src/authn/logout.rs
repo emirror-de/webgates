@@ -8,6 +8,7 @@ pub struct LogoutService {
 /// This service keeps session revocation in the framework-agnostic core while
 /// transport adapters remain responsible for cookie removal and request-bound
 /// session extraction.
+#[cfg(feature = "sessions")]
 pub struct SessionLogoutService<R> {
     revoker: crate::sessions::services::SessionRevoker<R>,
 }
@@ -31,6 +32,7 @@ impl LogoutService {
     }
 }
 
+#[cfg(feature = "sessions")]
 impl<R> SessionLogoutService<R>
 where
     R: crate::sessions::repository::SessionRepository,
@@ -58,6 +60,7 @@ impl Default for LogoutService {
 }
 
 #[cfg(test)]
+#[cfg(feature = "sessions")]
 mod tests {
     use super::{LogoutService, SessionLogoutService};
     use crate::sessions::logout::{LogoutOutcome, LogoutRequest, LogoutScope};
