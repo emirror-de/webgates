@@ -99,8 +99,11 @@ impl IssuedSession {
 ///
 /// impl AuthTokenIssuer<Session> for NoopIssuer {
 ///     type Error = webgates_sessions::errors::TokenError;
-///     fn issue_auth_token(&self, s: &Session) -> Result<AuthToken, Self::Error> {
-///         AuthToken::new(format!("auth-{}", s.subject_id))
+///     fn issue_auth_token(
+///         &self,
+///         s: &Session,
+///     ) -> impl std::future::Future<Output = Result<AuthToken, Self::Error>> + Send {
+///         std::future::ready(AuthToken::new(format!("auth-{}", s.subject_id)))
 ///     }
 /// }
 ///
@@ -186,7 +189,7 @@ where
             now,
             now + self.config.refresh_token_ttl,
         );
-        let tokens = self.token_pair_issuer.issue_for_subject(&session)?;
+        let tokens = self.token_pair_issuer.issue_for_subject(&session).await?;
 
         self.repository
             .create_session(CreateSession {
@@ -217,8 +220,11 @@ where
 ///
 /// impl AuthTokenIssuer<Session> for NoopIssuer {
 ///     type Error = webgates_sessions::errors::TokenError;
-///     fn issue_auth_token(&self, s: &Session) -> Result<AuthToken, Self::Error> {
-///         AuthToken::new(format!("auth-{}", s.subject_id))
+///     fn issue_auth_token(
+///         &self,
+///         s: &Session,
+///     ) -> impl std::future::Future<Output = Result<AuthToken, Self::Error>> + Send {
+///         std::future::ready(AuthToken::new(format!("auth-{}", s.subject_id)))
 ///     }
 /// }
 ///
@@ -314,8 +320,10 @@ where
             RenewalDecision::AttemptProactiveRenewal | RenewalDecision::RequireRenewal => {}
         }
 
-        let presented_refresh_token_hash =
-            self.token_pair_issuer.hash_refresh_token(refresh_token)?;
+        let presented_refresh_token_hash = self
+            .token_pair_issuer
+            .hash_refresh_token(refresh_token)
+            .await?;
         let lookup = self
             .repository
             .find_session_by_refresh_token_hash(presented_refresh_token_hash.as_str())
@@ -364,7 +372,10 @@ where
         let mut next_session = lookup.session.clone().touched(now);
         next_session.expires_at = now + self.config.refresh_token_ttl;
 
-        let issued = self.token_pair_issuer.issue_for_subject(&next_session)?;
+        let issued = self
+            .token_pair_issuer
+            .issue_for_subject(&next_session)
+            .await?;
         let rotate_outcome = self
             .repository
             .rotate_refresh_token(RotateRefreshToken {
@@ -487,8 +498,9 @@ mod tests {
         fn issue_auth_token(
             &self,
             session: &Session,
-        ) -> std::result::Result<AuthToken, Self::Error> {
-            AuthToken::new(format!("auth-{}", session.subject_id))
+        ) -> impl std::future::Future<Output = std::result::Result<AuthToken, Self::Error>> + Send
+        {
+            std::future::ready(AuthToken::new(format!("auth-{}", session.subject_id)))
         }
     }
 

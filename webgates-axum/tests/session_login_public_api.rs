@@ -108,8 +108,11 @@ struct StubAuthTokenIssuer;
 impl AuthTokenIssuer<Session> for StubAuthTokenIssuer {
     type Error = TokenError;
 
-    fn issue_auth_token(&self, session: &Session) -> Result<AuthToken, Self::Error> {
-        AuthToken::new(format!("stub-{}", session.subject_id))
+    fn issue_auth_token(
+        &self,
+        session: &Session,
+    ) -> impl std::future::Future<Output = Result<AuthToken, Self::Error>> + Send {
+        std::future::ready(AuthToken::new(format!("stub-{}", session.subject_id)))
     }
 }
 

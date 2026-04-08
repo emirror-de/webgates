@@ -230,11 +230,13 @@ impl Default for RefreshTokenLength {
 ///     OpaqueRefreshTokenGenerator, RefreshTokenGenerator, RefreshTokenLength,
 /// };
 ///
+/// # tokio_test::block_on(async {
 /// let length = RefreshTokenLength::new(64).unwrap();
 /// let generator = OpaqueRefreshTokenGenerator::new(length);
-/// let token = generator.generate_refresh_token().unwrap();
+/// let token = generator.generate_refresh_token().await.unwrap();
 ///
 /// assert_eq!(token.as_str().len(), 64);
+/// # });
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OpaqueRefreshTokenGenerator {
@@ -264,14 +266,20 @@ impl Default for OpaqueRefreshTokenGenerator {
 impl RefreshTokenGenerator for OpaqueRefreshTokenGenerator {
     type Error = TokenError;
 
-    fn generate_refresh_token(&self) -> Result<RefreshTokenPlaintext, Self::Error> {
-        let value: String = rng()
-            .sample_iter(&Alphanumeric)
-            .take(self.length.get())
-            .map(char::from)
-            .collect();
+    fn generate_refresh_token(
+        &self,
+    ) -> impl std::future::Future<Output = Result<RefreshTokenPlaintext, Self::Error>> + Send {
+        let length = self.length.get();
 
-        RefreshTokenPlaintext::new(value)
+        async move {
+            let value: String = rng()
+                .sample_iter(&Alphanumeric)
+                .take(length)
+                .map(char::from)
+                .collect();
+
+            RefreshTokenPlaintext::new(value)
+        }
     }
 }
 
@@ -290,13 +298,15 @@ impl RefreshTokenGenerator for OpaqueRefreshTokenGenerator {
 ///     RefreshTokenHasher, RefreshTokenPlaintext, Sha256RefreshTokenHasher,
 /// };
 ///
+/// # tokio_test::block_on(async {
 /// let token = RefreshTokenPlaintext::new("a".repeat(64)).unwrap();
 /// let hasher = Sha256RefreshTokenHasher;
-/// let hash = hasher.hash_refresh_token(&token).unwrap();
+/// let hash = hasher.hash_refresh_token(&token).await.unwrap();
 ///
 /// // The same plaintext always produces the same hash.
-/// let hash2 = hasher.hash_refresh_token(&token).unwrap();
+/// let hash2 = hasher.hash_refresh_token(&token).await.unwrap();
 /// assert_eq!(hash, hash2);
+/// # });
 /// ```
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Sha256RefreshTokenHasher;
@@ -307,17 +317,21 @@ impl RefreshTokenHasher for Sha256RefreshTokenHasher {
     fn hash_refresh_token(
         &self,
         refresh_token: &RefreshTokenPlaintext,
-    ) -> Result<RefreshTokenHash, Self::Error> {
-        let digest = Sha256::digest(refresh_token.as_str().as_bytes());
-        let mut encoded = String::with_capacity(digest.len() * 2);
+    ) -> impl std::future::Future<Output = Result<RefreshTokenHash, Self::Error>> + Send {
+        let bytes = refresh_token.as_str().as_bytes().to_owned();
 
-        for byte in digest {
-            use std::fmt::Write as _;
+        async move {
+            let digest = Sha256::digest(&bytes);
+            let mut encoded = String::with_capacity(digest.len() * 2);
 
-            write!(&mut encoded, "{byte:02x}").map_err(|_| TokenError::HashFailed)?;
+            for byte in digest {
+                use std::fmt::Write as _;
+
+                write!(&mut encoded, "{byte:02x}").map_err(|_| TokenError::HashFailed)?;
+            }
+
+            RefreshTokenHash::new(encoded).map_err(|_| TokenError::HashFailed)
         }
-
-        RefreshTokenHash::new(encoded).map_err(|_| TokenError::HashFailed)
     }
 }
 
@@ -395,25 +409,43 @@ impl IssuedTokenPair {
 }
 
 /// Framework-agnostic abstraction for issuing auth tokens for a session subject.
-pub trait AuthTokenIssuer<Subject> {
+///
+/// Implementations return a `Send` future so callers can compose issuance into
+/// end-to-end async workflows on multi-threaded runtimes. Purely synchronous
+/// implementations may wrap their result in `std::future::ready`.
+pub trait AuthTokenIssuer<Subject>: Send + Sync {
     /// Error type returned when token issuance fails.
     type Error;
 
     /// Issues a new auth token for the provided subject.
-    fn issue_auth_token(&self, subject: &Subject) -> Result<AuthToken, Self::Error>;
+    fn issue_auth_token(
+        &self,
+        subject: &Subject,
+    ) -> impl std::future::Future<Output = Result<AuthToken, Self::Error>> + Send;
 }
 
 /// Framework-agnostic abstraction for generating opaque refresh tokens.
-pub trait RefreshTokenGenerator {
+///
+/// Implementations return a `Send` future so generation can be delegated to an
+/// async-capable entropy or key-derivation backend without blocking the runtime.
+/// Purely synchronous implementations may wrap their result in
+/// `std::future::ready`.
+pub trait RefreshTokenGenerator: Send + Sync {
     /// Error type returned when refresh-token generation fails.
     type Error;
 
     /// Generates a new plaintext refresh token.
-    fn generate_refresh_token(&self) -> Result<RefreshTokenPlaintext, Self::Error>;
+    fn generate_refresh_token(
+        &self,
+    ) -> impl std::future::Future<Output = Result<RefreshTokenPlaintext, Self::Error>> + Send;
 }
 
 /// Framework-agnostic abstraction for hashing refresh tokens before storage.
-pub trait RefreshTokenHasher {
+///
+/// Implementations return a `Send` future so hashing can be offloaded to an
+/// async-capable backend without blocking the runtime. Purely synchronous
+/// implementations may wrap their result in `std::future::ready`.
+pub trait RefreshTokenHasher: Send + Sync {
     /// Error type returned when hashing fails.
     type Error;
 
@@ -421,7 +453,7 @@ pub trait RefreshTokenHasher {
     fn hash_refresh_token(
         &self,
         refresh_token: &RefreshTokenPlaintext,
-    ) -> Result<RefreshTokenHash, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<RefreshTokenHash, Self::Error>> + Send;
 }
 
 /// Auth-token issuer backed by a `webgates-codecs` payload codec.
@@ -454,8 +486,10 @@ pub trait RefreshTokenHasher {
 ///     )
 /// });
 ///
-/// let token = issuer.issue_auth_token(&String::from("user-42")).unwrap();
+/// # tokio_test::block_on(async {
+/// let token = issuer.issue_auth_token(&String::from("user-42")).await.unwrap();
 /// assert!(!token.as_str().is_empty());
+/// # });
 /// ```
 #[derive(Clone)]
 pub struct CodecAuthTokenIssuer<C, F> {
@@ -476,20 +510,28 @@ impl<C, F> CodecAuthTokenIssuer<C, F> {
 
 impl<Subject, Claims, C, F> AuthTokenIssuer<Subject> for CodecAuthTokenIssuer<C, F>
 where
-    C: Codec<Payload = Claims>,
-    F: Fn(&Subject) -> Claims,
+    C: Codec<Payload = Claims> + Send + Sync,
+    F: Fn(&Subject) -> Claims + Send + Sync,
+    Subject: Send + Sync,
+    Claims: Send + Sync,
 {
     type Error = TokenError;
 
-    fn issue_auth_token(&self, subject: &Subject) -> Result<AuthToken, Self::Error> {
+    fn issue_auth_token(
+        &self,
+        subject: &Subject,
+    ) -> impl std::future::Future<Output = Result<AuthToken, Self::Error>> + Send {
         let claims = (self.claims_factory)(subject);
-        let encoded = self
+        let result = self
             .codec
             .encode(&claims)
-            .map_err(|_| TokenError::AuthIssuanceFailed)?;
-        let token = String::from_utf8(encoded).map_err(|_| TokenError::AuthIssuanceFailed)?;
+            .map_err(|_| TokenError::AuthIssuanceFailed)
+            .and_then(|encoded| {
+                String::from_utf8(encoded).map_err(|_| TokenError::AuthIssuanceFailed)
+            })
+            .and_then(|token| AuthToken::new(token).map_err(|_| TokenError::AuthIssuanceFailed));
 
-        AuthToken::new(token).map_err(|_| TokenError::AuthIssuanceFailed)
+        std::future::ready(result)
     }
 }
 
@@ -512,11 +554,15 @@ where
 /// impl AuthTokenIssuer<String> for PrefixAuthTokenIssuer {
 ///     type Error = webgates_sessions::errors::TokenError;
 ///
-///     fn issue_auth_token(&self, subject: &String) -> Result<AuthToken, Self::Error> {
-///         AuthToken::new(format!("auth-{subject}"))
+///     fn issue_auth_token(
+///         &self,
+///         subject: &String,
+///     ) -> impl std::future::Future<Output = Result<AuthToken, Self::Error>> + Send {
+///         std::future::ready(AuthToken::new(format!("auth-{subject}")))
 ///     }
 /// }
 ///
+/// # tokio_test::block_on(async {
 /// let length = RefreshTokenLength::new(64).unwrap();
 /// let issuer = TokenPairIssuer::new(
 ///     PrefixAuthTokenIssuer,
@@ -525,9 +571,10 @@ where
 /// );
 ///
 /// let subject = String::from("user-42");
-/// let issued = issuer.issue_for_subject(&subject).unwrap();
+/// let issued = issuer.issue_for_subject(&subject).await.unwrap();
 /// assert_eq!(issued.token_pair.auth_token.as_str(), "auth-user-42");
 /// assert_eq!(issued.token_pair.refresh_token.as_str().len(), 64);
+/// # });
 /// ```
 #[derive(Debug, Clone)]
 pub struct TokenPairIssuer<A, G, H> {
@@ -555,7 +602,7 @@ impl<A, G, H> TokenPairIssuer<A, G, H> {
     ///
     /// Returns [`TokenError::HashFailed`] when the configured refresh-token
     /// hasher cannot produce a persisted fingerprint.
-    pub fn hash_refresh_token(
+    pub async fn hash_refresh_token(
         &self,
         refresh_token: &RefreshTokenPlaintext,
     ) -> Result<RefreshTokenHash, TokenError>
@@ -564,6 +611,7 @@ impl<A, G, H> TokenPairIssuer<A, G, H> {
     {
         self.refresh_token_hasher
             .hash_refresh_token(refresh_token)
+            .await
             .map_err(|_| TokenError::HashFailed)
     }
 
@@ -574,7 +622,7 @@ impl<A, G, H> TokenPairIssuer<A, G, H> {
     /// Returns [`TokenError::AuthIssuanceFailed`],
     /// [`TokenError::GenerationFailed`], or [`TokenError::HashFailed`] when one
     /// of the underlying issuance steps fails.
-    pub fn issue_for_subject<Subject>(
+    pub async fn issue_for_subject<Subject>(
         &self,
         subject: &Subject,
     ) -> Result<IssuedSessionTokens, TokenError>
@@ -586,12 +634,14 @@ impl<A, G, H> TokenPairIssuer<A, G, H> {
         let auth_token = self
             .auth_token_issuer
             .issue_auth_token(subject)
+            .await
             .map_err(|_| TokenError::AuthIssuanceFailed)?;
         let refresh_token = self
             .refresh_token_generator
             .generate_refresh_token()
+            .await
             .map_err(|_| TokenError::GenerationFailed)?;
-        let refresh_token_hash = self.hash_refresh_token(&refresh_token)?;
+        let refresh_token_hash = self.hash_refresh_token(&refresh_token).await?;
 
         Ok(IssuedSessionTokens::new(
             IssuedTokenPair::new(auth_token, refresh_token),
@@ -618,8 +668,11 @@ mod tests {
     impl AuthTokenIssuer<String> for StaticAuthTokenIssuer {
         type Error = TokenError;
 
-        fn issue_auth_token(&self, subject: &String) -> Result<AuthToken, Self::Error> {
-            AuthToken::new(format!("auth-{subject}"))
+        fn issue_auth_token(
+            &self,
+            subject: &String,
+        ) -> impl std::future::Future<Output = Result<AuthToken, Self::Error>> + Send {
+            std::future::ready(AuthToken::new(format!("auth-{subject}")))
         }
     }
 
@@ -629,8 +682,11 @@ mod tests {
     impl RefreshTokenGenerator for StaticRefreshTokenGenerator {
         type Error = TokenError;
 
-        fn generate_refresh_token(&self) -> Result<RefreshTokenPlaintext, Self::Error> {
-            RefreshTokenPlaintext::new("fixed-refresh-token")
+        fn generate_refresh_token(
+            &self,
+        ) -> impl std::future::Future<Output = Result<RefreshTokenPlaintext, Self::Error>> + Send
+        {
+            std::future::ready(RefreshTokenPlaintext::new("fixed-refresh-token"))
         }
     }
 
@@ -691,14 +747,14 @@ mod tests {
         assert_eq!(pair.refresh_token, refresh_token);
     }
 
-    #[test]
-    fn opaque_refresh_token_generator_uses_requested_length() {
+    #[tokio::test]
+    async fn opaque_refresh_token_generator_uses_requested_length() {
         let length = match RefreshTokenLength::new(48) {
             Ok(length) => length,
             Err(error) => panic!("expected valid refresh token length: {error}"),
         };
         let generator = OpaqueRefreshTokenGenerator::new(length);
-        let token = match generator.generate_refresh_token() {
+        let token = match generator.generate_refresh_token().await {
             Ok(token) => token,
             Err(error) => panic!("expected generated refresh token: {error}"),
         };
@@ -706,19 +762,19 @@ mod tests {
         assert_eq!(token.as_str().len(), 48);
     }
 
-    #[test]
-    fn sha256_refresh_token_hasher_is_deterministic() {
+    #[tokio::test]
+    async fn sha256_refresh_token_hasher_is_deterministic() {
         let token = match RefreshTokenPlaintext::new("repeatable-refresh-token") {
             Ok(token) => token,
             Err(error) => panic!("expected valid refresh token: {error}"),
         };
         let hasher = Sha256RefreshTokenHasher;
 
-        let first_hash = match hasher.hash_refresh_token(&token) {
+        let first_hash = match hasher.hash_refresh_token(&token).await {
             Ok(hash) => hash,
             Err(error) => panic!("expected successful hash: {error}"),
         };
-        let second_hash = match hasher.hash_refresh_token(&token) {
+        let second_hash = match hasher.hash_refresh_token(&token).await {
             Ok(hash) => hash,
             Err(error) => panic!("expected successful hash: {error}"),
         };
@@ -726,8 +782,8 @@ mod tests {
         assert_eq!(first_hash, second_hash);
     }
 
-    #[test]
-    fn codec_auth_token_issuer_encodes_claims_with_codec() {
+    #[tokio::test]
+    async fn codec_auth_token_issuer_encodes_claims_with_codec() {
         let _ = jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER.install_default();
         let codec = JsonWebToken::<JwtClaims<TestClaims>>::default();
         let issuer = CodecAuthTokenIssuer::new(codec.clone(), |subject: &String| {
@@ -740,7 +796,7 @@ mod tests {
         });
         let subject = String::from("session-123");
 
-        let token = match issuer.issue_auth_token(&subject) {
+        let token = match issuer.issue_auth_token(&subject).await {
             Ok(token) => token,
             Err(error) => panic!("expected successful auth-token issuance: {error}"),
         };
@@ -752,8 +808,8 @@ mod tests {
         assert_eq!(decoded.custom_claims.session_id, subject);
     }
 
-    #[test]
-    fn token_pair_issuer_returns_tokens_and_hash() {
+    #[tokio::test]
+    async fn token_pair_issuer_returns_tokens_and_hash() {
         let issuer = TokenPairIssuer::new(
             StaticAuthTokenIssuer,
             StaticRefreshTokenGenerator,
@@ -761,15 +817,17 @@ mod tests {
         );
         let subject = String::from("subject-123");
 
-        let issued = match issuer.issue_for_subject(&subject) {
+        let issued = match issuer.issue_for_subject(&subject).await {
             Ok(issued) => issued,
             Err(error) => panic!("expected successful token-pair issuance: {error}"),
         };
-        let expected_hash =
-            match Sha256RefreshTokenHasher.hash_refresh_token(&issued.token_pair.refresh_token) {
-                Ok(hash) => hash,
-                Err(error) => panic!("expected successful hash calculation: {error}"),
-            };
+        let expected_hash = match Sha256RefreshTokenHasher
+            .hash_refresh_token(&issued.token_pair.refresh_token)
+            .await
+        {
+            Ok(hash) => hash,
+            Err(error) => panic!("expected successful hash calculation: {error}"),
+        };
 
         assert_eq!(issued.token_pair.auth_token.as_str(), "auth-subject-123");
         assert_eq!(issued.refresh_token_hash, expected_hash);

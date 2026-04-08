@@ -387,8 +387,9 @@ mod tests {
         fn issue_auth_token(
             &self,
             session: &Session,
-        ) -> std::result::Result<AuthToken, Self::Error> {
-            AuthToken::new(format!("auth-{}", session.subject_id))
+        ) -> impl std::future::Future<Output = std::result::Result<AuthToken, Self::Error>> + Send
+        {
+            std::future::ready(AuthToken::new(format!("auth-{}", session.subject_id)))
         }
     }
 

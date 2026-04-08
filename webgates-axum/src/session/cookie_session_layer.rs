@@ -88,7 +88,10 @@ use super::cookie_session_service::CookieSessionService;
 /// impl AuthTokenIssuer<Session> for AppCodec {
 ///     type Error = TokenError;
 ///
-///     fn issue_auth_token(&self, session: &Session) -> Result<AuthToken, TokenError> {
+///     fn issue_auth_token(
+///         &self,
+///         session: &Session,
+///     ) -> impl std::future::Future<Output = Result<AuthToken, TokenError>> + Send {
 ///         let account = Account::<Role, Group>::new(&session.subject_id);
 ///         // Set a 15-minute expiry; replace with your own claims builder.
 ///         let exp = std::time::SystemTime::now()
@@ -97,13 +100,15 @@ use super::cookie_session_service::CookieSessionService;
 ///             .as_secs()
 ///             + 900;
 ///         let claims = JwtClaims::new(account, RegisteredClaims::new("my-app", exp));
-///         let encoded = self
+///         let result = self
 ///             .jwt
 ///             .encode(&claims)
-///             .map_err(|_| TokenError::AuthIssuanceFailed)?;
-///         let token =
-///             String::from_utf8(encoded).map_err(|_| TokenError::AuthIssuanceFailed)?;
-///         AuthToken::new(token)
+///             .map_err(|_| TokenError::AuthIssuanceFailed)
+///             .and_then(|encoded| {
+///                 String::from_utf8(encoded).map_err(|_| TokenError::AuthIssuanceFailed)
+///             })
+///             .and_then(AuthToken::new);
+///         std::future::ready(result)
 ///     }
 /// }
 ///

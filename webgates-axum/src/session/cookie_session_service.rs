@@ -552,7 +552,7 @@ mod tests {
         fn issue_auth_token(
             &self,
             session: &webgates::sessions::session::Session,
-        ) -> Result<AuthToken, Self::Error> {
+        ) -> impl std::future::Future<Output = Result<AuthToken, Self::Error>> + Send {
             let mut account = Account::new(&session.subject_id);
             account.groups = vec![Group::new("staff")];
             let claims = JwtClaims::new(
@@ -562,13 +562,17 @@ mod tests {
                     unix_seconds(SystemTime::now() + Duration::from_secs(900)),
                 ),
             );
-            let encoded = self
+            let result = self
                 .jwt
                 .encode(&claims)
-                .map_err(|_| webgates::sessions::errors::TokenError::AuthIssuanceFailed)?;
-            let token = String::from_utf8(encoded)
-                .map_err(|_| webgates::sessions::errors::TokenError::AuthIssuanceFailed)?;
-            AuthToken::new(token)
+                .map_err(|_| webgates::sessions::errors::TokenError::AuthIssuanceFailed)
+                .and_then(|encoded| {
+                    String::from_utf8(encoded)
+                        .map_err(|_| webgates::sessions::errors::TokenError::AuthIssuanceFailed)
+                })
+                .and_then(AuthToken::new);
+
+            std::future::ready(result)
         }
     }
 
