@@ -55,15 +55,20 @@ FEATURE_MATRIX = {
         "minimal_combinations": [""]
     },
     "webgates-axum": {
-        "features": {"default": []},
+        "features": {
+            "default": [],
+            "audit-logging": ["webgates/audit-logging"],
+            "prometheus": ["audit-logging", "dep:prometheus", "webgates/prometheus"],
+        },
         "minimal_combinations": ["", "--all-features"]
     },
     "webgates-repositories": {
         "features": {
             "default": [],
-            "audit-logging": ["dep:tracing"],
-            "surrealdb": ["dep:surrealdb"],
-            "sea-orm": ["dep:sea-orm"]
+            "audit-logging": [],
+            "sessions": ["dep:webgates-sessions"],
+            "surrealdb": ["dep:serde_json", "dep:surrealdb", "dep:surrealdb-types"],
+            "sea-orm": ["dep:sea-orm", "dep:sea-query", "dep:serde_json"]
         },
         "minimal_combinations": [
             "",

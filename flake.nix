@@ -190,6 +190,10 @@
               # Build tools
               pkg-config
 
+              # Python tooling for repository scripts
+              python3
+              python3Packages.toml
+
               # Nix tools
               nil
               nixfmt

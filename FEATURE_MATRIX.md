@@ -55,6 +55,8 @@ This matrix serves as the authoritative source for:
 
 **Features:**
 - `default = []`
+- `audit-logging = ["webgates/audit-logging"]`
+- `prometheus = ["audit-logging", "dep:prometheus", "webgates/prometheus"]`
 
 **Minimal combinations that must compile:**
 - (default only)
@@ -64,9 +66,10 @@ This matrix serves as the authoritative source for:
 
 **Features:**
 - `default = []`
-- `audit-logging = ["dep:tracing"]`
-- `surrealdb = ["dep:surrealdb"]`
-- `sea-orm = ["dep:sea-orm"]`
+- `audit-logging = []`
+- `sessions = ["dep:webgates-sessions"]`
+- `surrealdb = ["dep:serde_json", "dep:surrealdb", "dep:surrealdb-types"]`
+- `sea-orm = ["dep:sea-orm", "dep:sea-query", "dep:serde_json"]`
 
 **Minimal combinations that must compile:**
 - (default only)

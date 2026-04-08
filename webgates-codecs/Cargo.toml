@@ -13,6 +13,9 @@ documentation = "https://docs.rs/webgates-codecs"
 keywords = ["auth", "jwt", "codec"]
 categories = ["authentication"]
 
+[features]
+default = []
+
 [dependencies]
 chrono = { workspace = true }
 jsonwebtoken = { workspace = true }
