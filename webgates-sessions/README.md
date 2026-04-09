@@ -70,7 +70,7 @@ Or use it through the user-facing `webgates` composition crate:
 webgates = { version = "0.1", default-features = false, features = ["authn", "codecs", "repositories", "secrets", "sessions"] }
 ```
 
-MSRV: 1.88
+MSRV: 1.91
 
 ## Typical responsibilities
 

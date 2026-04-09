@@ -2,7 +2,7 @@
 name = "webgates"
 version = "0.1.0-dev"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.91"
 license = "MIT"
 authors = ["Lewin Probst <info@emirror.de>"]
 description = "Core domain models and services for webgates authentication and authorization."

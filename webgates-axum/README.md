@@ -35,7 +35,7 @@ webgates = { version = "0.1", default-features = false, features = ["authn", "co
 webgates-axum = "0.1"
 ```
 
-MSRV: 1.88
+MSRV: 1.91
 
 ## Public API
 

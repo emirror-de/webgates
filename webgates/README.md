@@ -52,7 +52,7 @@ Custom setup with only selected capabilities:
 webgates = { version = "0.1", default-features = false, features = ["codecs", "cookies", "authn"] }
 ```
 
-Minimum supported Rust version: 1.88.
+Minimum supported Rust version: 1.91.
 
 ## Core concepts
 

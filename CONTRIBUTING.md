@@ -8,7 +8,7 @@ Thanks for your interest in contributing! This guide helps you get started and u
    ```bash
    git clone https://github.com/emirror-de/webgates.git
    cd webgates
-   nix develop  # or install Rust 1.88+ directly
+    nix develop  # or install Rust 1.91+ directly
    ```
 
 2. **Fast local validation** (recommended before pushing):
@@ -48,7 +48,7 @@ Our CI is designed with a **fast feedback loop** for contributors while maintain
 
 ### MSRV check (`msrv`)
 - **Purpose**: Verifies support for minimum supported Rust version
-- **What it checks**: Compilation on Rust 1.88
+ - **What it checks**: Compilation on Rust 1.91
 - **When it runs**: In parallel with other validation
 - **Why important**: Maintains backward compatibility promise
 
@@ -73,7 +73,7 @@ Our CI is designed with a **fast feedback loop** for contributors while maintain
 ## Development guidelines
 
 - Run the full test suite locally: `cargo test --workspace`.
-- Use stable Rust matching the project's MSRV (1.88).
+ - Use stable Rust matching the project's MSRV (1.91).
 - Keep changes small and focused; prefer clear commit messages describing the why.
 - If your change adds public API, include or update docs and examples.
 - For CI checks, ensure `cargo fmt` and `cargo clippy` pass locally where applicable.
@@ -100,7 +100,7 @@ When adding or changing features:
 - **Clippy errors**: Run `cargo clippy --workspace --all-targets -- -D warnings`
 - **Test failures**: Run `cargo test --workspace` and fix failing tests
 - **Feature gating issues**: Test minimal combinations like `cargo test -p webgates --no-default-features --features codecs`
-- **MSRV issues**: Avoid language features newer than Rust 1.88
+- **MSRV issues**: Avoid language features newer than Rust 1.91
 
 If you have questions or need help picking tasks, open an issue and tag it `good first issue` or `help wanted`.
 

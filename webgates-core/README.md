@@ -32,7 +32,7 @@ Add to your `Cargo.toml`:
 webgates-core = "0.1"
 ```
 
-Minimum supported Rust version: 1.88
+Minimum supported Rust version: 1.91
 
 ## Core concepts
 

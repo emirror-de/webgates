@@ -105,7 +105,7 @@ JWT operations use the `rust_crypto` backend where applicable (see crate documen
 
 ## MSRV and license
 
-- MSRV: 1.88
+- MSRV: 1.91
 - License: MIT
 
 SurrealDB (BUSL-1.1) notice:

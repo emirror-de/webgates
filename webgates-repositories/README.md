@@ -26,7 +26,7 @@ webgates-repositories = { version = "0.1", features = ["sea-orm"] }
 webgates-repositories = { version = "0.1", features = ["surrealdb"] }
 ```
 
-MSRV: 1.88
+MSRV: 1.91
 
 ## Canonical public API
 

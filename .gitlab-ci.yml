@@ -251,7 +251,7 @@ examples_surrealdb:
 
 # Build verification for different Rust versions
 test_msrv:
-    image: rust:1.88
+    image: rust:1.91
     stage: test
     script:
         - rustc --version

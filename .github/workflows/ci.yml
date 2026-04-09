@@ -148,14 +148,14 @@ jobs:
 
     # MSRV check
     msrv:
-        name: MSRV check (1.88)
+        name: MSRV check (1.91)
         needs: [fast-pr-check]
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
               uses: actions/checkout@v4
-            - name: Install Rust (1.88)
-              uses: dtolnay/rust-toolchain@1.88.0
+            - name: Install Rust (1.91)
+              uses: dtolnay/rust-toolchain@1.91.0
             - name: Cache cargo/target
               uses: actions/cache@v4
               with:

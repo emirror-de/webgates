@@ -2,7 +2,7 @@
 name = "webgates-axum"
 version = "0.1.0-dev"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.91"
 license = "MIT"
 authors = ["Lewin Probst <info@emirror.de>"]
 description = "Axum integration layer for the webgates authentication and authorization core."
