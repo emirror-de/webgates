@@ -232,17 +232,17 @@ impl UserFriendlyError for Error {
 
 #[cfg(test)]
 mod tests {
-    use crate::errors::{
-        AuthenticationError, AuthnError, AuthzError, CodecOperation, Error, ErrorSeverity,
-        HashingOperation, JwtOperation, UserFriendlyError,
-    };
+    use crate::errors::{AuthzError, CodecOperation, Error, ErrorSeverity, JwtOperation, UserFriendlyError};
+    #[cfg(feature = "authn")]
+    use crate::errors::{AuthenticationError, AuthnError};
+    #[cfg(feature = "secrets")]
+    use crate::errors::HashingOperation;
 
     #[test]
     fn authz_error_permission_collision() {
         let permissions = vec!["read:file".to_string(), "write:file".to_string()];
         let error = Error::Authz(AuthzError::collision(123u64, permissions.clone()));
 
-        // Test error structure
         match &error {
             Error::Authz(AuthzError::PermissionCollision {
                 collision_count,
@@ -256,7 +256,6 @@ mod tests {
             _ => panic!("Expected PermissionCollision variant"),
         }
 
-        // Test user-friendly messages
         assert!(error.user_message().contains("technical issue"));
         assert!(error.developer_message().contains("Permission collision"));
         assert!(error.support_code().starts_with("AUTHZ-PERM-COLLISION-"));
@@ -264,6 +263,7 @@ mod tests {
         assert!(!error.suggested_actions().is_empty());
     }
 
+    #[cfg(feature = "authn")]
     #[test]
     fn authn_error_authentication() {
         let auth_error = AuthenticationError::InvalidCredentials;
@@ -272,7 +272,6 @@ mod tests {
             Some("test context".to_string()),
         ));
 
-        // Test error structure
         match &error {
             Error::Authn(AuthnError::Authentication { error, context }) => {
                 matches!(error, AuthenticationError::InvalidCredentials);
@@ -281,7 +280,6 @@ mod tests {
             _ => panic!("Expected Authn::Authentication variant"),
         }
 
-        // Test user-friendly messages
         assert!(error.user_message().contains("username or password"));
         assert!(error.developer_message().contains("Invalid credentials"));
         assert_eq!(error.severity(), ErrorSeverity::Warning);
@@ -289,7 +287,7 @@ mod tests {
             error
                 .suggested_actions()
                 .iter()
-                .any(|action| action.contains("username") || action.contains("password"))
+                .any(|action: &String| action.contains("username") || action.contains("password"))
         );
     }
 
@@ -297,6 +295,7 @@ mod tests {
     fn operation_display() {
         assert_eq!(format!("{}", JwtOperation::Encode), "encode");
         assert_eq!(format!("{}", CodecOperation::Decode), "decode");
+        #[cfg(feature = "secrets")]
         assert_eq!(format!("{}", HashingOperation::Verify), "verify");
     }
 
@@ -305,12 +304,12 @@ mod tests {
         let authz_error = Error::Authz(AuthzError::collision(123, vec!["test".to_string()]));
         assert_eq!(authz_error.severity(), ErrorSeverity::Critical);
 
-        // Test that all severity levels work
         assert_ne!(ErrorSeverity::Critical, ErrorSeverity::Error);
         assert_ne!(ErrorSeverity::Error, ErrorSeverity::Warning);
         assert_ne!(ErrorSeverity::Warning, ErrorSeverity::Info);
     }
 
+    #[cfg(feature = "authn")]
     #[test]
     fn error_support_codes_are_unique() {
         let authz_error = Error::Authz(AuthzError::collision(123, vec!["test".to_string()]));
@@ -321,12 +320,13 @@ mod tests {
         assert!(authn_error.support_code().starts_with("AUTHN-"));
     }
 
+    #[cfg(feature = "authn")]
     #[test]
     fn error_suggested_actions() {
         let error = Error::Authn(AuthnError::invalid_credentials(None));
         let actions = error.suggested_actions();
         assert!(!actions.is_empty());
-        assert!(actions.iter().any(|action| action.contains("username")
+        assert!(actions.iter().any(|action: &String| action.contains("username")
             || action.contains("password")
             || action.contains("check")));
     }

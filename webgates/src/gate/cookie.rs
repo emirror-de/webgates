@@ -25,7 +25,7 @@ that want to perform cookie/JWT evaluation in a custom place (for example, in
 a bespoke middleware pipeline) while keeping the gate configuration in the
 core crate.
 
-```rust
+```rust,no_run
 use std::sync::Arc;
 
 // Local crate types used by the gate
@@ -79,7 +79,8 @@ fn example_usage() {
     match result {
         CookieEvaluation::Authorized { account, registered_claims } => {
             // AuthN + AuthZ succeeded — proceed with `account` context
-            tracing::info!("authorized account {}", account.account_id);
+            // Real middleware: log with tracing::info!("authorized account {}", account.account_id)
+            let _ = &account.account_id;
             let _exp = registered_claims.expiration_time; // example usage
         }
         CookieEvaluation::OptionalAuthorized { account, registered_claims } => {
@@ -97,7 +98,8 @@ fn example_usage() {
         }
         CookieEvaluation::PolicyDenied { account_id } => {
             // AuthN succeeded but AuthZ failed -> return 403
-            tracing::warn!("authorization denied for account {}", account_id);
+            // Real middleware: log with tracing::warn!("authorization denied for account {}", account_id)
+            let _ = account_id;
         }
         CookieEvaluation::DenyAllPolicy => {
             // Gate configured to deny all access

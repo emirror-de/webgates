@@ -16,7 +16,7 @@
 //! - a minimal `TokenExchanger` implementation sketch that could be used by a
 //!   runtime during callback evaluation.
 //!
-//! ```rust
+//! ```rust,no_run
 //! use std::sync::Arc;
 //! use std::future::Future;
 //! use std::pin::Pin;
@@ -62,7 +62,8 @@
 //!         Ok(rt) => rt,
 //!         Err(e) => {
 //!             // handle misconfiguration
-//!             tracing::error!(error = %e, "oauth2 gate misconfigured");
+//!             // Real middleware: log with tracing::error!(error = %e, "oauth2 gate misconfigured")
+//!             let _ = e;
 //!             return;
 //!         }
 //!     };
@@ -71,7 +72,8 @@
 //!     let login = match runtime.prepare_login() {
 //!         Ok(p) => p,
 //!         Err(e) => {
-//!             tracing::error!(error = %e, "prepare_login failed");
+//!             // Real middleware: log with tracing::error!(error = %e, "prepare_login failed")
+//!             let _ = e;
 //!             return;
 //!         }
 //!     };
