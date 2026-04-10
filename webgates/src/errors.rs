@@ -232,11 +232,13 @@ impl UserFriendlyError for Error {
 
 #[cfg(test)]
 mod tests {
-    use crate::errors::{AuthzError, CodecOperation, Error, ErrorSeverity, JwtOperation, UserFriendlyError};
-    #[cfg(feature = "authn")]
-    use crate::errors::{AuthenticationError, AuthnError};
     #[cfg(feature = "secrets")]
     use crate::errors::HashingOperation;
+    #[cfg(feature = "authn")]
+    use crate::errors::{AuthenticationError, AuthnError};
+    use crate::errors::{
+        AuthzError, CodecOperation, Error, ErrorSeverity, JwtOperation, UserFriendlyError,
+    };
 
     #[test]
     fn authz_error_permission_collision() {
@@ -326,8 +328,12 @@ mod tests {
         let error = Error::Authn(AuthnError::invalid_credentials(None));
         let actions = error.suggested_actions();
         assert!(!actions.is_empty());
-        assert!(actions.iter().any(|action: &String| action.contains("username")
-            || action.contains("password")
-            || action.contains("check")));
+        assert!(
+            actions
+                .iter()
+                .any(|action: &String| action.contains("username")
+                    || action.contains("password")
+                    || action.contains("check"))
+        );
     }
 }
