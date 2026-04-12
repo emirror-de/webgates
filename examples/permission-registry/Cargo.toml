@@ -3,6 +3,8 @@ name = "permission-registry-example"
 version = "0.1.0"
 edition = "2024"
 description = "Example demonstrating the optional permission mapping registry pattern"
+license = "MIT"
+publish = false
 
 [dependencies]
 anyhow = "1"
