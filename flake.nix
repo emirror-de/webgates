@@ -215,6 +215,7 @@
             ]
             ++ lib.optionals (!pkgs.stdenv.isDarwin) [
               cargo-llvm-cov
+              cargo-tarpaulin
             ];
 
           # Environment variables
