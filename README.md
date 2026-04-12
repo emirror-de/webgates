@@ -9,9 +9,13 @@ Flexible, type-safe authentication and authorization primitives and integrations
 
 This repository is a workspace split into focused crates:
 
-- `webgates` — core domain models and services (JWT codecs, permissions, roles, domain types).
-- `webgates-axum` — Axum integration layer (extractors, middleware, route handlers for login/logout, OAuth2 flows).
-- `webgates-repositories` — repository implementations (in-memory, SeaORM, SurrealDB backends, password hashing helpers).
+- `webgates` — user-facing composition crate that bundles core domain models and optional services (JWT codecs, permissions, roles, cookies, sessions, OAuth2).
+- `webgates-axum` — Axum integration layer (extractors, middleware, route handlers for login/logout and session-backed auth, OAuth2 flows).
+- `webgates-repositories` — repository implementations (in-memory, SeaORM, SurrealDB backends) and session repository backends.
+- `webgates-sessions` — framework-agnostic session lifecycle, refresh-token rotation, and renewal primitives.
+- `webgates-secrets` — secret value and hashing primitives (Argon2).
+- `webgates-codecs` — JWT codec implementation.
+- `webgates-core` — foundational domain types and authorization primitives with no HTTP or runtime dependencies.
 
 Feature highlights (available across the workspace):
 - Cookie and bearer authentication
@@ -29,10 +33,10 @@ Note on feature defaults:
 
 Pick only the crates and features you need. Crates are split by concern so that runtime and HTTP dependencies are opt-in.
 
-Core-only (domain types, no server/runtime dependencies):
+Core-only (domain types, no HTTP dependencies):
 ```toml
 [dependencies]
-webgates = "0.1"
+webgates = { version = "0.1", default-features = false }
 ```
 
 Axum integration (recommended when you need middleware and route handlers):
@@ -41,13 +45,18 @@ Axum integration (recommended when you need middleware and route handlers):
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
+webgates = "0.1"
 webgates-axum = "0.1"
 ```
 
-Server-enabled core (if you want `Gate` and the JWT codec from the core crate directly):
+Session-backed authentication (short-lived JWTs + refresh-token rotation):
 ```toml
 [dependencies]
-webgates = { version = "0.1", features = ["codecs", "cookies"] }
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+webgates = { version = "0.1", default-features = false, features = ["authn", "codecs", "cookies", "repositories", "secrets", "sessions"] }
+webgates-axum = "0.1"
+webgates-repositories = { version = "0.1", features = ["sessions"] }
 ```
 
 Repository/backends and optional features:
@@ -57,7 +66,6 @@ Repository/backends and optional features:
 Common optional features across the workspace (examples):
 - `audit-logging` — structured audit events (`tracing`) (opt-in)
 - `prometheus` — Prometheus metrics (opt-in; depends on `audit-logging`)
-- `insecure-fast-hash` — development-only faster Argon2 preset (intended only for tests/dev)
 
 Note: Feature names and exact crate versions are listed in each crate's `Cargo.toml` and in the crate docs on docs.rs.
 
@@ -123,17 +131,8 @@ For more details, examples, and API references, see the crate documentation and 
 
 Quick notes for contributors and local development:
 
-- The workspace contains multiple crates: `webgates`, `webgates-axum`, and `webgates-repositories`.
+- The workspace contains multiple crates: `webgates`, `webgates-axum`, `webgates-repositories`, `webgates-sessions`, `webgates-secrets`, `webgates-codecs`, and `webgates-core`.
 - Run the test suite for all crates with `cargo test --workspace`.
-- Example applications live under the `examples/` directory and demonstrate common setups (OAuth2, Prometheus, SurrealDB).
+- Example applications live under the `examples/` directory and demonstrate common setups (OAuth2, Prometheus, distributed systems, permissions).
 - Crates intentionally ship without default features; enable only the features you need during development to keep dependency scope small.
-
-## Roadmap / Tasks
-
-This repository tracks small, focused tasks by short identifiers. "i01" is the next task to work on and represents the initial improvements to the developer experience and project docs. Planned steps for i01:
-
-1. Improve top-level documentation and add contributor/development notes (this change).
-2. Add a basic contributing guide and checklist for CI / local setup.
-3. Start a small developer-facing example that exercises the common Axum setup.
-
-If you'd like a different scope for i01, tell me which step to prioritise next.
+- See `CONTRIBUTING.md` for detailed contributor setup, CI workflow, and local validation commands.

@@ -43,16 +43,16 @@ Accounts represent users with roles, groups, and individual permissions:
 ```rust
 use webgates_core::prelude::*;
 
-// Create an account with the default role (User) and no groups
-let account = Account::<Role, Group>::new("user123".to_string());
+// Create an account (default role is applied automatically)
+let account = Account::<Role, Group>::new("user123");
 
-// Add roles and groups
-let account = account
+// Create an account with explicit roles and groups
+let account = Account::<Role, Group>::new("user123")
     .with_roles(vec![Role::Admin])
     .with_groups(vec![Group::new("developers".to_string())]);
 
 // Grant individual permissions
-let mut account = account;
+let mut account = Account::<Role, Group>::new("user123");
 account.grant_permission("api:read");
 assert!(account.has_permission(&PermissionId::from("api:read")));
 ```
@@ -65,7 +65,10 @@ Define access requirements declaratively:
 use webgates_core::authz::AccessPolicy;
 use webgates_core::prelude::*;
 
-// Require admin role or higher in hierarchy
+// Require admin role exactly
+let policy = AccessPolicy::require_role(Role::Admin);
+
+// Require admin role or any role that supervises it in the hierarchy
 let policy = AccessPolicy::require_role_or_supervisor(Role::Admin);
 
 // Require specific permission
@@ -74,9 +77,9 @@ let policy = AccessPolicy::require_permission("admin:users:delete");
 // Require group membership
 let policy = AccessPolicy::require_group(Group::new("approvers".to_string()));
 
-// Combine multiple requirements (ANY match)
+// Combine multiple requirements (any match grants access)
 let policy = AccessPolicy::require_role(Role::Admin)
-    .require_permission("special:access");
+    .or_require_permission("special:access");
 ```
 
 ### Authorization service
@@ -87,14 +90,13 @@ Evaluate policies against accounts:
 use webgates_core::authz::{AccessPolicy, AuthorizationService};
 use webgates_core::prelude::*;
 
-let account = Account::<Role, Group>::new("user123".to_string())
+let account = Account::<Role, Group>::new("user123")
     .with_roles(vec![Role::Admin]);
 
 let policy = AccessPolicy::require_role(Role::Admin);
-let auth_service = AuthorizationService::new();
+let auth_service = AuthorizationService::new(policy);
 
-let result = auth_service.is_authorized(&account, &policy);
-assert!(result.is_authorized());
+assert!(auth_service.is_authorized(&account));
 ```
 
 ### Permissions
@@ -126,22 +128,32 @@ let combined = perms.union(&other_perms);
 Validate permission definitions at build or test time:
 
 ```rust
-use webgates_core::permissions::{validate_permissions, AsPermissionName};
+use webgates_core::validate_permissions;
 
-#[derive(AsPermissionName)]
-enum Permission {
-    #[permission = "api:users:read"]
+validate_permissions![
+    "api:users:read",
+    "api:users:write",
+    "api:posts:read",
+];
+```
+
+Implement `AsPermissionName` on your own permission enum to map structured types to string names:
+
+```rust
+use webgates_core::permissions::{AsPermissionName, Permissions};
+
+enum AppPermission {
     UsersRead,
-    #[permission = "api:users:write"] 
     UsersWrite,
-    #[permission = "api:posts:read"]
-    PostsRead,
 }
 
-// Validate at test time to catch permission collisions
-#[test]
-fn validate_permission_registry() {
-    validate_permissions!(Permission).expect("permissions should be unique");
+impl AsPermissionName for AppPermission {
+    fn as_permission_name(&self) -> String {
+        match self {
+            AppPermission::UsersRead => "api:users:read".to_string(),
+            AppPermission::UsersWrite => "api:users:write".to_string(),
+        }
+    }
 }
 ```
 
@@ -192,14 +204,13 @@ This crate supports WebAssembly targets. The minimal dependency set and framewor
 ## Testing
 
 ```rust
-// All core types implement common traits for testing
 use webgates_core::prelude::*;
 
 #[test]
 fn account_permissions() {
-    let mut account = Account::<Role, Group>::new("test".to_string());
+    let mut account = Account::<Role, Group>::new("test");
     account.grant_permission("test:permission");
-    
+
     assert!(account.has_permission(&PermissionId::from("test:permission")));
 }
 ```

@@ -24,7 +24,7 @@ When the `prometheus` feature is enabled, webgates automatically tracks:
 ## Running the Example
 
 ```bash
-cargo run --example prometheus
+cargo run -p prometheus-example
 ```
 
 Then visit:
@@ -125,6 +125,7 @@ In production:
 This example requires the `prometheus` feature:
 
 ```toml
-webgates = { version = "2.0.0-dev", features = ["prometheus"] }
-prometheus = "0.13"
+webgates = { version = "0.1", features = ["prometheus"] }
+webgates-axum = { version = "0.1", features = ["prometheus"] }
+prometheus = "0.14"
 ```

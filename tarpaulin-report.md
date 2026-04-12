@@ -1,0 +1,144 @@
+# Coverage Report
+
+Overall coverage: 2397/6207 (38.62%)
+
+## File Coverage
+
+<details>
+<summary>Show file coverage details</summary>
+
+| File | Coverage | Percentage | Change |
+|------|----------|------------|--------|
+| examples/custom-roles/src/main.rs | 0/0 | 0.00% | - |
+| examples/distributed/src/bin/auth_node.rs | 0/0 | 0.00% | - |
+| examples/distributed/src/bin/consumer_node.rs | 0/0 | 0.00% | - |
+| examples/distributed/src/lib.rs | 0/0 | 0.00% | - |
+| examples/oauth2-github/src/main.rs | 0/0 | 0.00% | - |
+| examples/permission-registry/src/main.rs | 0/0 | 0.00% | - |
+| examples/permission-validation/src/main.rs | 0/0 | 0.00% | - |
+| examples/prometheus/src/main.rs | 0/0 | 0.00% | - |
+| examples/rate-limiting/src/main.rs | 0/0 | 0.00% | - |
+| examples/simple-usage/src/main.rs | 0/0 | 0.00% | - |
+| webgates/src/audit.rs | 9/118 | 7.63% | - |
+| webgates/src/authn/errors.rs | 24/26 | 92.31% | - |
+| webgates/src/authn/login.rs | 81/232 | 34.91% | - |
+| webgates/src/authn/logout.rs | 5/7 | 71.43% | - |
+| webgates/src/authn.rs | 0/0 | 0.00% | - |
+| webgates/src/cookie_template.rs | 43/84 | 51.19% | - |
+| webgates/src/errors.rs | 20/54 | 37.04% | - |
+| webgates/src/errors_integration.rs | 5/5 | 100.00% | - |
+| webgates/src/gate/adapter.rs | 0/0 | 0.00% | - |
+| webgates/src/gate/bearer.rs | 45/83 | 54.22% | - |
+| webgates/src/gate/cookie.rs | 31/61 | 50.82% | - |
+| webgates/src/gate/oauth2/errors.rs | 0/92 | 0.00% | - |
+| webgates/src/gate/oauth2.rs | 0/253 | 0.00% | - |
+| webgates/src/gate.rs | 4/6 | 66.67% | - |
+| webgates/src/lib.rs | 0/0 | 0.00% | - |
+| webgates/src/result.rs | 0/0 | 0.00% | - |
+| webgates-axum/src/gate/bearer/static_token_authorized.rs | 0/3 | 0.00% | - |
+| webgates-axum/src/gate/bearer.rs | 57/147 | 38.78% | - |
+| webgates-axum/src/gate/cookie/cookie_service.rs | 0/72 | 0.00% | - |
+| webgates-axum/src/gate/cookie.rs | 19/40 | 47.50% | - |
+| webgates-axum/src/gate/oauth2/errors.rs | 0/14 | 0.00% | - |
+| webgates-axum/src/gate/oauth2.rs | 0/180 | 0.00% | - |
+| webgates-axum/src/gate.rs | 9/52 | 17.31% | - |
+| webgates-axum/src/lib.rs | 0/0 | 0.00% | - |
+| webgates-axum/src/route_handlers/login.rs | 36/133 | 27.07% | - |
+| webgates-axum/src/route_handlers/logout.rs | 11/20 | 55.00% | - |
+| webgates-axum/src/route_handlers.rs | 0/0 | 0.00% | - |
+| webgates-axum/src/session/cookie_session_layer.rs | 0/34 | 0.00% | - |
+| webgates-axum/src/session/cookie_session_service.rs | 105/145 | 72.41% | - |
+| webgates-axum/src/session.rs | 0/0 | 0.00% | - |
+| webgates-axum/tests/session_login_public_api.rs | 42/101 | 41.58% | - |
+| webgates-codecs/src/errors.rs | 19/75 | 25.33% | - |
+| webgates-codecs/src/jwt/validation_result.rs | 0/0 | 0.00% | - |
+| webgates-codecs/src/jwt/validation_service.rs | 15/22 | 68.18% | - |
+| webgates-codecs/src/jwt.rs | 42/51 | 82.35% | - |
+| webgates-codecs/src/lib.rs | 0/0 | 0.00% | - |
+| webgates-codecs/tests/jwt_codec.rs | 116/128 | 90.62% | - |
+| webgates-core/src/accounts.rs | 19/19 | 100.00% | - |
+| webgates-core/src/authz/access_hierarchy.rs | 0/0 | 0.00% | - |
+| webgates-core/src/authz/access_policy.rs | 50/54 | 92.59% | - |
+| webgates-core/src/authz/access_scope.rs | 15/25 | 60.00% | - |
+| webgates-core/src/authz/authorization_service.rs | 31/32 | 96.88% | - |
+| webgates-core/src/authz/errors.rs | 19/20 | 95.00% | - |
+| webgates-core/src/authz.rs | 0/0 | 0.00% | - |
+| webgates-core/src/credentials/credentials_verifier.rs | 0/0 | 0.00% | - |
+| webgates-core/src/credentials.rs | 3/3 | 100.00% | - |
+| webgates-core/src/errors.rs | 0/12 | 0.00% | - |
+| webgates-core/src/errors_core.rs | 0/4 | 0.00% | - |
+| webgates-core/src/groups.rs | 2/6 | 33.33% | - |
+| webgates-core/src/lib.rs | 0/0 | 0.00% | - |
+| webgates-core/src/permissions/application_validator.rs | 15/25 | 60.00% | - |
+| webgates-core/src/permissions/as_permission_name.rs | 0/0 | 0.00% | - |
+| webgates-core/src/permissions/collision_checker.rs | 36/38 | 94.74% | - |
+| webgates-core/src/permissions/errors.rs | 0/20 | 0.00% | - |
+| webgates-core/src/permissions/mapping.rs | 36/41 | 87.80% | - |
+| webgates-core/src/permissions/permission_collision.rs | 0/0 | 0.00% | - |
+| webgates-core/src/permissions/permission_id.rs | 16/22 | 72.73% | - |
+| webgates-core/src/permissions/validate_permissions.rs | 6/9 | 66.67% | - |
+| webgates-core/src/permissions/validation_report.rs | 50/53 | 94.34% | - |
+| webgates-core/src/permissions.rs | 44/49 | 89.80% | - |
+| webgates-core/src/prelude.rs | 0/0 | 0.00% | - |
+| webgates-core/src/roles.rs | 0/0 | 0.00% | - |
+| webgates-core/src/verification_result.rs | 4/4 | 100.00% | - |
+| webgates-repositories/examples/sea-orm/src/main.rs | 0/95 | 0.00% | - |
+| webgates-repositories/examples/surrealdb/src/main.rs | 0/59 | 0.00% | - |
+| webgates-repositories/src/account_repository.rs | 0/0 | 0.00% | - |
+| webgates-repositories/src/audit.rs | 0/0 | 0.00% | - |
+| webgates-repositories/src/comma_separated_value.rs | 0/18 | 0.00% | - |
+| webgates-repositories/src/errors.rs | 9/215 | 4.19% | - |
+| webgates-repositories/src/group_repository.rs | 0/0 | 0.00% | - |
+| webgates-repositories/src/lib.rs | 0/0 | 0.00% | - |
+| webgates-repositories/src/memory/account.rs | 23/72 | 31.94% | - |
+| webgates-repositories/src/memory/group.rs | 0/43 | 0.00% | - |
+| webgates-repositories/src/memory/permission_mapping.rs | 41/94 | 43.62% | - |
+| webgates-repositories/src/memory/secret.rs | 37/46 | 80.43% | - |
+| webgates-repositories/src/memory/session.rs | 127/148 | 85.81% | - |
+| webgates-repositories/src/memory.rs | 0/0 | 0.00% | - |
+| webgates-repositories/src/permission_mapping_repository.rs | 0/12 | 0.00% | - |
+| webgates-repositories/src/sea_orm/account.rs | 0/186 | 0.00% | - |
+| webgates-repositories/src/sea_orm/group.rs | 0/140 | 0.00% | - |
+| webgates-repositories/src/sea_orm/models/account.rs | 0/5 | 0.00% | - |
+| webgates-repositories/src/sea_orm/models/credentials.rs | 0/3 | 0.00% | - |
+| webgates-repositories/src/sea_orm/models/group.rs | 0/8 | 0.00% | - |
+| webgates-repositories/src/sea_orm/models/permission_mapping.rs | 0/9 | 0.00% | - |
+| webgates-repositories/src/sea_orm/models.rs | 0/0 | 0.00% | - |
+| webgates-repositories/src/sea_orm/permission_mapping.rs | 0/241 | 0.00% | - |
+| webgates-repositories/src/sea_orm/secret.rs | 0/88 | 0.00% | - |
+| webgates-repositories/src/sea_orm/session.rs | 0/0 | 0.00% | - |
+| webgates-repositories/src/sea_orm.rs | 0/40 | 0.00% | - |
+| webgates-repositories/src/secret_repository.rs | 0/0 | 0.00% | - |
+| webgates-repositories/src/services/account_delete.rs | 16/59 | 27.12% | - |
+| webgates-repositories/src/services/account_insert.rs | 25/42 | 59.52% | - |
+| webgates-repositories/src/services/tests.rs | 0/0 | 0.00% | - |
+| webgates-repositories/src/services.rs | 0/0 | 0.00% | - |
+| webgates-repositories/src/surrealdb/account.rs | 56/227 | 24.67% | - |
+| webgates-repositories/src/surrealdb/group.rs | 0/103 | 0.00% | - |
+| webgates-repositories/src/surrealdb/permission_mapping.rs | 87/365 | 23.84% | - |
+| webgates-repositories/src/surrealdb/secret.rs | 72/134 | 53.73% | - |
+| webgates-repositories/src/surrealdb/session.rs | 298/350 | 85.14% | - |
+| webgates-repositories/src/surrealdb.rs | 20/40 | 50.00% | - |
+| webgates-repositories/tests/permission_mappings_bulk.rs | 5/5 | 100.00% | - |
+| webgates-repositories/tests/permission_mappings_surrealdb.rs | 76/105 | 72.38% | - |
+| webgates-repositories/tests/timing_repositories.rs | 66/69 | 95.65% | - |
+| webgates-secrets/src/errors.rs | 0/35 | 0.00% | - |
+| webgates-secrets/src/hashing/argon2.rs | 42/56 | 75.00% | - |
+| webgates-secrets/src/hashing/errors.rs | 3/41 | 7.32% | - |
+| webgates-secrets/src/hashing/hashing_service.rs | 0/0 | 0.00% | - |
+| webgates-secrets/src/hashing.rs | 0/0 | 0.00% | - |
+| webgates-secrets/src/lib.rs | 10/22 | 45.45% | - |
+| webgates-sessions/src/config.rs | 19/19 | 100.00% | - |
+| webgates-sessions/src/context.rs | 32/32 | 100.00% | - |
+| webgates-sessions/src/errors.rs | 0/12 | 0.00% | - |
+| webgates-sessions/src/lease.rs | 25/29 | 86.21% | - |
+| webgates-sessions/src/lib.rs | 0/0 | 0.00% | - |
+| webgates-sessions/src/logout.rs | 1/1 | 100.00% | - |
+| webgates-sessions/src/renewal.rs | 14/25 | 56.00% | - |
+| webgates-sessions/src/repository.rs | 2/2 | 100.00% | - |
+| webgates-sessions/src/services.rs | 83/104 | 79.81% | - |
+| webgates-sessions/src/session.rs | 44/48 | 91.67% | - |
+| webgates-sessions/src/tokens.rs | 80/86 | 93.02% | - |
+
+</details>
+

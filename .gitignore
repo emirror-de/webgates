@@ -10,3 +10,5 @@ AGENTS.md
 
 # Ignored secrets within examples
 examples/oauth2-github/.env
+examples/distributed/.env
+examples/custom-roles/.env

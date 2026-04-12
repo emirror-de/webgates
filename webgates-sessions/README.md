@@ -122,6 +122,31 @@ The crate exposes three primary service types:
 
 These services are intended to remain transport-agnostic so they can be composed from HTTP adapters, CLI flows, or other integration layers without embedding framework-specific behavior.
 
+### Minimal session lifecycle (conceptual)
+
+The three services map to the three lifecycle transitions a session-backed auth flow needs:
+
+```rust,ignore
+use std::time::SystemTime;
+use webgates_sessions::config::SessionConfig;
+use webgates_sessions::logout::LogoutRequest;
+use webgates_sessions::services::{SessionIssuer, SessionRenewer, SessionRevoker};
+
+// Issue: called on successful login — returns an auth token and an opaque refresh token.
+let issued = session_issuer.issue_session("user@example.com", SystemTime::now()).await?;
+// issued.tokens.auth_token    — short-lived JWT for request authorization
+// issued.tokens.refresh_token — opaque high-entropy token for renewal; store only its hash
+
+// Renew: called when the client presents a refresh token (e.g. via CookieSessionLayer in Axum).
+// Rotates the refresh token, extends the session, and issues a fresh auth token.
+let renewed = session_renewer.renew_session(renewal_context).await?;
+
+// Revoke: called on logout — removes the session (or the full family) from the repository.
+let outcome = session_revoker.revoke_session(LogoutRequest::current_session(session_id)).await?;
+```
+
+For a complete working composition in Axum, see the `webgates-axum` crate and the `simple-usage` or `distributed` examples.
+
 ## Integration with Axum
 
 For Axum applications, keep this crate in the core layer and use `webgates-axum` for the HTTP boundary.

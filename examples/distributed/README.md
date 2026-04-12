@@ -23,11 +23,15 @@ This example is intended to be exercised using an external HTTP client such as I
 
 1) Prerequisites
 - Rust toolchain installed
-- Create an `.env` file in this directory with a strong shared secret:
+- Copy `.env.example` to `.env` in this directory and set a strong random shared secret:
 
-```env
-webgates_SHARED_SECRET=your-super-secret-key-here-make-it-long-and-random
+```bash
+cp examples/distributed/.env.example examples/distributed/.env
+# Then edit .env and replace the placeholder with a real secret, e.g.:
+# openssl rand -hex 32
 ```
+
+The `.env` file is listed in the repository's `.gitignore` and must not be committed.
 
 2) Start the Auth Node
 
