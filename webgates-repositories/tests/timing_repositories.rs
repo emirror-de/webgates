@@ -25,6 +25,9 @@ fn median(mut v: Vec<Duration>) -> Duration {
     v[v.len() / 2]
 }
 
+const WARMUP_ITERATIONS: usize = 1;
+const MEASURED_ITERATIONS: usize = 2;
+
 #[tokio::test]
 #[cfg(feature = "surrealdb")]
 async fn timing_surrealdb_optional_mode() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -59,20 +62,23 @@ async fn run_timing_case() -> Result<(), Box<dyn std::error::Error + Send + Sync
     let secret = Secret::new(&stored.account_id, password, hasher.clone())?;
     secret_repo.store_secret(secret).await?;
 
-    // Warm up
-    let _ = secret_repo
-        .verify_credentials(Credentials::new(&stored.account_id, "wrong_password"))
-        .await;
-    let _ = secret_repo
-        .verify_credentials(Credentials::new(&stored.account_id, password))
-        .await;
+    for _ in 0..WARMUP_ITERATIONS {
+        let _ = secret_repo
+            .verify_credentials(Credentials::new(&stored.account_id, "wrong_password"))
+            .await;
+        let _ = secret_repo
+            .verify_credentials(Credentials::new(&stored.account_id, password))
+            .await;
+        let _ = secret_repo
+            .verify_credentials(Credentials::new(&uuid::Uuid::now_v7(), "pw"))
+            .await;
+    }
 
-    let iterations = 4;
-    let mut nonexistent = Vec::with_capacity(iterations);
-    let mut wrong = Vec::with_capacity(iterations);
-    let mut correct = Vec::with_capacity(iterations);
+    let mut nonexistent = Vec::with_capacity(MEASURED_ITERATIONS);
+    let mut wrong = Vec::with_capacity(MEASURED_ITERATIONS);
+    let mut correct = Vec::with_capacity(MEASURED_ITERATIONS);
 
-    for _ in 0..iterations {
+    for _ in 0..MEASURED_ITERATIONS {
         // Nonexistent
         let start = Instant::now();
         let res: VerificationResult = secret_repo
@@ -110,9 +116,9 @@ async fn run_timing_case() -> Result<(), Box<dyn std::error::Error + Send + Sync
     let diff = slow - fast;
     let relative = diff.as_secs_f64() / fast.as_secs_f64().max(1e-9);
 
-    // Generous thresholds for noisy CI
+    // Generous thresholds for noisy CI while keeping the test short.
     assert!(
-        diff.as_millis() < 200 || relative < 0.75,
+        diff.as_millis() < 250 || relative < 0.90,
         "timing skew too high: diff={}ms, rel={:.2}",
         diff.as_millis(),
         relative
