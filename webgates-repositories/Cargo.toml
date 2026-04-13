@@ -39,7 +39,7 @@ serde = { workspace = true }
 serde_json = { workspace = true, optional = true }
 strum = { workspace = true }
 subtle = { workspace = true }
-surrealdb = { workspace = true, optional = true }
+surrealdb = { version = "3", optional = true }
 surrealdb-types = { version = "3", optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync"] }

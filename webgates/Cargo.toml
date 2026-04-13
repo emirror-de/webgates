@@ -98,7 +98,7 @@ webgates-secrets = { path = "../webgates-secrets", optional = true }
 webgates-sessions = { path = "../webgates-sessions", optional = true }
 
 [dev-dependencies]
-surrealdb = { workspace = true, features = ["kv-mem"] }
+surrealdb = { version = "3", features = ["kv-mem"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tokio-test = "0.4.4"
 uuid = "1"
