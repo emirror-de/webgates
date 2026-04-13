@@ -11,7 +11,7 @@
 //! ```rust
 //! use webgates_core::verification_result::VerificationResult;
 //! use webgates_secrets::hashing::argon2::Argon2Hasher;
-//! use webgates_secrets::hashing::HashingService;
+//! use webgates_secrets::hashing::hashing_service::HashingService;
 //!
 //! let hasher = Argon2Hasher::new_recommended().unwrap();
 //! let hash = hasher.hash_value("secret").unwrap();
@@ -27,8 +27,8 @@
 //! ```
 use super::HashedValue;
 use crate::Result;
-use crate::hashing::HashingService;
 use crate::hashing::errors::{HashingError, HashingOperation};
+use crate::hashing::hashing_service::HashingService;
 use argon2::password_hash::{PasswordHasher, SaltString, rand_core::OsRng};
 use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordVerifier, Version};
 use webgates_core::verification_result::VerificationResult;
@@ -225,7 +225,7 @@ impl HashingService for Argon2Hasher {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use crate::hashing::HashingService;
+    use crate::hashing::hashing_service::HashingService;
 
     #[test]
     fn recommended_hasher_verifies_matching_secret() {

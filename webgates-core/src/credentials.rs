@@ -3,11 +3,11 @@
 //! This module exposes the credential boundary used by `webgates-core`:
 //!
 //! - [`Credentials`] stores a caller-provided identifier and plaintext secret
-//! - [`CredentialsVerifier`] defines the async verification contract used by
+//! - [`credentials_verifier::CredentialsVerifier`] defines the async verification contract used by
 //!   higher-level authentication services
 //!
-//! The public API is intentionally flat. Import [`Credentials`] and
-//! [`CredentialsVerifier`] directly from `webgates_core::credentials`.
+//! Import [`Credentials`] directly from `webgates_core::credentials` and
+//! [`credentials_verifier::CredentialsVerifier`] from the owning submodule.
 //!
 //! # Quick Start
 //!
@@ -39,9 +39,8 @@
 //!   observable timing or error details.
 use serde::{Deserialize, Serialize};
 
-mod credentials_verifier;
-
-pub use credentials_verifier::CredentialsVerifier;
+/// Async verification contract for credential backends.
+pub mod credentials_verifier;
 
 /// Authentication credentials containing a user identifier and plaintext secret.
 ///

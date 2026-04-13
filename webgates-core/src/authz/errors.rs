@@ -2,7 +2,7 @@
 //!
 //! This module defines category-native errors for authorization (authz) concerns,
 //! focused on permission hash collisions. Import [`AuthzError`] from the
-//! canonical public path `webgates_core::authz::AuthzError`.
+//! canonical public path `webgates_core::authz::errors::AuthzError`.
 //!
 //! # Overview
 //! - `AuthzError`: category-native error enum for authorization
@@ -12,7 +12,7 @@
 //!
 //! Detect a permission hash collision:
 //! ```rust
-//! use webgates_core::authz::AuthzError;
+//! use webgates_core::authz::errors::AuthzError;
 //! use webgates_core::errors_core::{ErrorSeverity, UserFriendlyError};
 //!
 //! let err = AuthzError::collision(42, vec!["read:alpha".into(), "read:beta".into()]);

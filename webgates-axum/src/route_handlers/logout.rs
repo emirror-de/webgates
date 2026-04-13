@@ -4,7 +4,7 @@
 //! - [`logout_with_sessions`] --- revokes the targeted session in the session
 //!   repository and removes both the auth and refresh cookies.
 
-use webgates::authn::{LogoutService, SessionLogoutService};
+use webgates::authn::logout::{LogoutService, SessionLogoutService};
 use webgates::sessions::logout::{LogoutRequest, LogoutScope};
 use webgates::sessions::repository::SessionRepository;
 use webgates::sessions::session::{SessionFamilyId, SessionId};

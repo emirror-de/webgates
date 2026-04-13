@@ -20,7 +20,9 @@
 //! use std::sync::Arc;
 //! use std::future::Future;
 //! use std::pin::Pin;
-//! use webgates::prelude::{Account, Group, Role};
+//! use webgates::accounts::Account;
+//! use webgates::groups::Group;
+//! use webgates::roles::Role;
 //! use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
 //! use webgates::gate::oauth2::{OAuth2Gate, OAuth2Runtime, TokenRequest, TokenExchanger, CallbackInput};
 //! use webgates::cookie_template::CookieTemplate;
@@ -106,7 +108,7 @@ use std::sync::Arc;
 
 use super::GateExt;
 use crate::accounts::Account;
-use crate::authz::AccessHierarchy;
+use crate::authz::access_hierarchy::AccessHierarchy;
 use crate::codecs::Codec;
 use crate::codecs::jwt::{JwtClaims, RegisteredClaims};
 use crate::cookie_template::CookieTemplate;

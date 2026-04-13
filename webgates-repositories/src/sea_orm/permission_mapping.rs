@@ -10,7 +10,8 @@ use sea_orm::{
     ColumnTrait, EntityTrait, QueryFilter, QueryOrder, TransactionTrait, entity::prelude::*,
 };
 
-use webgates_core::permissions::{PermissionId, PermissionMapping};
+use webgates_core::permissions::mapping::PermissionMapping;
+use webgates_core::permissions::permission_id::PermissionId;
 
 impl PermissionMappingRepository for SeaOrmRepository {
     type Error = RepoError;

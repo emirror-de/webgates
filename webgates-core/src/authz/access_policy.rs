@@ -1,6 +1,7 @@
-use crate::authz::AccessHierarchy;
+use crate::authz::access_hierarchy::AccessHierarchy;
 use crate::authz::access_scope::AccessScope;
-use crate::permissions::{PermissionId, Permissions};
+use crate::permissions::Permissions;
+use crate::permissions::permission_id::PermissionId;
 
 /// Domain object describing who may access a protected resource.
 ///
@@ -54,7 +55,7 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use webgates_core::authz::AccessPolicy;
+    /// use webgates_core::authz::access_policy::AccessPolicy;
     /// use webgates_core::groups::Group;
     /// use webgates_core::roles::Role;
     ///
@@ -76,7 +77,7 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use webgates_core::authz::AccessPolicy;
+    /// use webgates_core::authz::access_policy::AccessPolicy;
     /// use webgates_core::groups::Group;
     /// use webgates_core::roles::Role;
     ///
@@ -97,7 +98,7 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use webgates_core::authz::AccessPolicy;
+    /// use webgates_core::authz::access_policy::AccessPolicy;
     /// use webgates_core::groups::Group;
     /// use webgates_core::roles::Role;
     ///
@@ -116,9 +117,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use webgates_core::authz::AccessPolicy;
+    /// use webgates_core::authz::access_policy::AccessPolicy;
     /// use webgates_core::groups::Group;
-    /// use webgates_core::permissions::PermissionId;
+    /// use webgates_core::permissions::permission_id::PermissionId;
     /// use webgates_core::roles::Role;
     ///
     /// let policy: AccessPolicy<Role, Group> =
@@ -229,7 +230,7 @@ where
 mod tests {
     use super::AccessPolicy;
     use crate::groups::Group;
-    use crate::permissions::PermissionId;
+    use crate::permissions::permission_id::PermissionId;
     use crate::roles::Role;
 
     #[test]

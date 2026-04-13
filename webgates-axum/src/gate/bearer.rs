@@ -93,7 +93,7 @@
 //! use webgates::groups::Group;
 //! use webgates::roles::Role;
 //! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
-//! use webgates_axum::gate::bearer::StaticTokenAuthorized;
+//! use webgates_axum::gate::bearer::static_token_authorized::StaticTokenAuthorized;
 //!
 //! async fn handler(
 //!     axum::Extension(token_auth): axum::Extension<StaticTokenAuthorized>
@@ -112,13 +112,14 @@ use http::StatusCode;
 use tower::{Layer, Service};
 use tracing::warn;
 
-pub use self::static_token_authorized::StaticTokenAuthorized;
+pub mod static_token_authorized;
+
+use static_token_authorized::StaticTokenAuthorized;
 use webgates::accounts::Account;
-use webgates::authz::{AccessHierarchy, AccessPolicy};
+use webgates::authz::access_hierarchy::AccessHierarchy;
+use webgates::authz::access_policy::AccessPolicy;
 use webgates::codecs::Codec;
 use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
-
-mod static_token_authorized;
 
 /// JWT mode configuration (compile-time).
 #[derive(Clone)]
@@ -354,13 +355,14 @@ where
         }
     }
 
-    #[allow(clippy::expect_used)]
     fn unauthorized() -> Response<Body> {
-        Response::builder()
-            .status(StatusCode::UNAUTHORIZED)
-            .header(http::header::WWW_AUTHENTICATE, "Bearer")
-            .body(Body::from("Unauthorized"))
-            .expect("static unauthorized response")
+        let mut resp = Response::new(Body::from("Unauthorized"));
+        *resp.status_mut() = StatusCode::UNAUTHORIZED;
+        resp.headers_mut().insert(
+            http::header::WWW_AUTHENTICATE,
+            http::HeaderValue::from_static("Bearer"),
+        );
+        resp
     }
 
     fn bearer_token(req: &Request<Body>) -> Option<&str> {
@@ -499,13 +501,14 @@ impl<S> StaticTokenService<S> {
         }
     }
 
-    #[allow(clippy::expect_used)]
     fn unauthorized() -> Response<Body> {
-        Response::builder()
-            .status(StatusCode::UNAUTHORIZED)
-            .header(http::header::WWW_AUTHENTICATE, "Bearer")
-            .body(Body::from("Unauthorized"))
-            .expect("static unauthorized response")
+        let mut resp = Response::new(Body::from("Unauthorized"));
+        *resp.status_mut() = StatusCode::UNAUTHORIZED;
+        resp.headers_mut().insert(
+            http::header::WWW_AUTHENTICATE,
+            http::HeaderValue::from_static("Bearer"),
+        );
+        resp
     }
 
     fn bearer_token(req: &Request<Body>) -> Option<&str> {

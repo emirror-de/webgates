@@ -10,7 +10,7 @@ use crate::errors::{
 use crate::secret_repository::SecretRepository;
 use tracing::debug;
 use webgates_core::accounts::Account;
-use webgates_core::authz::AccessHierarchy;
+use webgates_core::authz::access_hierarchy::AccessHierarchy;
 use webgates_core::permissions::Permissions;
 use webgates_secrets::Secret;
 use webgates_secrets::hashing::argon2::Argon2Hasher;

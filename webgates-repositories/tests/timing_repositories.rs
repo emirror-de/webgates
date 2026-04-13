@@ -1,6 +1,4 @@
 #![cfg(any(feature = "surrealdb", feature = "sea-orm"))]
-#![allow(clippy::unwrap_used)]
-#![allow(clippy::expect_used)]
 //! Integration timing tests for repository credential verification.
 //!
 //! These tests run only when the corresponding repository feature is enabled
@@ -29,34 +27,37 @@ fn median(mut v: Vec<Duration>) -> Duration {
 
 #[tokio::test]
 #[cfg(feature = "surrealdb")]
-async fn timing_surrealdb_optional_mode() {
+async fn timing_surrealdb_optional_mode() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Use in-memory repositories to exercise SurrealDB-backed types behind feature gate.
-    run_timing_case().await;
+    run_timing_case().await
 }
 
 #[tokio::test]
 #[cfg(feature = "sea-orm")]
-async fn timing_seaorm_optional_mode() {
+async fn timing_seaorm_optional_mode() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Use in-memory repositories to exercise SeaORM-backed types behind feature gate.
-    run_timing_case().await;
+    run_timing_case().await
 }
 
-async fn run_timing_case() {
-    use webgates_core::credentials::CredentialsVerifier;
+async fn run_timing_case() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use webgates_core::credentials::credentials_verifier::CredentialsVerifier;
 
     let account_repo = MemoryAccountRepository::<Role, Group>::default();
-    let secret_repo = MemorySecretRepository::new_with_argon2_hasher().unwrap();
-    let hasher = Argon2Hasher::new_recommended().unwrap();
+    let secret_repo = MemorySecretRepository::new_with_argon2_hasher()?;
+    let hasher = Argon2Hasher::new_recommended()?;
 
     let user_id = "user@example.com";
     let password = "correct_password";
 
     let mut account = Account::new(user_id);
     account.groups = vec![Group::new("test")];
-    let stored: Account<Role, Group> = account_repo.store_account(account).await.unwrap().unwrap();
+    let stored: Account<Role, Group> = account_repo
+        .store_account(account)
+        .await?
+        .ok_or("store_account returned None")?;
 
-    let secret = Secret::new(&stored.account_id, password, hasher.clone()).unwrap();
-    let _stored_secret = secret_repo.store_secret(secret).await.unwrap();
+    let secret = Secret::new(&stored.account_id, password, hasher.clone())?;
+    secret_repo.store_secret(secret).await?;
 
     // Warm up
     let _ = secret_repo
@@ -76,8 +77,7 @@ async fn run_timing_case() {
         let start = Instant::now();
         let res: VerificationResult = secret_repo
             .verify_credentials(Credentials::new(&uuid::Uuid::now_v7(), "pw"))
-            .await
-            .unwrap();
+            .await?;
         nonexistent.push(start.elapsed());
         assert_eq!(res, VerificationResult::Unauthorized);
 
@@ -85,8 +85,7 @@ async fn run_timing_case() {
         let start = Instant::now();
         let res: VerificationResult = secret_repo
             .verify_credentials(Credentials::new(&stored.account_id, "wrong_password"))
-            .await
-            .unwrap();
+            .await?;
         wrong.push(start.elapsed());
         assert_eq!(res, VerificationResult::Unauthorized);
 
@@ -94,8 +93,7 @@ async fn run_timing_case() {
         let start = Instant::now();
         let res: VerificationResult = secret_repo
             .verify_credentials(Credentials::new(&stored.account_id, password))
-            .await
-            .unwrap();
+            .await?;
         correct.push(start.elapsed());
         assert_eq!(res, VerificationResult::Ok);
     }
@@ -122,4 +120,6 @@ async fn run_timing_case() {
 
     // Ensure success path isn't trivially zero (sanity check)
     assert!(med_ok.as_millis() >= 1, "success path too fast");
+
+    Ok(())
 }

@@ -14,8 +14,8 @@
 //! Basic construction and user-facing message extraction:
 //!
 //! ```rust
-//! use webgates::authn::{AuthnError, AuthenticationError};
-//! use webgates::errors::UserFriendlyError;
+//! use webgates::authn::errors::{AuthnError, AuthenticationError};
+//! use webgates::errors_core::UserFriendlyError;
 //!
 //! let err = AuthnError::from_authentication(AuthenticationError::InvalidCredentials, Some("login form//! ".into()));
 //! assert!(err.user_message().contains("username or password"));
@@ -26,7 +26,7 @@
 //! Convenience constructors:
 //!
 //! ```rust
-//! use webgates::authn::AuthnError;
+//! use webgates::authn::errors::AuthnError;
 //!
 //! let _ = AuthnError::invalid_credentials(Some("signin".into()));
 //! ```

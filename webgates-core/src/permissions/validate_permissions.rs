@@ -101,7 +101,7 @@ macro_rules! validate_permissions {
             fn validate_permission_uniqueness() {
                 let permissions: Vec<String> = vec![$($permission.to_string()),*];
                 let mut checker =
-                    $crate::permissions::PermissionCollisionChecker::new(permissions);
+                    $crate::permissions::collision_checker::PermissionCollisionChecker::new(permissions);
                 let report = match checker.validate() {
                     Ok(report) => report,
                     Err(error) => {

@@ -4,13 +4,13 @@
 //! `webgates-core`.
 //!
 //! It exposes:
-//! - [`PermissionId`] for stable 64-bit permission identifiers
+//! - [`permission_id::PermissionId`] for stable 64-bit permission identifiers
 //! - [`Permissions`] for compact granted-permission storage
-//! - [`ApplicationValidator`] and [`PermissionCollisionChecker`] for validation
-//! - [`ValidationReport`] and [`PermissionCollision`] for validation results
-//! - [`PermissionMapping`] and [`PermissionMappingError`] for registry-style lookups
-//! - [`PermissionsError`] for permission-category errors
-//! - [`AsPermissionName`] for application-defined permission enums
+//! - [`application_validator::ApplicationValidator`] and [`collision_checker::PermissionCollisionChecker`] for validation
+//! - [`validation_report::ValidationReport`] and [`permission_collision::PermissionCollision`] for validation results
+//! - [`mapping::PermissionMapping`] and [`mapping::PermissionMappingError`] for registry-style lookups
+//! - [`errors::PermissionsError`] for permission-category errors
+//! - [`as_permission_name::AsPermissionName`] for application-defined permission enums
 //!
 //! Permission names are normalized before hashing, which keeps checks
 //! deterministic across processes and deployments without requiring a central
@@ -31,7 +31,8 @@
 //! Build and query a permission set:
 //!
 //! ```rust
-//! use webgates_core::permissions::{PermissionId, Permissions};
+//! use webgates_core::permissions::permission_id::PermissionId;
+//! use webgates_core::permissions::Permissions;
 //!
 //! let mut permissions = Permissions::new();
 //! permissions
@@ -48,9 +49,9 @@
 //! Use permissions in access policies:
 //!
 //! ```rust
-//! use webgates_core::authz::AccessPolicy;
+//! use webgates_core::authz::access_policy::AccessPolicy;
 //! use webgates_core::groups::Group;
-//! use webgates_core::permissions::PermissionId;
+//! use webgates_core::permissions::permission_id::PermissionId;
 //! use webgates_core::roles::Role;
 //!
 //! let policy: AccessPolicy<Role, Group> =
@@ -62,9 +63,10 @@
 //! Use application-defined permission enums:
 //!
 //! ```rust
-//! use webgates_core::authz::AccessPolicy;
+//! use webgates_core::authz::access_policy::AccessPolicy;
 //! use webgates_core::groups::Group;
-//! use webgates_core::permissions::{AsPermissionName, Permissions};
+//! use webgates_core::permissions::as_permission_name::AsPermissionName;
+//! use webgates_core::permissions::Permissions;
 //! use webgates_core::roles::Role;
 //!
 //! #[derive(Debug)]
@@ -97,33 +99,32 @@
 //! assert!(policy.has_requirements());
 //! ```
 
+use permission_id::PermissionId;
 use roaring::RoaringTreemap;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-mod application_validator;
-mod as_permission_name;
-mod collision_checker;
-mod errors;
-mod mapping;
-mod permission_collision;
-mod permission_id;
+/// High-level builder for validating application permission sets at startup.
+pub mod application_validator;
+/// Trait for application-defined permission enums that produce a name string.
+pub mod as_permission_name;
+/// Low-level collision checker for runtime permission validation and analysis.
+pub mod collision_checker;
+/// Permission-category error values.
+pub mod errors;
+/// Registry-style mapping between permission strings and their identifiers.
+pub mod mapping;
+/// Collision record produced when two permission strings share an identifier.
+pub mod permission_collision;
+/// Deterministic 64-bit identifier derived from a normalized permission name.
+pub mod permission_id;
 /// Test-time permission validation macro support.
 ///
 /// This module contains the [`validate_permissions!`](crate::validate_permissions)
 /// macro and its supporting documentation.
 pub mod validate_permissions;
-mod validation_report;
-
-pub use application_validator::ApplicationValidator;
-pub use as_permission_name::AsPermissionName;
-pub use collision_checker::PermissionCollisionChecker;
-pub use errors::PermissionsError;
-#[doc(inline)]
-pub use mapping::{PermissionMapping, PermissionMappingError};
-pub use permission_collision::PermissionCollision;
-pub use permission_id::PermissionId;
-pub use validation_report::ValidationReport;
+/// Validation outcome produced by the collision checker and application validator.
+pub mod validation_report;
 
 /// A collection of granted permissions.
 ///
@@ -191,7 +192,8 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use webgates_core::permissions::{PermissionId, Permissions};
+    /// use webgates_core::permissions::permission_id::PermissionId;
+    /// use webgates_core::permissions::Permissions;
     ///
     /// let mut permissions = Permissions::new();
     /// permissions
@@ -217,7 +219,8 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use webgates_core::permissions::{PermissionId, Permissions};
+    /// use webgates_core::permissions::permission_id::PermissionId;
+    /// use webgates_core::permissions::Permissions;
     ///
     /// let mut permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// permissions.revoke(PermissionId::from("write:profile"));
@@ -239,7 +242,8 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use webgates_core::permissions::{PermissionId, Permissions};
+    /// use webgates_core::permissions::permission_id::PermissionId;
+    /// use webgates_core::permissions::Permissions;
     ///
     /// let permissions: Permissions = ["read:profile"].into_iter().collect();
     ///
@@ -260,7 +264,8 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use webgates_core::permissions::{PermissionId, Permissions};
+    /// use webgates_core::permissions::permission_id::PermissionId;
+    /// use webgates_core::permissions::Permissions;
     ///
     /// let permissions: Permissions = [
     ///     "read:profile",
@@ -285,7 +290,8 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use webgates_core::permissions::{PermissionId, Permissions};
+    /// use webgates_core::permissions::permission_id::PermissionId;
+    /// use webgates_core::permissions::Permissions;
     ///
     /// let permissions: Permissions = ["read:profile"].into_iter().collect();
     ///
@@ -426,7 +432,8 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use webgates_core::permissions::{PermissionId, Permissions};
+    /// use webgates_core::permissions::permission_id::PermissionId;
+    /// use webgates_core::permissions::Permissions;
     ///
     /// let permissions = Permissions::new()
     ///     .with("read:profile")
@@ -543,7 +550,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{AsPermissionName, PermissionId, Permissions};
+    use super::Permissions;
+    use super::as_permission_name::AsPermissionName;
+    use super::permission_id::PermissionId;
 
     #[test]
     fn new_permissions_is_empty() {

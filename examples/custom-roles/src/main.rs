@@ -17,7 +17,8 @@
 // - Ensure webgates_SHARED_SECRET is set (a .env is provided in this example).
 // - From this example directory, run: cargo run
 use webgates::accounts::Account;
-use webgates::authz::{AccessHierarchy, AccessPolicy};
+use webgates::authz::access_hierarchy::AccessHierarchy;
+use webgates::authz::access_policy::AccessPolicy;
 use webgates::codecs::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
 use webgates::cookie_template::CookieTemplate;

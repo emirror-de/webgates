@@ -2,7 +2,7 @@ use std::future::Future;
 
 use uuid::Uuid;
 use webgates_core::accounts::Account;
-use webgates_core::authz::AccessHierarchy;
+use webgates_core::authz::access_hierarchy::AccessHierarchy;
 
 /// Repository abstraction for persisting and retrieving `Account` entities.
 ///

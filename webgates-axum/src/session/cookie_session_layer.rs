@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use tower::Layer;
 use webgates::accounts::Account;
-use webgates::authz::AccessHierarchy;
+use webgates::authz::access_hierarchy::AccessHierarchy;
 use webgates::codecs::Codec;
 use webgates::codecs::jwt::JwtClaims;
 use webgates::cookie_template::CookieTemplate;
@@ -42,7 +42,7 @@ use super::cookie_session_service::CookieSessionService;
 ///
 /// use axum::{Router, routing::get};
 /// use webgates::accounts::Account;
-/// use webgates::authz::AccessPolicy;
+/// use webgates::authz::access_policy::AccessPolicy;
 /// use webgates::codecs::Codec;
 /// use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
 /// use webgates::cookie_template::CookieTemplate;
@@ -53,7 +53,7 @@ use super::cookie_session_service::CookieSessionService;
 /// use webgates::sessions::session::Session;
 /// use webgates::sessions::tokens::{AuthToken, AuthTokenIssuer};
 /// use webgates_axum::gate::Gate;
-/// use webgates_axum::session::CookieSessionLayer;
+/// use webgates_axum::session::cookie_session_layer::CookieSessionLayer;
 /// use webgates_codecs::jwt::{JsonWebToken, JsonWebTokenOptions};
 /// use webgates_repositories::memory::session::MemorySessionRepository;
 ///

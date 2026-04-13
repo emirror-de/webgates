@@ -16,7 +16,7 @@ use crate::errors::{
 use crate::secret_repository::SecretRepository;
 use tracing::{debug, error, info, warn};
 use webgates_core::accounts::Account;
-use webgates_core::authz::AccessHierarchy;
+use webgates_core::authz::access_hierarchy::AccessHierarchy;
 
 /// Removes the given account and its corresponding secret from repositories.
 ///

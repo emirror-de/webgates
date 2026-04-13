@@ -34,7 +34,7 @@ Use Axum directly from your own dependency list.
 use axum::{routing::get, Router};
 use std::sync::Arc;
 use webgates::accounts::Account;
-use webgates::authz::AccessPolicy;
+use webgates::authz::access_policy::AccessPolicy;
 use webgates::groups::Group;
 use webgates::roles::Role;
 use webgates_axum::gate::Gate;

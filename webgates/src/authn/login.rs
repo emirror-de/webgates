@@ -11,11 +11,11 @@
 //! - Unified invalid-credentials responses to mitigate user enumeration
 //! - Stateless service; cryptographic operations live in credential verifiers and repositories
 use crate::accounts::Account;
-use crate::authz::AccessHierarchy;
+use crate::authz::access_hierarchy::AccessHierarchy;
 use crate::codecs::Codec;
 use crate::codecs::jwt::{JwtClaims, RegisteredClaims};
 use crate::credentials::Credentials;
-use crate::credentials::CredentialsVerifier;
+use crate::credentials::credentials_verifier::CredentialsVerifier;
 use crate::verification_result::VerificationResult;
 use webgates_repositories::account_repository::AccountRepository;
 

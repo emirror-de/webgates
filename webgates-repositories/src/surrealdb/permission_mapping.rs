@@ -14,7 +14,8 @@ use serde::{Deserialize, Serialize};
 use surrealdb::Connection;
 use surrealdb_types::{RecordId, SurrealValue};
 
-use webgates_core::permissions::{PermissionId, PermissionMapping};
+use webgates_core::permissions::mapping::PermissionMapping;
+use webgates_core::permissions::permission_id::PermissionId;
 
 /// Adapter for persisting `PermissionMapping` in SurrealDB.
 ///

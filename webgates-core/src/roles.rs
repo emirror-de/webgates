@@ -14,7 +14,7 @@
 //! # Examples
 //!
 //! ```rust
-//! use webgates_core::authz::AccessPolicy;
+//! use webgates_core::authz::access_policy::AccessPolicy;
 //! use webgates_core::groups::Group;
 //! use webgates_core::roles::Role;
 //!
@@ -34,7 +34,7 @@
 //!
 //! ```rust
 //! use serde::{Deserialize, Serialize};
-//! use webgates_core::authz::AccessHierarchy;
+//! use webgates_core::authz::access_hierarchy::AccessHierarchy;
 //!
 //! #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 //! enum CompanyRole {
@@ -59,7 +59,7 @@
 //! impl AccessHierarchy for CompanyRole {}
 //! ```
 
-use crate::authz::AccessHierarchy;
+use crate::authz::access_hierarchy::AccessHierarchy;
 use serde::{Deserialize, Serialize};
 
 /// Built-in roles ordered from least privileged to most privileged.
@@ -70,7 +70,7 @@ use serde::{Deserialize, Serialize};
 /// # Example
 ///
 /// ```rust
-/// use webgates_core::authz::AccessPolicy;
+/// use webgates_core::authz::access_policy::AccessPolicy;
 /// use webgates_core::groups::Group;
 /// use webgates_core::roles::Role;
 ///

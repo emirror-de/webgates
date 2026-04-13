@@ -31,7 +31,7 @@ impl From<crate::cookie_template::CookieTemplateBuilderError> for Error {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::errors::UserFriendlyError;
+    use crate::errors_core::UserFriendlyError;
 
     #[test]
     fn cookie_template_error_maps_to_codec_error() {
@@ -41,7 +41,10 @@ mod tests {
         match mapped {
             Error::Codecs(c) => {
                 assert!(c.developer_message().contains("Invalid cookie template"));
-                assert_eq!(c.severity(), crate::errors::ErrorSeverity::Error);
+                assert_eq!(
+                    c.severity(),
+                    webgates_core::errors_core::ErrorSeverity::Error
+                );
             }
             _ => panic!("expected codec error"),
         }

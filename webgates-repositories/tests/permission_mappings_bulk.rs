@@ -1,6 +1,4 @@
 #![cfg(any(feature = "surrealdb", feature = "sea-orm"))]
-#![allow(clippy::unwrap_used)]
-#![allow(clippy::expect_used)]
 //! Bulk permission mapping tests gated behind repository features.
 //!
 //! These tests are only built when a repository backend feature is enabled to
@@ -8,7 +6,7 @@
 //! ensure the workspace compiles and basic permission ID creation works under
 //! repository-enabled configurations.
 
-use webgates_core::permissions::PermissionId;
+use webgates_core::permissions::permission_id::PermissionId;
 
 /// Simple smoke test to ensure permission IDs can be constructed when repository
 /// features are enabled.

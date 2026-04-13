@@ -4,7 +4,7 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 use self::adapter::GateAdapter;
-use crate::authz::AccessHierarchy;
+use crate::authz::access_hierarchy::AccessHierarchy;
 use crate::codecs::Codec;
 
 pub mod adapter;

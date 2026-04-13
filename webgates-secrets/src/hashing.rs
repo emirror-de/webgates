@@ -16,7 +16,7 @@
 //! ```rust
 //! use webgates_core::verification_result::VerificationResult;
 //! use webgates_secrets::hashing::argon2::Argon2Hasher;
-//! use webgates_secrets::hashing::HashingService;
+//! use webgates_secrets::hashing::hashing_service::HashingService;
 //!
 //! let hasher = Argon2Hasher::new_recommended().unwrap();
 //!
@@ -31,11 +31,11 @@
 //!
 //! # Canonical Public Paths
 //!
-//! This module exposes `HashingService` from the parent module as the single
-//! canonical public path for the hashing trait.
+//! Each public item in this module has a single canonical path through its owning
+//! submodule:
 //!
 //! - [`crate::hashing::argon2::Argon2Hasher`]
-//! - [`crate::hashing::HashingService`]
+//! - [`crate::hashing::hashing_service::HashingService`]
 //! - [`crate::hashing::errors::HashingError`]
 //! - [`crate::hashing::errors::HashingOperation`]
 //! - [`crate::hashing::HashedValue`]
@@ -59,10 +59,9 @@ pub mod argon2;
 pub mod errors;
 /// Hashing service traits and public contracts.
 ///
-/// `HashingService` is re-exported from this parent module as its single
-/// canonical public path.
-mod hashing_service;
-pub use hashing_service::HashingService;
+/// Use the canonical path [`crate::hashing::hashing_service::HashingService`]
+/// to import the hashing trait.
+pub mod hashing_service;
 
 /// A hashed value produced by password hashing algorithms.
 ///
@@ -95,7 +94,7 @@ pub use hashing_service::HashingService;
 ///
 /// ```rust
 /// use webgates_secrets::hashing::argon2::Argon2Hasher;
-/// use webgates_secrets::hashing::HashingService;
+/// use webgates_secrets::hashing::hashing_service::HashingService;
 /// use webgates_secrets::hashing::HashedValue;
 ///
 /// let hasher = Argon2Hasher::new_recommended().unwrap();

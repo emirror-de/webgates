@@ -1,4 +1,4 @@
-use crate::permissions::PermissionId;
+use crate::permissions::permission_id::PermissionId;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -27,7 +27,8 @@ use std::fmt;
 /// # Examples
 ///
 /// ```rust
-/// use webgates_core::permissions::{PermissionId, PermissionMapping};
+/// use webgates_core::permissions::permission_id::PermissionId;
+/// use webgates_core::permissions::mapping::PermissionMapping;
 ///
 /// // Create from a permission string
 /// let mapping = PermissionMapping::from("Read:API");
@@ -82,7 +83,8 @@ impl PermissionMapping {
     /// # Examples
     ///
     /// ```rust
-    /// use webgates_core::permissions::{PermissionId, PermissionMapping};
+    /// use webgates_core::permissions::permission_id::PermissionId;
+    /// use webgates_core::permissions::mapping::PermissionMapping;
     ///
     /// let id = PermissionId::from("read:api");
     /// let mapping = PermissionMapping::new("Read:API", id).unwrap();
@@ -141,7 +143,7 @@ impl PermissionMapping {
     /// # Examples
     ///
     /// ```rust
-    /// use webgates_core::permissions::PermissionMapping;
+    /// use webgates_core::permissions::mapping::PermissionMapping;
     ///
     /// let mapping = PermissionMapping::from("read:api");
     /// assert!(mapping.matches_string("READ:API"));
@@ -158,7 +160,8 @@ impl PermissionMapping {
     /// # Examples
     ///
     /// ```rust
-    /// use webgates_core::permissions::{PermissionId, PermissionMapping};
+    /// use webgates_core::permissions::permission_id::PermissionId;
+    /// use webgates_core::permissions::mapping::PermissionMapping;
     ///
     /// let mapping = PermissionMapping::from("read:api");
     /// let id = PermissionId::from("read:api");

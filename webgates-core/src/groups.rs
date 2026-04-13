@@ -9,7 +9,7 @@
 //! Create groups and use them in access policies:
 //!
 //! ```rust
-//! use webgates_core::authz::AccessPolicy;
+//! use webgates_core::authz::access_policy::AccessPolicy;
 //! use webgates_core::groups::Group;
 //! use webgates_core::roles::Role;
 //!

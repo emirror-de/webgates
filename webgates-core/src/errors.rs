@@ -14,7 +14,7 @@
 //!
 //! ```rust
 //! use webgates_core::errors::{Error, Result};
-//! use webgates_core::permissions::PermissionsError;
+//! use webgates_core::permissions::errors::PermissionsError;
 //!
 //! fn validate(flag: bool) -> Result<()> {
 //!     if flag {
@@ -33,7 +33,7 @@
 use thiserror::Error;
 
 use crate::errors_core::{ErrorSeverity, UserFriendlyError};
-use crate::permissions::PermissionsError;
+use crate::permissions::errors::PermissionsError;
 
 /// Result alias using [`Error`] as the crate-local error type.
 pub type Result<T> = std::result::Result<T, Error>;

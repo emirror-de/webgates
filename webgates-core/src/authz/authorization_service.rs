@@ -1,5 +1,6 @@
 use crate::accounts::Account;
-use crate::authz::{AccessHierarchy, AccessPolicy};
+use crate::authz::access_hierarchy::AccessHierarchy;
+use crate::authz::access_policy::AccessPolicy;
 
 use std::collections::HashSet;
 use tracing::debug;

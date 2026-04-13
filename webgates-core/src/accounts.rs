@@ -15,8 +15,9 @@
 //!     .with_permissions(Permissions::from_iter(["read:api", "write:docs"]));
 //! ```
 
-use crate::authz::AccessHierarchy;
-use crate::permissions::{PermissionId, Permissions};
+use crate::authz::access_hierarchy::AccessHierarchy;
+use crate::permissions::Permissions;
+use crate::permissions::permission_id::PermissionId;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -47,7 +48,7 @@ use uuid::Uuid;
 /// ```rust
 /// # use webgates_core::accounts::Account;
 /// # use webgates_core::groups::Group;
-/// # use webgates_core::permissions::PermissionId;
+/// # use webgates_core::permissions::permission_id::PermissionId;
 /// # use webgates_core::roles::Role;
 /// # let mut account = Account::<Role, Group>::new("user");
 /// account.grant_permission("read:api");
@@ -201,7 +202,7 @@ where
     /// ```rust
     /// use webgates_core::accounts::Account;
     /// use webgates_core::groups::Group;
-    /// use webgates_core::permissions::PermissionId;
+    /// use webgates_core::permissions::permission_id::PermissionId;
     /// use webgates_core::roles::Role;
     ///
     /// let mut account = Account::<Role, Group>::new("user");
@@ -221,7 +222,7 @@ where
     /// ```rust
     /// use webgates_core::accounts::Account;
     /// use webgates_core::groups::Group;
-    /// use webgates_core::permissions::PermissionId;
+    /// use webgates_core::permissions::permission_id::PermissionId;
     /// use webgates_core::roles::Role;
     ///
     /// let mut account = Account::<Role, Group>::new("user");
@@ -281,7 +282,7 @@ where
     /// ```rust
     /// use webgates_core::accounts::Account;
     /// use webgates_core::groups::Group;
-    /// use webgates_core::permissions::PermissionId;
+    /// use webgates_core::permissions::permission_id::PermissionId;
     /// use webgates_core::roles::Role;
     ///
     /// let mut account = Account::<Role, Group>::new("user@example.com");

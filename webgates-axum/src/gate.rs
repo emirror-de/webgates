@@ -12,7 +12,7 @@
 use std::sync::Arc;
 
 use webgates::accounts::Account;
-use webgates::authz::AccessHierarchy;
+use webgates::authz::access_hierarchy::AccessHierarchy;
 use webgates::codecs::Codec;
 use webgates::codecs::jwt::JwtClaims;
 use webgates::gate::{self as core_gate, Gate as CoreGate, GateExt};

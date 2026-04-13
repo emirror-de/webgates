@@ -6,8 +6,9 @@
 use roaring::RoaringTreemap;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
-use webgates::permissions::AsPermissionName;
-use webgates::permissions::{PermissionId, Permissions};
+use webgates::permissions::Permissions;
+use webgates::permissions::as_permission_name::AsPermissionName;
+use webgates::permissions::permission_id::PermissionId;
 use webgates::validate_permissions;
 
 /// Application permissions using nested enums for better organization.

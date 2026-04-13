@@ -7,8 +7,11 @@
 //! - Runtime validation during application lifecycle
 //! - Error handling and reporting
 
-use webgates::errors::Result;
-use webgates::permissions::{ApplicationValidator, PermissionCollisionChecker};
+use webgates::authn::errors::AuthnError;
+use webgates::errors::{Error, Result};
+use webgates::permissions::application_validator::ApplicationValidator;
+use webgates::permissions::collision_checker::PermissionCollisionChecker;
+use webgates::permissions::errors::PermissionsError;
 
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, warn};
@@ -76,17 +79,15 @@ fn example_static_validation() -> Result<()> {
                 info!("  ✅ Static validation passed");
             } else {
                 error!("  ❌ Static validation failed: {}", report.summary());
-                return Err(webgates::errors::Error::Permissions(
-                    webgates::errors::PermissionsError::collision(
-                        12345,
-                        vec!["static_validation_failed".to_string()],
-                    ),
-                ));
+                return Err(Error::Permissions(PermissionsError::collision(
+                    12345,
+                    vec!["static_validation_failed".to_string()],
+                )));
             }
         }
         Err(e) => {
             error!("  ❌ Static validation failed: {}", e);
-            return Err(webgates::errors::Error::Permissions(e));
+            return Err(Error::Permissions(e));
         }
     }
 
@@ -105,17 +106,15 @@ fn example_static_validation() -> Result<()> {
                     "  ❌ ApplicationValidator validation failed: {}",
                     report.summary()
                 );
-                return Err(webgates::errors::Error::Permissions(
-                    webgates::errors::PermissionsError::collision(
-                        54321,
-                        vec!["app_validation_failed".to_string()],
-                    ),
-                ));
+                return Err(Error::Permissions(PermissionsError::collision(
+                    54321,
+                    vec!["app_validation_failed".to_string()],
+                )));
             }
         }
         Err(e) => {
             error!("  ❌ ApplicationValidator validation failed: {}", e);
-            return Err(webgates::errors::Error::Permissions(e));
+            return Err(Error::Permissions(e));
         }
     }
 
@@ -199,12 +198,10 @@ async fn example_runtime_validation() -> Result<()> {
         }
         Err(e) => {
             error!("  ❌ Runtime validation failed: {}", e);
-            return Err(webgates::errors::Error::Permissions(
-                webgates::errors::PermissionsError::collision(
-                    0,
-                    vec![format!("Runtime validation failed: {}", e)],
-                ),
-            ));
+            return Err(Error::Permissions(PermissionsError::collision(
+                0,
+                vec![format!("Runtime validation failed: {}", e)],
+            )));
         }
     }
 
@@ -252,12 +249,10 @@ async fn example_detailed_validation() -> Result<()> {
         }
         Err(e) => {
             error!("  ❌ Advanced validation process failed: {}", e);
-            return Err(webgates::errors::Error::Permissions(
-                webgates::errors::PermissionsError::collision(
-                    0,
-                    vec![format!("Advanced validation process failed: {}", e)],
-                ),
-            ));
+            return Err(Error::Permissions(PermissionsError::collision(
+                0,
+                vec![format!("Advanced validation process failed: {}", e)],
+            )));
         }
     }
 
@@ -424,26 +419,22 @@ async fn handle_validation_with_recovery(permissions: Vec<String>) -> Result<()>
             if !duplicates.is_empty() {
                 info!("    Applying automatic deduplication...");
                 // In a real application, you might implement deduplication logic here
-                return Err(webgates::errors::Error::Authn(
-                    webgates::errors::AuthnError::invalid_credentials(Some(
-                        "Duplicates found but recovery not implemented in example".to_string(),
-                    )),
-                ));
+                return Err(Error::Authn(AuthnError::invalid_credentials(Some(
+                    "Duplicates found but recovery not implemented in example".to_string(),
+                ))));
             }
 
             if !report.collisions.is_empty() {
                 error!("    Hash collisions detected - manual intervention required");
-                return Err(webgates::errors::Error::Permissions(
-                    webgates::errors::PermissionsError::collision(
-                        99999,
-                        vec!["collision_detected".to_string()],
-                    ),
-                ));
+                return Err(Error::Permissions(PermissionsError::collision(
+                    99999,
+                    vec!["collision_detected".to_string()],
+                )));
             }
         }
         Err(e) => {
             error!("Failed to generate validation report: {}", e);
-            return Err(webgates::errors::Error::Permissions(e));
+            return Err(Error::Permissions(e));
         }
     }
 
@@ -472,7 +463,7 @@ async fn validate_service_permissions(permissions: Vec<String>) -> Result<usize>
     // Use strict validation for service permissions
     checker.validate().map_err(|e| {
         error!("Service permission validation failed: {}", e);
-        webgates::errors::Error::Permissions(webgates::errors::PermissionsError::collision(
+        Error::Permissions(PermissionsError::collision(
             0,
             vec![format!("Service permission validation failed: {}", e)],
         ))
@@ -510,7 +501,7 @@ async fn validate_with_fallback() -> Result<()> {
             let mut fallback_checker = PermissionCollisionChecker::new(safe_permissions);
             fallback_checker.validate().map_err(|e| {
                 error!("Even fallback permissions failed validation: {}", e);
-                webgates::errors::Error::Permissions(webgates::errors::PermissionsError::collision(
+                Error::Permissions(PermissionsError::collision(
                     0,
                     vec![format!(
                         "Even fallback permissions failed validation: {}",
@@ -524,12 +515,10 @@ async fn validate_with_fallback() -> Result<()> {
         }
         Err(e) => {
             error!("    Validation process failed entirely: {}", e);
-            Err(webgates::errors::Error::Permissions(
-                webgates::errors::PermissionsError::collision(
-                    0,
-                    vec![format!("Validation process failed entirely: {}", e)],
-                ),
-            ))
+            Err(Error::Permissions(PermissionsError::collision(
+                0,
+                vec![format!("Validation process failed entirely: {}", e)],
+            )))
         }
     }
 }
@@ -559,12 +548,10 @@ async fn simulate_permission_cleanup(permissions: &mut Vec<String>) -> Result<()
             Ok(_) => info!("    ✅ Post-cleanup validation passed"),
             Err(e) => {
                 error!("    ❌ Post-cleanup validation failed: {}", e);
-                return Err(webgates::errors::Error::Permissions(
-                    webgates::errors::PermissionsError::collision(
-                        0,
-                        vec![format!("Post-cleanup validation failed: {}", e)],
-                    ),
-                ));
+                return Err(Error::Permissions(PermissionsError::collision(
+                    0,
+                    vec![format!("Post-cleanup validation failed: {}", e)],
+                )));
             }
         }
     } else {

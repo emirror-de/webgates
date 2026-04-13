@@ -1,5 +1,6 @@
 use webgates::accounts::Account;
-use webgates::authz::{AccessHierarchy, AccessPolicy};
+use webgates::authz::access_hierarchy::AccessHierarchy;
+use webgates::authz::access_policy::AccessPolicy;
 use webgates::codecs::Codec;
 use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
 use webgates::gate::Gate as CoreGate;

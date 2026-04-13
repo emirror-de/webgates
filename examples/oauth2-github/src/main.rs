@@ -13,7 +13,8 @@ use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use webgates::accounts::Account;
-use webgates::authz::AccessPolicy;
+use webgates::authz::access_hierarchy::AccessHierarchy;
+use webgates::authz::access_policy::AccessPolicy;
 use webgates::codecs::jsonwebtoken;
 use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
 use webgates::cookie;
@@ -48,7 +49,7 @@ impl<R, G, Inner> LoggingAccountRepository<R, G, Inner> {
 
 impl<R, G, Inner> AccountRepository<R, G> for LoggingAccountRepository<R, G, Inner>
 where
-    R: webgates::authz::AccessHierarchy + Eq + std::fmt::Display + Send + Sync + 'static,
+    R: AccessHierarchy + Eq + std::fmt::Display + Send + Sync + 'static,
     G: Eq + Clone + Send + Sync + 'static,
     Inner: AccountRepository<R, G> + Send + Sync + 'static,
 {

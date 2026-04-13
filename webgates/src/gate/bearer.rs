@@ -23,7 +23,10 @@
 //!
 //! ```rust
 //! use std::sync::Arc;
-//! use webgates::prelude::{Account, Group, Role};
+//! use webgates::accounts::Account;
+//! use webgates::authz::access_hierarchy::AccessHierarchy;
+//! use webgates::groups::Group;
+//! use webgates::roles::Role;
 //! use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
 //! use webgates::gate::GateExt;
 //! use webgates::gate::bearer::{BearerGate, BearerGateAdapter, JwtBearerRuntime, StaticTokenRuntime};
@@ -34,7 +37,7 @@
 //! impl<C, R, G> BearerGateAdapter<C, R, G, webgates::gate::bearer::JwtConfig<R, G>> for JwtRuntimeAdapter
 //! where
 //!     C: webgates::codecs::Codec<Payload = JwtClaims<Account<R, G>>>,
-//!     R: webgates::authz::AccessHierarchy + Eq + std::fmt::Display + Clone,
+//!     R: AccessHierarchy + Eq + std::fmt::Display + Clone,
 //!     G: Eq + Clone,
 //! {
 //!     type Output = JwtBearerRuntime<C, R, G>;
@@ -51,7 +54,7 @@
 //! impl<C, R, G> BearerGateAdapter<C, R, G, webgates::gate::bearer::StaticTokenConfig> for StaticRuntimeAdapter
 //! where
 //!     C: webgates::codecs::Codec,
-//!     R: webgates::authz::AccessHierarchy + Eq + std::fmt::Display + Clone,
+//!     R: AccessHierarchy + Eq + std::fmt::Display + Clone,
 //!     G: Eq + Clone,
 //! {
 //!     type Output = StaticTokenRuntime<R, G>;
@@ -91,7 +94,9 @@ use std::sync::Arc;
 
 use super::GateExt;
 use crate::accounts::Account;
-use crate::authz::{AccessHierarchy, AccessPolicy, AuthorizationService};
+use crate::authz::access_hierarchy::AccessHierarchy;
+use crate::authz::access_policy::AccessPolicy;
+use crate::authz::authorization_service::AuthorizationService;
 use crate::codecs::Codec;
 use crate::codecs::jwt::validation_result::JwtValidationResult;
 use crate::codecs::jwt::validation_service::JwtValidationService;
@@ -528,8 +533,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use super::*;
     use crate::accounts::Account;
     use crate::codecs::jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER as JWT_CRYPTO_PROVIDER;
@@ -543,7 +546,7 @@ mod tests {
     }
 
     #[test]
-    fn jwt_runtime_authorizes_when_policy_allows() {
+    fn jwt_runtime_authorizes_when_policy_allows() -> Result<(), Box<dyn std::error::Error>> {
         install_jwt_crypto_provider();
         let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
         let gate = BearerGate::<_, Role, Group, JwtConfig<Role, Group>>::new_with_codec(
@@ -555,7 +558,10 @@ mod tests {
         let account = Account::<Role, Group>::new("user");
         let exp = Utc::now().timestamp() as u64 + 60;
         let claims = JwtClaims::new(account.clone(), RegisteredClaims::new("issuer", exp));
-        let token = String::from_utf8(codec.encode(&claims).expect("encode jwt")).unwrap();
+        let encoded = codec
+            .encode(&claims)
+            .map_err(|e| format!("encode jwt: {e}"))?;
+        let token = String::from_utf8(encoded).map_err(|e| format!("utf-8 decode: {e}"))?;
 
         let runtime = gate.runtime();
         let result = runtime.evaluate(Some(&token));
@@ -568,8 +574,9 @@ mod tests {
                 assert_eq!(acc.user_id, account.user_id);
                 assert_eq!(registered_claims.issuer, "issuer");
             }
-            other => panic!("expected JwtAuthorized, got {other:?}"),
+            other => return Err(format!("expected JwtAuthorized, got {other:?}").into()),
         }
+        Ok(())
     }
 
     #[test]

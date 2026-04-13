@@ -1,4 +1,4 @@
-use crate::permissions::AsPermissionName;
+use crate::permissions::as_permission_name::AsPermissionName;
 
 use const_crypto::sha2::Sha256;
 use serde::{Deserialize, Serialize};
@@ -32,7 +32,7 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```rust
-/// use webgates_core::permissions::PermissionId;
+/// use webgates_core::permissions::permission_id::PermissionId;
 ///
 /// let read_id = PermissionId::from("read:file");
 /// let write_id = PermissionId::from("write:file");

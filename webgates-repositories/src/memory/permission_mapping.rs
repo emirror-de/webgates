@@ -7,7 +7,8 @@ use crate::permission_mapping_repository::{
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use webgates_core::permissions::{PermissionId, PermissionMapping};
+use webgates_core::permissions::mapping::PermissionMapping;
+use webgates_core::permissions::permission_id::PermissionId;
 
 /// In-memory implementation of [`PermissionMappingRepository`] for development and testing.
 ///
@@ -235,7 +236,7 @@ mod tests {
     use crate::permission_mapping_repository::{
         PermissionMappingRepository, PermissionMappingRepositoryBulk,
     };
-    use webgates_core::permissions::PermissionMapping;
+    use webgates_core::permissions::mapping::PermissionMapping;
 
     #[tokio::test]
     async fn store_mapping_rejects_duplicate_normalized_strings() {

@@ -1,6 +1,7 @@
 #![cfg(feature = "surrealdb")]
 
-use webgates_core::permissions::{PermissionId, PermissionMapping};
+use webgates_core::permissions::mapping::PermissionMapping;
+use webgates_core::permissions::permission_id::PermissionId;
 use webgates_repositories::{
     permission_mapping_repository::PermissionMappingRepository,
     surrealdb::{DatabaseScope, SurrealDbRepository},

@@ -7,7 +7,7 @@
 
 use crate::comma_separated_value::CommaSeparatedValue;
 use webgates_core::accounts::Account;
-use webgates_core::authz::AccessHierarchy;
+use webgates_core::authz::access_hierarchy::AccessHierarchy;
 
 #[cfg(feature = "sea-orm")]
 use sea_orm::{ActiveValue, entity::prelude::*};

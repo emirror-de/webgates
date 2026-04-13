@@ -8,11 +8,12 @@ use sea_orm::{
     entity::{ActiveModelTrait, ActiveValue},
 };
 use uuid::Uuid;
-use webgates_core::credentials::{Credentials, CredentialsVerifier};
+use webgates_core::credentials::Credentials;
+use webgates_core::credentials::credentials_verifier::CredentialsVerifier;
 use webgates_core::errors_core::Result;
 use webgates_core::verification_result::VerificationResult;
 use webgates_secrets::Secret;
-use webgates_secrets::hashing::{HashingService, argon2::Argon2Hasher};
+use webgates_secrets::hashing::{argon2::Argon2Hasher, hashing_service::HashingService};
 
 impl SecretRepository for SeaOrmRepository {
     type Error = RepoError;

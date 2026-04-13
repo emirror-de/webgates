@@ -1,10 +1,11 @@
 use crate::errors::{Error as RepoError, Result};
 use crate::secret_repository::SecretRepository;
-use webgates_core::credentials::{Credentials, CredentialsVerifier};
+use webgates_core::credentials::Credentials;
+use webgates_core::credentials::credentials_verifier::CredentialsVerifier;
 use webgates_core::errors_core::Result as CoreResult;
 use webgates_core::verification_result::VerificationResult;
 use webgates_secrets::Secret;
-use webgates_secrets::hashing::{HashingService, argon2::Argon2Hasher};
+use webgates_secrets::hashing::{argon2::Argon2Hasher, hashing_service::HashingService};
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -26,7 +27,8 @@ use uuid::Uuid;
 ///
 /// # Example Usage
 /// ```rust
-/// use webgates_core::credentials::{Credentials, CredentialsVerifier};
+/// use webgates_core::credentials::Credentials;
+/// use webgates_core::credentials::credentials_verifier::CredentialsVerifier;
 /// use webgates_core::verification_result::VerificationResult;
 /// use webgates_repositories::memory::secret::MemorySecretRepository;
 /// use webgates_repositories::secret_repository::SecretRepository;
@@ -185,7 +187,8 @@ mod tests {
     use super::MemorySecretRepository;
     use crate::secret_repository::SecretRepository;
     use uuid::Uuid;
-    use webgates_core::credentials::{Credentials, CredentialsVerifier};
+    use webgates_core::credentials::Credentials;
+    use webgates_core::credentials::credentials_verifier::CredentialsVerifier;
     use webgates_core::verification_result::VerificationResult;
     use webgates_secrets::Secret;
     use webgates_secrets::hashing::argon2::Argon2Hasher;

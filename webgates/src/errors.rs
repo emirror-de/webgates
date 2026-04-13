@@ -1,11 +1,16 @@
 //! Unified, category-based error types exposed by this crate.
 //!
-//! This module contains error types you mostly need when using this crate:
-//! - `Error`: root enum wrapping all category errors
-//! - `Result<T>`: convenience alias
-//! - `UserFriendlyError`: trait providing multiple message levels
-//! - Category enums: `AuthnError`, `AuthzError`, `PermissionsError`,
-//!   `CodecsError`, `JwtError`, `HashingError`, `SecretError`
+//! This module defines only `Error` (the root enum) and `Result<T>` (the
+//! convenience alias). All category error types have a single canonical path
+//! in their owning module:
+//!
+//! - `webgates::errors_core::{ErrorSeverity, UserFriendlyError}`
+//! - `webgates::authn::errors::{AuthnError, AuthenticationError}`
+//! - `webgates::authz::errors::AuthzError`
+//! - `webgates::permissions::errors::PermissionsError`
+//! - `webgates::codecs::errors::{CodecsError, JwtError, CodecOperation, JwtOperation}`
+//! - `webgates::secrets::errors::SecretError`
+//! - `webgates::secrets::hashing::errors::{HashingError, HashingOperation}`
 //!
 //! # Error Message Levels
 //! Each error provides three message levels for different audiences:
@@ -19,13 +24,14 @@
 //! - `Permissions` – Permission validation/collision concerns
 //! - `Codecs` – Codec/serialization problems (encode/decode/serialize/deserialize/validate)
 //! - `Jwt` – JWT processing (encode/decode/validate/refresh/revoke)
-
 //! - `Hashing` – Hashing/verification problems (hash/verify/generate_salt/update_hash)
 //! - `Secrets` – Secret storage and verification (repo + hashing in secret flows)
 //!
 //! # Basic Example
 //! ```rust
-//! use webgates::errors::{Error, PermissionsError, Result, UserFriendlyError};
+//! use webgates::errors::{Error, Result};
+//! use webgates::permissions::errors::PermissionsError;
+//! use webgates::errors_core::UserFriendlyError;
 //!
 //! fn do_permission_check(flag: bool) -> Result<()> {
 //!     if !flag {
@@ -42,7 +48,8 @@
 //!
 //! # Error Handling
 //! ```rust
-//! use webgates::errors::{Error, UserFriendlyError};
+//! use webgates::errors::Error;
+//! use webgates::errors_core::UserFriendlyError;
 //!
 //! fn handle_error(err: &Error) -> (String, String, String) {
 //!     (
@@ -55,24 +62,27 @@
 
 use thiserror::Error;
 
-// Core error interfaces (trait + severity)
-pub use crate::errors_core::{ErrorSeverity, UserFriendlyError};
+// Core error interfaces — imported for local use in this module only.
+// Use `webgates::errors_core::{ErrorSeverity, UserFriendlyError}` directly.
+use crate::errors_core::{ErrorSeverity, UserFriendlyError};
 
-// Category-based error re-exports for ergonomic imports.
-// Guard re-exports by the feature that enables the underlying modules so
-// this file can be compiled when only a subset of features is active.
+// Category error types — imported for local use only (#[from] derive and match arms).
+// Use each type through its owning module path instead:
+//   `webgates::authn::errors::{AuthnError, AuthenticationError}`
+//   `webgates::authz::errors::AuthzError`
+//   `webgates::permissions::errors::PermissionsError`
+//   `webgates::codecs::errors::{CodecsError, JwtError, CodecOperation, JwtOperation}`
+//   `webgates::secrets::errors::SecretError`
+//   `webgates::secrets::hashing::errors::{HashingError, HashingOperation}`
 #[cfg(feature = "authn")]
-pub use crate::authn::{AuthenticationError, AuthnError};
-
-pub use crate::authz::AuthzError;
-pub use crate::codecs::errors::{CodecOperation, CodecsError, JwtError, JwtOperation};
-pub use crate::permissions::PermissionsError;
-
+use crate::authn::errors::AuthnError;
+use crate::authz::errors::AuthzError;
+use crate::codecs::errors::{CodecsError, JwtError};
+use crate::permissions::errors::PermissionsError;
 #[cfg(feature = "secrets")]
-pub use crate::secrets::errors::SecretError;
-
+use crate::secrets::errors::SecretError;
 #[cfg(feature = "secrets")]
-pub use crate::secrets::hashing::errors::{HashingError, HashingOperation};
+use crate::secrets::hashing::errors::HashingError;
 
 /// Result type alias using our comprehensive Error type.
 ///
@@ -82,7 +92,8 @@ pub use crate::secrets::hashing::errors::{HashingError, HashingOperation};
 /// # Examples
 ///
 /// ```rust
-/// use webgates::errors::{Result, Error, PermissionsError};
+/// use webgates::errors::{Result, Error};
+/// use webgates::permissions::errors::PermissionsError;
 ///
 /// fn validate_account(user_id: &str) -> Result<()> {
 ///     if user_id.is_empty() {
@@ -232,13 +243,14 @@ impl UserFriendlyError for Error {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "secrets")]
-    use crate::errors::HashingOperation;
     #[cfg(feature = "authn")]
-    use crate::errors::{AuthenticationError, AuthnError};
-    use crate::errors::{
-        AuthzError, CodecOperation, Error, ErrorSeverity, JwtOperation, UserFriendlyError,
-    };
+    use crate::authn::errors::{AuthenticationError, AuthnError};
+    use crate::authz::errors::AuthzError;
+    use crate::codecs::errors::{CodecOperation, JwtOperation};
+    use crate::errors::Error;
+    use crate::errors_core::{ErrorSeverity, UserFriendlyError};
+    #[cfg(feature = "secrets")]
+    use crate::secrets::hashing::errors::HashingOperation;
 
     #[test]
     fn authz_error_permission_collision() {

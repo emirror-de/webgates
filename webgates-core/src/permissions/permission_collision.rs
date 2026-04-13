@@ -6,7 +6,7 @@
 ///
 /// Use logic like:
 /// ```rust
-/// # use webgates_core::permissions::ValidationReport;
+/// # use webgates_core::permissions::validation_report::ValidationReport;
 /// # fn analyze(report: &ValidationReport) {
 /// for group in &report.collisions {
 ///     let all_equal = group.permissions.windows(2).all(|w| w[0] == w[1]);

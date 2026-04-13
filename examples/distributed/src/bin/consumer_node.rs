@@ -3,7 +3,7 @@ use distributed::{ApiPermission, AppPermissions, PermissionHelper, RepositoryPer
 use webgates::codecs::jsonwebtoken;
 use webgates::{
     accounts::Account,
-    authz::AccessPolicy,
+    authz::access_policy::AccessPolicy,
     codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims},
     groups::Group,
     roles::Role,

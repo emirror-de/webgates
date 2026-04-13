@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use tracing::{debug, warn};
 use webgates_core::accounts::Account;
-use webgates_core::authz::AccessHierarchy;
+use webgates_core::authz::access_hierarchy::AccessHierarchy;
 
 /// Service responsible for validating raw JWT token strings.
 ///

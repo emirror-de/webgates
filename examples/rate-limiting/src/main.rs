@@ -21,7 +21,7 @@ use axum_extra::extract::{CookieJar, cookie::Cookie};
 use webgates::codecs::jsonwebtoken::{DecodingKey, EncodingKey, Validation};
 use webgates::{
     accounts::Account,
-    authz::AccessPolicy,
+    authz::access_policy::AccessPolicy,
     codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims},
     cookie_template::CookieTemplate,
     groups::Group,

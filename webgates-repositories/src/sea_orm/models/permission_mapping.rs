@@ -14,7 +14,8 @@
 
 #[cfg(feature = "sea-orm")]
 use sea_orm::{ActiveValue, entity::prelude::*};
-use webgates_core::permissions::{PermissionId, PermissionMapping};
+use webgates_core::permissions::mapping::PermissionMapping;
+use webgates_core::permissions::permission_id::PermissionId;
 
 /// SeaORM entity for a permission mapping (normalized string <-> id).
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]

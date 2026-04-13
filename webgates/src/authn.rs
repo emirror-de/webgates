@@ -16,24 +16,24 @@
 //!
 //! # Key components
 //!
-//! - [`LoginService`] - Handles credential verification and direct auth-token issuance
-//! - [`SessionLoginService`] - Handles credential verification and session-backed auth/refresh token issuance
-//! - [`LogoutService`] - Handles non-session logout cleanup
-//! - [`SessionLogoutService`] - Handles session-backed logout and revocation
-//! - [`LoginResult`] - Represents the outcome of direct login attempts
-//! - [`SessionLoginResult`] - Represents the outcome of session-backed login attempts
+//! - [`login::LoginService`] - Handles credential verification and direct auth-token issuance
+//! - [`login::SessionLoginService`] - Handles credential verification and session-backed auth/refresh token issuance
+//! - [`logout::LogoutService`] - Handles non-session logout cleanup
+//! - [`logout::SessionLogoutService`] - Handles session-backed logout and revocation
+//! - [`login::LoginResult`] - Represents the outcome of direct login attempts
+//! - [`login::SessionLoginResult`] - Represents the outcome of session-backed login attempts
 //!
 //! # When to use which service
 //!
-//! Use [`LoginService`] when you want a direct auth-token login flow without
+//! Use [`login::LoginService`] when you want a direct auth-token login flow without
 //! server-side refresh-token session state.
 //!
-//! Use [`SessionLoginService`] when you want:
+//! Use [`login::SessionLoginService`] when you want:
 //! - short-lived auth tokens
 //! - long-lived refresh-token-backed sessions
 //! - refresh-token rotation and replay-aware revocation
 //! - transparent renewal through an adapter such as
-//!   `webgates_axum::session::CookieSessionLayer`
+//!   `webgates_axum::session::cookie_session_layer::CookieSessionLayer`
 //!
 //! Use [`SessionLogoutService`] when logout should revoke either the current
 //! session or the full session family instead of only clearing transport-level
@@ -47,10 +47,12 @@
 //! Direct auth-token login example:
 //!
 //! ```rust
-//! use webgates::authn::{LoginResult, LoginService};
+//! use webgates::authn::login::{LoginResult, LoginService};
 //! use webgates::accounts::Account;
 //! use webgates::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
-//! use webgates::prelude::{Credentials, Group, Role};
+//! use webgates::credentials::Credentials;
+//! use webgates::groups::Group;
+//! use webgates::roles::Role;
 //! use webgates_repositories::memory::account::MemoryAccountRepository;
 //! use webgates_repositories::memory::secret::MemorySecretRepository;
 //! use std::sync::Arc;
@@ -86,18 +88,11 @@
 //! ```
 //!
 //! Session-backed login and revocation are exposed through
-//! [`SessionLoginService`] and [`SessionLogoutService`]. These services compose
+//! [`login::SessionLoginService`] and [`logout::SessionLogoutService`]. These services compose
 //! with `webgates::sessions` repository contracts and are intended to sit below
 //! HTTP adapters that write auth and refresh cookies.
 
-mod login;
-mod logout;
-
-pub use login::{LoginResult, LoginService};
-#[cfg(feature = "sessions")]
-pub use login::{SessionLoginResult, SessionLoginService};
-pub use logout::LogoutService;
-#[cfg(feature = "sessions")]
-pub use logout::SessionLogoutService;
 pub mod errors;
-pub use errors::{AuthenticationError, AuthnError};
+pub mod login;
+/// Authentication logout services.
+pub mod logout;

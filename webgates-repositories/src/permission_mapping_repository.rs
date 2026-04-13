@@ -1,4 +1,5 @@
-use webgates_core::permissions::{PermissionId, PermissionMapping};
+use webgates_core::permissions::mapping::PermissionMapping;
+use webgates_core::permissions::permission_id::PermissionId;
 
 use std::future::Future;
 
@@ -23,7 +24,8 @@ use std::future::Future;
 /// `Permissions` struct. When permission strings need to be recoverable:
 ///
 /// ```rust
-/// # use webgates_core::permissions::{PermissionMapping, Permissions};
+/// # use webgates_core::permissions::mapping::PermissionMapping;
+/// # use webgates_core::permissions::Permissions;
 /// # use webgates_repositories::memory::permission_mapping::MemoryPermissionMappingRepository;
 /// # use webgates_repositories::permission_mapping_repository::PermissionMappingRepository;
 ///
@@ -64,7 +66,8 @@ use std::future::Future;
 /// # Example Implementation Patterns
 ///
 /// ```rust
-/// use webgates_core::permissions::{PermissionMapping, Permissions};
+/// use webgates_core::permissions::mapping::PermissionMapping;
+/// use webgates_core::permissions::Permissions;
 /// use webgates_repositories::memory::permission_mapping::MemoryPermissionMappingRepository;
 /// use webgates_repositories::permission_mapping_repository::PermissionMappingRepository;
 ///

@@ -4,15 +4,15 @@
 #![deny(clippy::expect_used)]
 //! Cookie-backed session middleware for Axum.
 //!
-//! This module provides [`CookieSessionLayer`], an outer middleware layer that
+//! This module provides [`cookie_session_layer::CookieSessionLayer`], an outer middleware layer that
 //! performs transparent session renewal for cookie-based authentication flows.
 //!
 //! The intended composition is:
-//! 1. apply [`CookieSessionLayer`] as the outer layer
+//! 1. apply [`cookie_session_layer::CookieSessionLayer`] as the outer layer
 //! 2. apply `webgates_axum::gate::Gate::cookie(...)` as the inner layer
 //!
 //! This keeps responsibilities separated:
-//! - [`CookieSessionLayer`] owns refresh-cookie handling, renewal decisions, and
+//! - [`cookie_session_layer::CookieSessionLayer`] owns refresh-cookie handling, renewal decisions, and
 //!   response cookie mutation
 //! - the existing cookie gate owns auth-token validation and authorization
 //!
@@ -33,7 +33,6 @@
 //! The layer is framework-specific, but it delegates all renewal rules and
 //! persistence behavior to `webgates-sessions`.
 
-mod cookie_session_layer;
+/// Axum layer for transparent cookie-backed session renewal.
+pub mod cookie_session_layer;
 mod cookie_session_service;
-
-pub use cookie_session_layer::CookieSessionLayer;

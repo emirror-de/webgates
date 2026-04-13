@@ -1,5 +1,8 @@
 use crate::errors_core::Result;
-use crate::permissions::{PermissionCollision, PermissionId, PermissionsError, ValidationReport};
+use crate::permissions::errors::PermissionsError;
+use crate::permissions::permission_collision::PermissionCollision;
+use crate::permissions::permission_id::PermissionId;
+use crate::permissions::validation_report::ValidationReport;
 use std::collections::HashMap;
 
 /// Low-level permission collision checker for runtime validation and analysis.
@@ -34,7 +37,7 @@ use std::collections::HashMap;
 /// ## Basic validation with post-analysis
 ///
 /// ```
-/// use webgates_core::permissions::PermissionCollisionChecker;
+/// use webgates_core::permissions::collision_checker::PermissionCollisionChecker;
 ///
 /// let permissions = vec![
 ///     "user:read".to_string(),
@@ -62,7 +65,7 @@ use std::collections::HashMap;
 /// ## Runtime permission updates
 ///
 /// ```
-/// use webgates_core::permissions::PermissionCollisionChecker;
+/// use webgates_core::permissions::collision_checker::PermissionCollisionChecker;
 ///
 /// fn update_permissions(new_permissions: Vec<String>) -> Result<(), String> {
 ///     let mut checker = PermissionCollisionChecker::new(new_permissions);
@@ -115,7 +118,7 @@ impl PermissionCollisionChecker {
     /// # Examples
     ///
     /// ```
-    /// use webgates_core::permissions::PermissionCollisionChecker;
+    /// use webgates_core::permissions::collision_checker::PermissionCollisionChecker;
     ///
     /// let permissions = vec!["read:file".to_string(), "write:file".to_string()];
     /// let mut checker = PermissionCollisionChecker::new(permissions);

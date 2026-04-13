@@ -4,12 +4,13 @@
 //! (especially enums) to define their string representation for use with the
 //! permission system. This is useful for structured permission definitions.
 //!
-//! The canonical public path is [`webgates_core::permissions::AsPermissionName`].
+//! The canonical public path is [`webgates_core::permissions::as_permission_name::AsPermissionName`].
 //!
 //! # Usage
 //!
 //! ```rust
-//! use webgates_core::permissions::{AsPermissionName, Permissions};
+//! use webgates_core::permissions::as_permission_name::AsPermissionName;
+//! use webgates_core::permissions::Permissions;
 //!
 //! #[derive(Debug, Clone, PartialEq)]
 //! enum ApiPermission {

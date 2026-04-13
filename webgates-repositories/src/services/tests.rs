@@ -7,7 +7,7 @@ use crate::memory::secret::MemorySecretRepository;
 use crate::secret_repository::SecretRepository;
 use crate::services::account_delete::AccountDeleteService;
 use crate::services::account_insert::AccountInsertService;
-use webgates_core::authz::AccessHierarchy;
+use webgates_core::authz::access_hierarchy::AccessHierarchy;
 use webgates_core::groups::Group;
 use webgates_core::permissions::Permissions;
 

@@ -12,7 +12,7 @@ use sea_orm::{
 use serde::{Serialize, de::DeserializeOwned};
 use uuid::Uuid;
 use webgates_core::accounts::Account;
-use webgates_core::authz::AccessHierarchy;
+use webgates_core::authz::access_hierarchy::AccessHierarchy;
 
 /// Helper to convert a SeaORM model into the domain `Account`.
 fn model_to_account<R, G>(model: seaorm_account::Model) -> Result<Account<R, G>>

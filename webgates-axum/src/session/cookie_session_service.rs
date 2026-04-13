@@ -9,7 +9,7 @@ use axum_extra::extract::cookie::{Cookie, CookieJar};
 use http::{HeaderValue, StatusCode, header::SET_COOKIE};
 use tower::Service;
 use webgates::accounts::Account;
-use webgates::authz::AccessHierarchy;
+use webgates::authz::access_hierarchy::AccessHierarchy;
 use webgates::codecs::Codec;
 use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
 use webgates::cookie_template::CookieTemplate;

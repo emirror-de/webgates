@@ -18,11 +18,11 @@
 //! Prefer the canonical public paths exported by the owning modules:
 //!
 //! - [`accounts::Account`]
-//! - [`authz::AccessHierarchy`], [`authz::AccessPolicy`], [`authz::AuthorizationService`], [`authz::AuthzError`]
-//! - [`credentials::Credentials`], [`credentials::CredentialsVerifier`]
-//! - [`permissions::PermissionId`], [`permissions::Permissions`], [`permissions::ApplicationValidator`]
-//! - [`permissions::PermissionCollisionChecker`], [`permissions::PermissionCollision`], [`permissions::ValidationReport`]
-//! - [`permissions::AsPermissionName`], [`permissions::PermissionsError`]
+//! - [`authz::access_hierarchy::AccessHierarchy`], [`authz::access_policy::AccessPolicy`], [`authz::authorization_service::AuthorizationService`], [`authz::errors::AuthzError`]
+//! - [`credentials::Credentials`], [`credentials::credentials_verifier::CredentialsVerifier`]
+//! - [`permissions::permission_id::PermissionId`], [`permissions::Permissions`], [`permissions::application_validator::ApplicationValidator`]
+//! - [`permissions::collision_checker::PermissionCollisionChecker`], [`permissions::permission_collision::PermissionCollision`], [`permissions::validation_report::ValidationReport`]
+//! - [`permissions::as_permission_name::AsPermissionName`], [`permissions::errors::PermissionsError`]
 //! - [`errors::Error`], [`errors::Result`]
 //! - [`errors_core::ErrorSeverity`], [`errors_core::UserFriendlyError`]
 //! - [`groups::Group`], [`groups::GroupEntity`]

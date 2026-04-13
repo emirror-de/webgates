@@ -1,5 +1,7 @@
 use crate::errors_core::Result;
-use crate::permissions::{PermissionCollisionChecker, PermissionsError, ValidationReport};
+use crate::permissions::collision_checker::PermissionCollisionChecker;
+use crate::permissions::errors::PermissionsError;
+use crate::permissions::validation_report::ValidationReport;
 use tracing::info;
 
 /// High-level builder for validating application permission sets at startup.
@@ -15,8 +17,7 @@ use tracing::info;
 /// # Examples
 ///
 /// ```
-/// use webgates_core::permissions::ApplicationValidator;
-///
+/// use webgates_core::permissions::application_validator::ApplicationValidator;///
 /// # fn load_config_permissions() -> Vec<String> { vec!["user:read".to_string()] }
 /// # async fn load_db_permissions() -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> { Ok(vec!["admin:write".to_string()]) }
 /// # async fn example() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -35,7 +36,8 @@ use tracing::info;
 /// ```
 ///
 /// ```
-/// use webgates_core::permissions::{ApplicationValidator, PermissionCollisionChecker};
+/// use webgates_core::permissions::application_validator::ApplicationValidator;
+/// use webgates_core::permissions::collision_checker::PermissionCollisionChecker;
 ///
 /// let permissions = vec!["user:read".to_string(), "user:write".to_string()];
 ///

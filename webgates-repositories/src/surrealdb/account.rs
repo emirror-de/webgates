@@ -15,8 +15,9 @@ use surrealdb::Connection;
 use surrealdb_types::{RecordId, RecordIdKey, SurrealValue, Uuid as SurrealUuid};
 use uuid::Uuid;
 use webgates_core::accounts::Account;
-use webgates_core::authz::AccessHierarchy;
-use webgates_core::permissions::{PermissionId, Permissions};
+use webgates_core::authz::access_hierarchy::AccessHierarchy;
+use webgates_core::permissions::Permissions;
+use webgates_core::permissions::permission_id::PermissionId;
 
 /// SurrealDB persistence record for a stored account.
 ///
@@ -452,9 +453,10 @@ mod tests {
     use serde_json::json;
     use uuid::Uuid;
     use webgates_core::accounts::Account;
-    use webgates_core::authz::AccessHierarchy;
+    use webgates_core::authz::access_hierarchy::AccessHierarchy;
     use webgates_core::groups::Group;
-    use webgates_core::permissions::{PermissionId, Permissions};
+    use webgates_core::permissions::Permissions;
+    use webgates_core::permissions::permission_id::PermissionId;
     use webgates_core::roles::Role;
 
     #[derive(

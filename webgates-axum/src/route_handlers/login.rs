@@ -24,13 +24,13 @@
 //!   repository, session repository, and auth-token issuer.
 
 use webgates::accounts::Account;
-use webgates::authn::{LoginResult, LoginService, SessionLoginResult, SessionLoginService};
-use webgates::authz::AccessHierarchy;
+use webgates::authn::login::{LoginResult, LoginService, SessionLoginResult, SessionLoginService};
+use webgates::authz::access_hierarchy::AccessHierarchy;
 use webgates::codecs::Codec;
 use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
 use webgates::cookie_template::CookieTemplate;
 use webgates::credentials::Credentials;
-use webgates::credentials::CredentialsVerifier;
+use webgates::credentials::credentials_verifier::CredentialsVerifier;
 use webgates::sessions::config::SessionConfig;
 use webgates::sessions::repository::SessionRepository;
 use webgates::sessions::session::Session;

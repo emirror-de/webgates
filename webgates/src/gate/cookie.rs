@@ -29,7 +29,9 @@ core crate.
 use std::sync::Arc;
 
 // Local crate types used by the gate
-use webgates::prelude::{Account, Group, Role};
+use webgates::accounts::Account;
+use webgates::groups::Group;
+use webgates::roles::Role;
 use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
 use webgates::gate::GateExt;
 use webgates::gate::cookie::{CookieGate, CookieGateAdapter, CookieGateRuntime, CookieEvaluation};
@@ -43,7 +45,7 @@ impl<C, R, G> CookieGateAdapter<C, R, G> for RuntimeAdapter
 where
     // The runtime requires a codec that decodes JwtClaims<Account<R, G>>
     C: webgates::codecs::Codec<Payload = JwtClaims<Account<R, G>>>,
-    R: webgates::authz::AccessHierarchy + Eq + std::fmt::Display + Clone,
+    R: webgates::authz::access_hierarchy::AccessHierarchy + Eq + std::fmt::Display + Clone,
     G: Eq + Clone,
 {
     // We choose the runtime evaluator as the adapter output
@@ -133,7 +135,9 @@ use std::sync::Arc;
 
 use super::GateExt;
 use crate::accounts::Account;
-use crate::authz::{AccessHierarchy, AccessPolicy, AuthorizationService};
+use crate::authz::access_hierarchy::AccessHierarchy;
+use crate::authz::access_policy::AccessPolicy;
+use crate::authz::authorization_service::AuthorizationService;
 use crate::codecs::Codec;
 use crate::codecs::jwt::validation_result::JwtValidationResult;
 use crate::codecs::jwt::validation_service::JwtValidationService;

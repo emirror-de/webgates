@@ -13,7 +13,9 @@ use std::sync::Arc;
 use tracing::{info, warn};
 use webgates::accounts::Account;
 use webgates::groups::Group;
-use webgates::permissions::{PermissionId, PermissionMapping, Permissions};
+use webgates::permissions::Permissions;
+use webgates::permissions::mapping::PermissionMapping;
+use webgates::permissions::permission_id::PermissionId;
 use webgates::roles::Role;
 use webgates_repositories::{
     memory::permission_mapping::MemoryPermissionMappingRepository,

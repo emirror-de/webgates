@@ -13,9 +13,9 @@ use crate::errors::{DatabaseError, DatabaseOperation, Error, Result};
 use std::default::Default;
 use surrealdb::{Connection, Surreal};
 use webgates_secrets::hashing::{
-    HashingService,
     argon2::Argon2Hasher,
     errors::{HashingError, HashingOperation},
+    hashing_service::HashingService,
 };
 
 pub mod account;

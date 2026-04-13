@@ -62,7 +62,7 @@ Core types come from the same canonical module paths as in `webgates-core`:
 
 ```rust
 use webgates::accounts::Account;
-use webgates::authz::AccessPolicy;
+use webgates::authz::access_policy::AccessPolicy;
 use webgates::groups::Group;
 use webgates::roles::Role;
 ```
@@ -74,7 +74,7 @@ Optional capabilities are enabled explicitly:
 {
     use std::sync::Arc;
     use webgates::accounts::Account;
-    use webgates::authz::AccessPolicy;
+    use webgates::authz::access_policy::AccessPolicy;
     use webgates::gate::Gate;
     use webgates::groups::Group;
     use webgates::roles::Role;
@@ -123,7 +123,6 @@ pub mod errors;
 pub(crate) mod errors_integration;
 #[cfg(any(feature = "codecs", feature = "cookies", feature = "oauth2"))]
 pub mod gate;
-pub use webgates_core::prelude;
 #[cfg(feature = "secrets")]
 pub use webgates_secrets as secrets;
 #[cfg(feature = "sessions")]

@@ -1,4 +1,3 @@
-#![allow(clippy::use_self)]
 //! SeaORM persistence models for accounts and credentials.
 //!
 //! These modules define the database entities used internally by `SeaOrmRepository`.

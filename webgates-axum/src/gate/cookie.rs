@@ -21,7 +21,7 @@
 //! # use axum::{routing::get, Router};
 //! # use std::sync::Arc;
 //! use webgates::accounts::Account;
-//! use webgates::authz::AccessPolicy;
+//! use webgates::authz::access_policy::AccessPolicy;
 //! use webgates::groups::Group;
 //! use webgates::roles::Role;
 //! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
@@ -102,7 +102,8 @@ pub(crate) mod cookie_service;
 
 use self::cookie_service::CookieGateService;
 use webgates::accounts::Account;
-use webgates::authz::{AccessHierarchy, AccessPolicy};
+use webgates::authz::access_hierarchy::AccessHierarchy;
+use webgates::authz::access_policy::AccessPolicy;
 use webgates::codecs::Codec;
 use webgates::codecs::jwt::JwtClaims;
 use webgates::cookie_template::{CookieTemplate, CookieTemplateBuilderError};
@@ -186,7 +187,7 @@ where
     /// # Example
     /// ```rust
     /// # use webgates::accounts::Account;
-    /// # use webgates::authz::AccessPolicy;
+    /// # use webgates::authz::access_policy::AccessPolicy;
     /// # use webgates::groups::Group;
     /// # use webgates::roles::Role;
     /// # use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
@@ -214,7 +215,7 @@ where
     /// # Example
     /// ```rust
     /// # use webgates::accounts::Account;
-    /// # use webgates::authz::AccessPolicy;
+    /// # use webgates::authz::access_policy::AccessPolicy;
     /// # use webgates::groups::Group;
     /// # use webgates::roles::Role;
     /// # use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
@@ -261,7 +262,7 @@ where
     /// # Example
     /// ```rust
     /// # use webgates::accounts::Account;
-    /// # use webgates::authz::AccessPolicy;
+    /// # use webgates::authz::access_policy::AccessPolicy;
     /// # use webgates::groups::Group;
     /// # use webgates::roles::Role;
     /// # use webgates::codecs::jwt::{JsonWebToken, JwtClaims};

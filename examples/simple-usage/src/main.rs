@@ -5,15 +5,17 @@
 
 use axum_extra::extract::CookieJar;
 use webgates::accounts::Account;
-use webgates::authz::AccessPolicy;
+use webgates::authz::access_policy::AccessPolicy;
 use webgates::codecs::jsonwebtoken;
 use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
 use webgates::cookie;
 use webgates::cookie_template::CookieTemplate;
 use webgates::credentials::Credentials;
-use webgates::errors::{HashingOperation, Result, SecretError};
+use webgates::errors::Result;
 use webgates::groups::Group;
 use webgates::roles::Role;
+use webgates::secrets::errors::SecretError;
+use webgates::secrets::hashing::errors::HashingOperation;
 use webgates_axum::gate::Gate;
 use webgates_axum::route_handlers::login::login;
 use webgates_axum::route_handlers::logout::logout;

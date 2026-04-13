@@ -14,9 +14,9 @@ use crate::{
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Schema};
 
 use webgates_secrets::hashing::{
-    HashingService,
     argon2::Argon2Hasher,
     errors::{HashingError, HashingOperation},
+    hashing_service::HashingService,
 };
 
 /// SeaORM persistence entities (database models) used by `SeaOrmRepository`.

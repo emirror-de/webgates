@@ -13,7 +13,7 @@
 //! Detect a permission hash collision:
 //! ```rust
 //! use webgates_core::errors_core::{ErrorSeverity, UserFriendlyError};
-//! use webgates_core::permissions::PermissionsError;
+//! use webgates_core::permissions::errors::PermissionsError;
 //!
 //! let err = PermissionsError::collision(42, vec!["read:alpha".into(), "read:beta".into()]);
 //! assert!(err.support_code().starts_with("PERM-COLLISION-"));

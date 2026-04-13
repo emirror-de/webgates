@@ -23,8 +23,8 @@ cycles.
 
 use crate::errors::SecretError;
 use crate::hashing::HashedValue;
-use crate::hashing::HashingService;
 use crate::hashing::errors::HashingOperation;
+use crate::hashing::hashing_service::HashingService;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use webgates_core::verification_result::VerificationResult;

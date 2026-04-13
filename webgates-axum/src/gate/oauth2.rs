@@ -46,11 +46,11 @@ use oauth2::{
 use serde::Deserialize;
 use tracing::error;
 use webgates::accounts::Account;
-use webgates::authz::AccessHierarchy;
+use webgates::authz::access_hierarchy::AccessHierarchy;
 use webgates::codecs::Codec;
 use webgates::codecs::jwt::JwtClaims;
 use webgates::cookie_template::CookieTemplate;
-use webgates::errors::UserFriendlyError;
+use webgates::errors_core::UserFriendlyError;
 use webgates::gate::oauth2::errors::OAuth2Error;
 use webgates::gate::oauth2::{
     CallbackInput, CallbackOutcome, LoginPreparation, OAuth2Gate as CoreOAuth2Gate, OAuth2Runtime,

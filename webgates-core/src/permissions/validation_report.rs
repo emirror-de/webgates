@@ -1,4 +1,4 @@
-use super::PermissionCollision;
+use super::permission_collision::PermissionCollision;
 use tracing::{info, warn};
 
 /// Validation outcome for a set of permission strings.
@@ -35,7 +35,8 @@ use tracing::{info, warn};
 ///
 /// # Example
 /// ```rust
-/// use webgates_core::permissions::{ApplicationValidator, PermissionCollisionChecker};
+/// use webgates_core::permissions::application_validator::ApplicationValidator;
+/// use webgates_core::permissions::collision_checker::PermissionCollisionChecker;
 ///
 /// let mut checker = PermissionCollisionChecker::new(vec![
 ///     "user:read".into(),

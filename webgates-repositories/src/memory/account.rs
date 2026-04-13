@@ -3,7 +3,7 @@ use crate::errors::{
     Error as RepoError, RepositoriesError, RepositoryOperation, RepositoryType, Result,
 };
 use webgates_core::accounts::Account;
-use webgates_core::authz::AccessHierarchy;
+use webgates_core::authz::access_hierarchy::AccessHierarchy;
 
 use std::collections::HashMap;
 use std::sync::Arc;
