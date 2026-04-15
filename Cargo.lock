@@ -6539,6 +6539,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "webgates-tonic"
+version = "0.1.0-dev"
+dependencies = [
+ "chrono",
+ "http",
+ "prometheus",
+ "prost",
+ "subtle",
+ "thiserror 2.0.18",
+ "tokio",
+ "tonic",
+ "tower",
+ "tracing",
+ "webgates",
+ "webgates-codecs",
+]
+
+[[package]]
 name = "webpki-root-certs"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

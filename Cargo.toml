@@ -13,6 +13,7 @@ members = [
     "webgates-core",
     "webgates-codecs",
     "webgates-axum",
+    "webgates-tonic",
     "webgates-repositories",
     "webgates-repositories/examples/sea-orm",
     "webgates-repositories/examples/surrealdb",
@@ -39,6 +40,7 @@ strum = { version = "0.27", features = ["derive"] }
 subtle = ">=2.6.1"
 thiserror = "2"
 tokio = { version = "1", default-features = false }
+tonic = "0.14"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["std", "env-filter"] }
 uuid = { version = "1" }

@@ -1,0 +1,42 @@
+[package]
+name = "webgates-tonic"
+version = "0.1.0-dev"
+edition = "2024"
+rust-version = "1.91"
+license = "MIT"
+authors = ["Lewin Probst <info@emirror.de>"]
+description = "Tonic server-side integration layer for the webgates authentication and authorization core."
+homepage = "https://github.com/emirror-de/webgates"
+repository = "https://github.com/emirror-de/webgates"
+readme = "README.md"
+documentation = "https://docs.rs/webgates-tonic"
+keywords = ["tonic", "grpc", "auth", "jwt", "rbac"]
+categories = ["authentication", "web-programming::http-server"]
+
+[package.metadata.docs.rs]
+features = ["audit-logging", "prometheus"]
+
+[features]
+default = []
+audit-logging = ["webgates/audit-logging"]
+prometheus = ["audit-logging", "webgates/prometheus", "dep:prometheus"]
+
+[dependencies]
+http = "1"
+prometheus = { workspace = true, optional = true }
+subtle = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tonic = "0.14"
+tower = { version = "0.5", features = ["util"] }
+tracing = { workspace = true }
+webgates = { path = "../webgates", features = ["authn", "codecs", "repositories"] }
+webgates-codecs = { path = "../webgates-codecs" }
+
+[dev-dependencies]
+chrono = { workspace = true }
+prost = "0.14"
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tonic = { version = "0.14", features = ["transport"] }
+webgates = { path = "../webgates", features = ["authn", "codecs", "repositories"] }
+webgates-codecs = { path = "../webgates-codecs" }
