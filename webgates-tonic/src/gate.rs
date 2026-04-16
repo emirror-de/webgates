@@ -19,10 +19,10 @@ pub mod bearer;
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```rust,no_run
 /// use std::sync::Arc;
 /// use webgates::accounts::Account;
-/// use webgates::authz::AccessPolicy;
+/// use webgates::authz::access_policy::AccessPolicy;
 /// use webgates::roles::Role;
 /// use webgates::groups::Group;
 /// use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
@@ -32,7 +32,7 @@ pub mod bearer;
 /// let layer = Gate::bearer("my-svc", codec)
 ///     .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));
 /// ```
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Gate;
 
 impl Gate {

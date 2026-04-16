@@ -40,10 +40,10 @@ OAuth2 flows, or any client-side tonic utilities.
 
 ### Strict JWT bearer gate
 
-```rust,ignore
+```rust,no_run
 use std::sync::Arc;
 use webgates::accounts::Account;
-use webgates::authz::AccessPolicy;
+use webgates::authz::access_policy::AccessPolicy;
 use webgates::roles::Role;
 use webgates::groups::Group;
 use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
@@ -58,7 +58,7 @@ let layer = Gate::bearer("my-svc", codec)
 
 ### Optional JWT bearer gate
 
-```rust,ignore
+```rust,no_run
 use std::sync::Arc;
 use webgates::accounts::Account;
 use webgates::roles::Role;
@@ -75,7 +75,7 @@ let layer = Gate::bearer("my-svc", codec)
 
 ### Static-token bearer gate
 
-```rust,ignore
+```rust,no_run
 use std::sync::Arc;
 use webgates::accounts::Account;
 use webgates::roles::Role;
@@ -94,11 +94,14 @@ let layer = Gate::bearer("my-svc", codec)
 
 In strict JWT mode, retrieve the auth context from request extensions:
 
-```rust,ignore
+```rust,no_run
 use webgates_tonic::context::JwtAuthContext;
 use webgates::roles::Role;
 use webgates::groups::Group;
 use tonic::{Request, Response, Status};
+
+struct MyRequest {}
+struct MyResponse {}
 
 async fn my_handler(
     req: Request<MyRequest>,

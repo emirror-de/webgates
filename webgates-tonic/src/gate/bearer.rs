@@ -32,10 +32,10 @@
 //!
 //! Wrap your tonic server with the layer produced by this gate:
 //!
-//! ```rust,ignore
+//! ```rust,no_run
 //! use std::sync::Arc;
 //! use webgates::accounts::Account;
-//! use webgates::authz::AccessPolicy;
+//! use webgates::authz::access_policy::AccessPolicy;
 //! use webgates::roles::Role;
 //! use webgates::groups::Group;
 //! use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
@@ -298,6 +298,7 @@ where
 /// Validates the `authorization` gRPC metadata key, decodes the JWT, enforces
 /// the configured [`AccessPolicy`], and inserts typed auth context into request
 /// extensions before forwarding the request.
+#[doc(hidden)]
 #[derive(Clone)]
 pub struct JwtBearerService<C, R, G, S>
 where
@@ -479,6 +480,7 @@ where
 /// Performs a constant-time comparison of the `authorization` bearer token
 /// against the configured static secret and inserts a [`StaticTokenAuthorized`]
 /// marker into request extensions.
+#[doc(hidden)]
 #[derive(Clone)]
 pub struct StaticTokenService<S> {
     inner: S,
@@ -934,5 +936,230 @@ mod tests {
         }));
 
         svc.oneshot(make_request_no_auth()).await.expect("no error");
+    }
+
+    // ===================== AUDIT-LOGGING TESTS ======================
+
+    #[cfg(feature = "audit-logging")]
+    mod audit_logging_tests {
+        use std::convert::Infallible;
+
+        use chrono::Utc;
+        use http::{Request, Response};
+        use tower::{Layer, ServiceExt};
+
+        use webgates::accounts::Account;
+        use webgates::authz::access_policy::AccessPolicy;
+        use webgates::codecs::Codec as _;
+        use webgates::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
+        use webgates::groups::Group;
+        use webgates::roles::Role;
+
+        use super::*;
+        use crate::context::{JwtAuthContext, StaticTokenAuthorized};
+
+        fn install_crypto() {
+            use webgates::codecs::jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER as JWT_CRYPTO_PROVIDER;
+            let _ = JWT_CRYPTO_PROVIDER.install_default();
+        }
+
+        fn echo_service() -> impl Service<
+            Request<TonicBody>,
+            Response = Response<TonicBody>,
+            Error = Infallible,
+            Future = impl Future<Output = Result<Response<TonicBody>, Infallible>> + Send + 'static,
+        > + Clone {
+            tower::service_fn(|_req: Request<TonicBody>| async {
+                Ok::<_, Infallible>(Response::new(TonicBody::empty()))
+            })
+        }
+
+        fn make_request_no_auth() -> Request<TonicBody> {
+            Request::builder()
+                .uri("/test.Service/Method")
+                .body(TonicBody::empty())
+                .expect("request construction should succeed")
+        }
+
+        fn make_request_with_bearer(token: &str) -> Request<TonicBody> {
+            Request::builder()
+                .uri("/test.Service/Method")
+                .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
+                .body(TonicBody::empty())
+                .expect("request construction should succeed")
+        }
+
+        /// Audit-logging: JwtAuthorized branch compiles and does not panic.
+        #[tokio::test]
+        async fn audit_jwt_authorized() {
+            install_crypto();
+            let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let account = Account::<Role, Group>::new("audit-user");
+            let exp = Utc::now().timestamp() as u64 + 60;
+            let claims = JwtClaims::new(account.clone(), RegisteredClaims::new("issuer", exp));
+            let encoded = codec.encode(&claims).expect("encode jwt");
+            let token = String::from_utf8(encoded).expect("utf-8");
+
+            let gate: BearerGate<_, Role, Group, JwtConfig<Role, Group>> =
+                BearerGate::new_with_codec("issuer", Arc::clone(&codec)).require_login();
+
+            let svc = gate.layer(tower::service_fn(move |req: Request<TonicBody>| {
+                let ctx = req
+                    .extensions()
+                    .get::<JwtAuthContext<Role, Group>>()
+                    .cloned();
+                async move {
+                    assert!(ctx.is_some(), "JwtAuthContext must be present");
+                    Ok::<_, Infallible>(Response::new(TonicBody::empty()))
+                }
+            }));
+
+            svc.oneshot(make_request_with_bearer(&token))
+                .await
+                .expect("no error");
+        }
+
+        /// Audit-logging: JwtPolicyDenied branch compiles and does not panic.
+        #[tokio::test]
+        async fn audit_jwt_policy_denied() {
+            install_crypto();
+            let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let account = Account::<Role, Group>::new("audit-user");
+            let exp = Utc::now().timestamp() as u64 + 60;
+            let claims = JwtClaims::new(account.clone(), RegisteredClaims::new("issuer", exp));
+            let encoded = codec.encode(&claims).expect("encode jwt");
+            let token = String::from_utf8(encoded).expect("utf-8");
+
+            // require_role(Admin) will deny since the account has no roles.
+            let gate: BearerGate<_, Role, Group, JwtConfig<Role, Group>> =
+                BearerGate::new_with_codec("issuer", Arc::clone(&codec))
+                    .with_policy(AccessPolicy::require_role(Role::Admin));
+
+            let svc = gate.layer(echo_service());
+            let resp = svc
+                .oneshot(make_request_with_bearer(&token))
+                .await
+                .expect("no error");
+            let trailers = resp
+                .headers()
+                .get("grpc-status")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.parse::<u32>().ok());
+            // PERMISSION_DENIED = 7
+            assert_eq!(trailers, Some(7));
+        }
+
+        /// Audit-logging: JwtInvalidIssuer branch compiles and does not panic.
+        #[tokio::test]
+        async fn audit_jwt_invalid_issuer() {
+            install_crypto();
+            let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let account = Account::<Role, Group>::new("audit-user");
+            let exp = Utc::now().timestamp() as u64 + 60;
+            // Token issued by "other-issuer", gate expects "issuer".
+            let claims =
+                JwtClaims::new(account.clone(), RegisteredClaims::new("other-issuer", exp));
+            let encoded = codec.encode(&claims).expect("encode jwt");
+            let token = String::from_utf8(encoded).expect("utf-8");
+
+            let gate: BearerGate<_, Role, Group, JwtConfig<Role, Group>> =
+                BearerGate::new_with_codec("issuer", Arc::clone(&codec)).require_login();
+
+            let svc = gate.layer(echo_service());
+            let resp = svc
+                .oneshot(make_request_with_bearer(&token))
+                .await
+                .expect("no error");
+            let trailers = resp
+                .headers()
+                .get("grpc-status")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.parse::<u32>().ok());
+            // UNAUTHENTICATED = 16
+            assert_eq!(trailers, Some(16));
+        }
+
+        /// Audit-logging: JwtInvalidToken branch compiles and does not panic.
+        #[tokio::test]
+        async fn audit_jwt_invalid_token() {
+            install_crypto();
+            let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let gate: BearerGate<_, Role, Group, JwtConfig<Role, Group>> =
+                BearerGate::new_with_codec("issuer", codec).require_login();
+
+            let svc = gate.layer(echo_service());
+            let resp = svc
+                .oneshot(make_request_with_bearer("not-a-valid-jwt"))
+                .await
+                .expect("no error");
+            let trailers = resp
+                .headers()
+                .get("grpc-status")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.parse::<u32>().ok());
+            // UNAUTHENTICATED = 16
+            assert_eq!(trailers, Some(16));
+        }
+
+        /// Audit-logging: MissingAuthorizationMetadata branch compiles and does not panic.
+        #[tokio::test]
+        async fn audit_jwt_missing_auth() {
+            install_crypto();
+            let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let gate: BearerGate<_, Role, Group, JwtConfig<Role, Group>> =
+                BearerGate::new_with_codec("issuer", codec).require_login();
+
+            let svc = gate.layer(echo_service());
+            let resp = svc.oneshot(make_request_no_auth()).await.expect("no error");
+            let trailers = resp
+                .headers()
+                .get("grpc-status")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.parse::<u32>().ok());
+            // UNAUTHENTICATED = 16
+            assert_eq!(trailers, Some(16));
+        }
+
+        /// Audit-logging: static token mismatch branch compiles and does not panic.
+        #[tokio::test]
+        async fn audit_static_token_mismatch() {
+            install_crypto();
+            let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let gate: BearerGate<_, Role, Group, StaticTokenConfig> =
+                BearerGate::new_with_codec("issuer", codec).with_static_token("correct");
+
+            let svc = gate.layer(echo_service());
+            let resp = svc
+                .oneshot(make_request_with_bearer("wrong"))
+                .await
+                .expect("no error");
+            let trailers = resp
+                .headers()
+                .get("grpc-status")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.parse::<u32>().ok());
+            // PERMISSION_DENIED = 7
+            assert_eq!(trailers, Some(7));
+        }
+
+        /// Audit-logging: static token authorized branch compiles and does not panic.
+        #[tokio::test]
+        async fn audit_static_token_authorized() {
+            install_crypto();
+            let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let gate: BearerGate<_, Role, Group, StaticTokenConfig> =
+                BearerGate::new_with_codec("issuer", codec).with_static_token("secret");
+
+            let svc = gate.layer(tower::service_fn(|req: Request<TonicBody>| async move {
+                let auth = req.extensions().get::<StaticTokenAuthorized>().copied();
+                assert!(auth.is_some());
+                assert!(auth.unwrap().is_authorized());
+                Ok::<_, Infallible>(Response::new(TonicBody::empty()))
+            }));
+
+            svc.oneshot(make_request_with_bearer("secret"))
+                .await
+                .expect("no error");
+        }
     }
 }
