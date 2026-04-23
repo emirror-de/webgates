@@ -1,10 +1,17 @@
 # `webgates` Distributed System Example with Nested Enum Permissions
 
-This example demonstrates how to use `webgates` within a distributed system where all nodes share the same secret for encryption, featuring a type-safe nested enum permission system with strum serialization.
+This example demonstrates the canonical distributed `webgates` model with one
+auth authority and one resource consumer node. The auth authority signs
+short-lived access JWTs with an ES384 private key. Consumer nodes validate those
+JWTs locally using keys fetched from the authority JWKS endpoint.
 
 ## Features
 
-- **Zero-Sync Permissions**: No coordination required between distributed nodes
+- **Authority/resource split**: only the auth node mints JWTs and handles login/logout
+- **JWKS discovery**: auth node publishes `/.well-known/jwks.json` and consumer uses `JWKS_URL`
+- **Public-key verification on consumers**: consumer nodes validate locally without signing keys
+- **Short-lived access tokens**: 15-minute access-token TTL by default
+- **Zero-Sync Permissions**: No per-request node-to-node coordination required for authorization
 - **Type-Safe Nested Enums**: Organized permission structure with compile-time safety
 - **Strum Integration**: Automatic serialization/deserialization support
 - **Performance Optimized**: High-performance permission checking with roaring bitmaps (64-bit `RoaringTreemap`)
@@ -14,8 +21,8 @@ This example demonstrates how to use `webgates` within a distributed system wher
 
 The example consists of two nodes:
 
-1. **Auth Node** (`auth_node.rs`) - Issues JWT tokens with permission bitmaps
-2. **Consumer Node** (`consumer_node.rs`) - Validates permissions without coordination
+1. **Auth Node** (`auth_node.rs`) - verifies credentials and issues JWT auth cookies
+2. **Consumer Node** (`consumer_node.rs`) - validates JWTs and enforces policies
 
 ## How to Run and Test with Insomnia/Postman
 
@@ -23,15 +30,22 @@ This example is intended to be exercised using an external HTTP client such as I
 
 1) Prerequisites
 - Rust toolchain installed
-- Copy `.env.example` to `.env` in this directory and set a strong random shared secret:
+- Copy `.env.example` to `.env` in this directory and configure ES384 keys:
 
 ```bash
 cp examples/distributed/.env.example examples/distributed/.env
-# Then edit .env and replace the placeholder with a real secret, e.g.:
-# openssl rand -hex 32
+# Then either point *_PATH to PEM files or set inline *_PEM values.
 ```
 
 The `.env` file is listed in the repository's `.gitignore` and must not be committed.
+
+You can generate a local ES384 keypair with OpenSSL:
+
+```bash
+mkdir -p examples/distributed/keys
+openssl ecparam -name secp384r1 -genkey -noout -out examples/distributed/keys/auth-es384-private.pem
+openssl ec -in examples/distributed/keys/auth-es384-private.pem -pubout -out examples/distributed/keys/auth-es384-public.pem
+```
 
 2) Start the Auth Node
 
@@ -41,10 +55,14 @@ cargo run --bin auth_node
 
 The auth node listens on http://127.0.0.1:3000.
 
+It also publishes JWKS at:
+
+- http://127.0.0.1:3000/.well-known/jwks.json
+
 3) Start the Consumer Node (in a separate shell)
 
 ```bash
-cargo run --bin consumer_node
+JWKS_URL=http://127.0.0.1:3000/.well-known/jwks.json cargo run --bin consumer_node
 ```
 
 The consumer node listens on http://127.0.0.1:3001.
@@ -91,3 +109,13 @@ Notes
 - The JWT is stored in a secure HttpOnly cookie using `CookieTemplateBuilder::recommended()` defaults.
 - Access is enforced via `Gate::cookie(...).with_policy(AccessPolicy::...)` on the consumer node.
 - Permissions use 64-bit deterministic IDs and can be passed to `require_permission(...)` as strings or enums that implement `AsPermissionName`.
+- The consumer node cannot mint tokens and performs verification using fetched JWKS keys.
+- Startup behavior is fail-closed when no live JWKS and no cache are available.
+- Optional cache hardening:
+  - `JWKS_CACHE_PATH=examples/distributed/.cache/jwks.json`
+  - `JWKS_REFRESH_SECS=60`
+  - `JWKS_HTTP_TIMEOUT_MS=3000`
+- In this example, login and logout stay on the auth authority; consumer routes only validate and authorize.
+
+For broader deployment, rotation, and incident procedures, see
+`docs/distributed-sessions.md`.

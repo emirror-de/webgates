@@ -7,6 +7,7 @@ license = "MIT"
 [dependencies]
 axum = "0.8"
 axum-extra = "0.12.5"
+dotenvy = { workspace = true }
 serde = { workspace = true }
 tokio = { workspace = true }
 tower = "0.5"

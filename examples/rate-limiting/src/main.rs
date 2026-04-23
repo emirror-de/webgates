@@ -18,11 +18,10 @@ use axum::{
 };
 
 use axum_extra::extract::{CookieJar, cookie::Cookie};
-use webgates::codecs::jsonwebtoken::{DecodingKey, EncodingKey, Validation};
 use webgates::{
     accounts::Account,
     authz::access_policy::AccessPolicy,
-    codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims},
+    codecs::jwt::{JsonWebToken, JwtClaims},
     cookie_template::CookieTemplate,
     groups::Group,
     roles::Role,
@@ -30,7 +29,7 @@ use webgates::{
 use webgates_axum::gate::Gate;
 
 use serde::{Deserialize, Serialize};
-use std::{sync::Arc, time::Duration};
+use std::{fs, sync::Arc, time::Duration};
 use tokio::net::TcpListener;
 
 use axum::error_handling::HandleErrorLayer;
@@ -44,6 +43,32 @@ struct LoginForm {
     password: String,
 }
 
+const RATE_LIMITING_ES384_PRIVATE_KEY_PEM: &str = r#"-----BEGIN PRIVATE KEY-----
+MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCFT7MfRqWZfNgVX/cH
+bxFTlPkBeCKqjsLkZXD/J3ZYHV1EtQksdrKtOzTr2hMs6pmhZANiAASyND9eQ5Qk
+7ZteSEPMpExbVJenRWwyobExJMb62mmp3eA7Fszy8uBbLj8HRB16y3QbLcTxCBoo
+ldBXfNFzM133OuTV2bBWXq5h34l+A0h4gU/odZ678LfAgnrRYMG4ZjU=
+-----END PRIVATE KEY-----
+"#;
+
+const RATE_LIMITING_ES384_PUBLIC_KEY_PEM: &str = r#"-----BEGIN PUBLIC KEY-----
+MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEsjQ/XkOUJO2bXkhDzKRMW1SXp0VsMqGx
+MSTG+tppqd3gOxbM8vLgWy4/B0Qdest0Gy3E8QgaKJXQV3zRczNd9zrk1dmwVl6u
+Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
+-----END PUBLIC KEY-----
+"#;
+
+fn load_env_or_file(var_name: &str, path_var_name: &str, fallback: &str) -> String {
+    if let Ok(path) = dotenvy::var(path_var_name) {
+        return match fs::read_to_string(path) {
+            Ok(value) => value,
+            Err(error) => panic!("failed to read {path_var_name} file: {error}"),
+        };
+    }
+
+    dotenvy::var(var_name).unwrap_or_else(|_| fallback.to_string())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing
@@ -51,13 +76,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    // Create JWT codec with proper shared secret
-    let shared_secret = "my-super-secret-key-for-demo"; // In production, use a proper secret from env
-    let jwt_options = JsonWebTokenOptions {
-        enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: DecodingKey::from_secret(shared_secret.as_bytes()),
-        header: Some(Default::default()),
-        validation: Some(Validation::default()),
+    // Create ES384 JWT codec.
+    let _ = dotenvy::dotenv();
+    let private_key_pem = load_env_or_file(
+        "JWT_ES384_PRIVATE_KEY_PEM",
+        "JWT_ES384_PRIVATE_KEY_PATH",
+        RATE_LIMITING_ES384_PRIVATE_KEY_PEM,
+    );
+    let public_key_pem = load_env_or_file(
+        "JWT_ES384_PUBLIC_KEY_PEM",
+        "JWT_ES384_PUBLIC_KEY_PATH",
+        RATE_LIMITING_ES384_PUBLIC_KEY_PEM,
+    );
+    let jwt_options = match webgates::codecs::jwt::JsonWebTokenOptions::from_es384_pem(
+        private_key_pem.as_bytes(),
+        public_key_pem.as_bytes(),
+    ) {
+        Ok(options) => options,
+        Err(error) => panic!("invalid JWT ES384 key pair: {error}"),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));

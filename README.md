@@ -22,7 +22,7 @@ Feature highlights (available across the workspace):
 - OAuth2 Authorization Code + PKCE flow with optional first‑party JWT cookie issuance
 - Hierarchical roles, groups, and string-based permissions
 - Ready-to-use login/logout handlers and extractors for Axum
-- Optional anonymous user context and static-token mode for internal services
+- Optional anonymous user context and static-token mode for simple internal service auth
 - In-memory and optional database-backed repositories (SeaORM, SurrealDB)
 - Feature-gated audit logging and Prometheus metrics
 
@@ -74,7 +74,7 @@ Note: Feature names and exact crate versions are listed in each crate's `Cargo.t
 - Gate layer (Axum helpers)
   - `Gate::cookie("issuer", codec)` — JWT via HTTP-only cookies (for browser-based apps)
   - `Gate::bearer("issuer", codec)` — JWT via `Authorization: Bearer` header (for APIs)
-  - `Gate::bearer(...).with_static_token("...")` — static/shared-secret mode for internal services
+  - `Gate::bearer(...).with_static_token("...")` — static bearer-token mode for internal services
   - `Gate::oauth2::<R, G>()` — OAuth2 Authorization Code + PKCE flow builder (Axum helpers)
   - `allow_anonymous_with_optional_user()` — never blocks; injects optional user context
   - `require_login()` — require authenticated user (respects role hierarchy)
@@ -88,7 +88,8 @@ Note: Feature names and exact crate versions are listed in each crate's `Cargo.t
   - In-memory implementations for quick development and tests
   - Optional database-backed repositories in `webgates-repositories` (SeaORM / SurrealDB) behind features
 - JWT codec
-  - `codecs::jwt::JsonWebToken` and associated options — persist keys in production; swap in different backends if needed via feature flags
+  - `codecs::jwt::JsonWebToken` and associated options — ES384 asymmetric signing and validation with canonical `kid` headers
+  - distributed verification baseline uses JWKS discovery (`/.well-known/jwks.json`) with local in-memory verification
 
 ## Cryptographic Backend
 
@@ -109,6 +110,8 @@ JWT operations use the `rust_crypto` backend where applicable (see crate documen
   - `webgates-axum`: https://docs.rs/webgates-axum
   - `webgates-repositories`: https://docs.rs/webgates-repositories
 - The repository contains curated examples under `examples/` (OAuth2 flows, Prometheus integration, permission validation, etc.). See the examples to understand typical wiring for Axum servers and repository setup.
+- For the canonical authority/resource architecture and operations model, see `docs/distributed-sessions.md`.
+- For the JWKS-first distributed setup example (`JWKS_URL` on consumers), see `examples/distributed/README.md`.
 - For practical debugging and common integration issues, consult `TROUBLESHOOTING.md` in the repository.
 
 ## MSRV and license

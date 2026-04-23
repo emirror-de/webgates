@@ -560,7 +560,8 @@ mod tests {
                 RegisteredClaims::new(
                     "issuer",
                     unix_seconds(SystemTime::now() + Duration::from_secs(900)),
-                ),
+                )
+                .with_session_id(session.session_id.into_uuid().to_string()),
             );
             let result = self
                 .jwt
@@ -617,6 +618,13 @@ mod tests {
             Ok(request) => request,
             Err(error) => panic!("request construction should succeed: {}", error),
         }
+    }
+
+    fn auth_token_from_cookie_header(header_value: &str) -> Option<&str> {
+        header_value
+            .split(';')
+            .map(str::trim)
+            .find_map(|entry| entry.strip_prefix("auth-token="))
     }
 
     fn sample_lookup(now: SystemTime) -> SessionLookup {
@@ -699,6 +707,7 @@ mod tests {
         install_jwt_crypto_provider();
         let codec = Arc::new(SessionCodec::new());
         let repository = RecordingSessionRepository::default();
+        let expected_session_id;
         {
             let mut state = match repository.state.lock() {
                 Ok(state) => state,
@@ -710,6 +719,7 @@ mod tests {
                 Some(lookup) => lookup.session.session_id,
                 None => panic!("sample lookup should be present"),
             };
+            expected_session_id = session_id.into_uuid().to_string();
             state.lease_result = Some(LeaseAcquisition::Acquired(RenewalLease::from_ttl(
                 session_id,
                 LeaseId::new(),
@@ -766,6 +776,20 @@ mod tests {
             .and_then(|value| value.to_str().ok())
             .unwrap_or_default();
         assert!(seen_cookie.contains("auth-token="));
+
+        let renewed_auth_token = match auth_token_from_cookie_header(seen_cookie) {
+            Some(token) => token,
+            None => panic!("renewed auth token should be present in forwarded cookie header"),
+        };
+        let decoded_claims = match codec.decode(renewed_auth_token.as_bytes()) {
+            Ok(claims) => claims,
+            Err(error) => panic!("renewed auth token should decode: {}", error),
+        };
+        assert!(decoded_claims.registered_claims.jwt_id.is_some());
+        assert_eq!(
+            decoded_claims.registered_claims.session_id,
+            Some(expected_session_id)
+        );
     }
 
     #[tokio::test]

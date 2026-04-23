@@ -16,16 +16,35 @@
 use crate::errors::{JwtError, JwtOperation};
 use crate::{Codec, Error, Result};
 
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::marker::PhantomData;
+use std::sync::RwLock;
 
 use chrono::Utc;
-use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode_header};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_with::skip_serializing_none;
+use uuid::Uuid;
 
+pub mod authority;
+pub mod jwks;
+pub mod remote_verifier;
 pub mod validation_result;
 pub mod validation_service;
+
+fn validation_with_es384_only() -> Validation {
+    let mut validation = Validation::new(Algorithm::ES384);
+    validation.algorithms = vec![Algorithm::ES384];
+    validation
+}
+
+fn canonical_es384_header_with_kid(kid: &str) -> Header {
+    let mut header = Header::new(Algorithm::ES384);
+    header.typ = Some("JWT".to_string());
+    header.kid = Some(kid.to_string());
+    header
+}
 
 /// Registered/reserved claims defined by the JWT specification.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -52,6 +71,9 @@ pub struct RegisteredClaims {
     /// Unique token identifier.
     #[serde(rename = "jti")]
     pub jwt_id: Option<String>,
+    /// Session identifier for session-backed tokens.
+    #[serde(rename = "sid")]
+    pub session_id: Option<String>,
 }
 
 impl RegisteredClaims {
@@ -68,8 +90,16 @@ impl RegisteredClaims {
             expiration_time,
             not_before_time: None,
             issued_at_time,
-            jwt_id: None,
+            jwt_id: Some(Uuid::now_v7().to_string()),
+            session_id: None,
         }
+    }
+
+    /// Returns updated claims with an explicit session identifier.
+    #[must_use]
+    pub fn with_session_id(mut self, session_id: impl Into<String>) -> Self {
+        self.session_id = Some(session_id.into());
+        self
     }
 }
 
@@ -102,72 +132,210 @@ impl<CustomClaims> JwtClaims<CustomClaims> {
 /// Options used to configure a [`JsonWebToken`] codec.
 #[derive(Debug, Clone)]
 pub struct JsonWebTokenOptions {
-    /// Key for encoding.
-    pub enc_key: EncodingKey,
-    /// Key for decoding.
-    pub dec_key: DecodingKey,
+    /// Key for ES384 encoding.
+    encoding_key: Option<EncodingKey>,
+    /// Canonical key id used when minting JWTs.
+    key_id: String,
+    /// Public verification keys indexed by `kid`.
+    decoding_keys_by_kid: HashMap<String, DecodingKey>,
+    /// Legacy fallback verification key when no `kid` was provided in the token.
+    fallback_decoding_key: Option<DecodingKey>,
     /// Header used for encoding.
-    pub header: Option<Header>,
+    header: Header,
     /// Validation options used during decoding.
-    pub validation: Option<Validation>,
+    validation: Validation,
 }
 
+const DEV_ES384_PRIVATE_KEY_PEM: &[u8] = br#"-----BEGIN PRIVATE KEY-----
+MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCFT7MfRqWZfNgVX/cH
+bxFTlPkBeCKqjsLkZXD/J3ZYHV1EtQksdrKtOzTr2hMs6pmhZANiAASyND9eQ5Qk
+7ZteSEPMpExbVJenRWwyobExJMb62mmp3eA7Fszy8uBbLj8HRB16y3QbLcTxCBoo
+ldBXfNFzM133OuTV2bBWXq5h34l+A0h4gU/odZ678LfAgnrRYMG4ZjU=
+-----END PRIVATE KEY-----
+"#;
+
+const DEV_ES384_PUBLIC_KEY_PEM: &[u8] = br#"-----BEGIN PUBLIC KEY-----
+MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEsjQ/XkOUJO2bXkhDzKRMW1SXp0VsMqGx
+MSTG+tppqd3gOxbM8vLgWy4/B0Qdest0Gy3E8QgaKJXQV3zRczNd9zrk1dmwVl6u
+Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
+-----END PUBLIC KEY-----
+"#;
+
 impl Default for JsonWebTokenOptions {
-    /// Creates symmetric encoding/decoding keys from a random secret using **HMAC-SHA256 (HS256)**.
+    /// Creates ES384 encoding and decoding keys from built-in development keys.
     ///
-    /// This is suitable for tests and ephemeral development only.
-    ///
-    /// # Algorithm guidance
-    ///
-    /// The default algorithm is HS256 (symmetric HMAC). For production use, prefer HS256,
-    /// ES256, or ES384 (ECDSA). **Do not use RSA-based algorithms** (RS256, RS384, RS512,
-    /// PS256, PS384, PS512) until [RUSTSEC-2023-0071] (Marvin Attack timing side-channel
-    /// in the `rsa` crate) is patched upstream — currently no fix is available.
-    ///
-    /// [RUSTSEC-2023-0071]: https://rustsec.org/advisories/RUSTSEC-2023-0071
+    /// This default is intended for tests and local development only. Production
+    /// deployments should provide explicit key material with
+    /// [`JsonWebTokenOptions::from_es384_pem`].
     fn default() -> Self {
-        use rand::{Rng, distr::Alphanumeric, rng};
-
-        let authentication_secret: String = rng()
-            .sample_iter(&Alphanumeric)
-            .take(60)
-            .map(char::from)
-            .collect();
-
-        Self {
-            enc_key: EncodingKey::from_secret(authentication_secret.as_bytes()),
-            dec_key: DecodingKey::from_secret(authentication_secret.as_bytes()),
-            header: Some(Header::default()),
-            validation: Some(Validation::default()),
+        match Self::from_es384_pem(DEV_ES384_PRIVATE_KEY_PEM, DEV_ES384_PUBLIC_KEY_PEM) {
+            Ok(options) => options,
+            Err(error) => panic!("failed to initialize default ES384 JWT options: {error}"),
         }
     }
 }
 
 impl JsonWebTokenOptions {
-    /// Returns updated options with a custom encoding key.
-    pub fn with_encoding_key(self, enc_key: EncodingKey) -> Self {
-        Self { enc_key, ..self }
+    /// Creates ES384 JWT options from PEM-encoded private and public keys.
+    ///
+    /// # Errors
+    ///
+    /// Returns a JWT processing error when either key cannot be parsed.
+    pub fn from_es384_pem(private_key_pem: &[u8], public_key_pem: &[u8]) -> Result<Self> {
+        let encoding_key = EncodingKey::from_ec_pem(private_key_pem).map_err(|error| {
+            Error::Jwt(JwtError::processing(
+                JwtOperation::Encode,
+                format!("failed to parse ES384 private key: {error}"),
+            ))
+        })?;
+        let decoding_key = DecodingKey::from_ec_pem(public_key_pem).map_err(|error| {
+            Error::Jwt(JwtError::processing(
+                JwtOperation::Decode,
+                format!("failed to parse ES384 public key: {error}"),
+            ))
+        })?;
+        let key_id = jwks::es384_kid_from_public_key_pem(public_key_pem)?;
+        let header = canonical_es384_header_with_kid(&key_id);
+        let validation = validation_with_es384_only();
+        let mut decoding_keys_by_kid = HashMap::new();
+        decoding_keys_by_kid.insert(key_id.clone(), decoding_key.clone());
+
+        Ok(Self {
+            encoding_key: Some(encoding_key),
+            key_id,
+            decoding_keys_by_kid,
+            fallback_decoding_key: Some(decoding_key),
+            header,
+            validation,
+        })
     }
 
-    /// Returns updated options with a custom decoding key.
-    pub fn with_decoding_key(self, dec_key: DecodingKey) -> Self {
-        Self { dec_key, ..self }
+    /// Creates verification-only ES384 JWT options from a PEM public key.
+    ///
+    /// Codecs built from these options can decode and validate tokens but will
+    /// reject encoding attempts.
+    ///
+    /// # Errors
+    ///
+    /// Returns a JWT processing error when the public key cannot be parsed.
+    pub fn for_es384_verification_only(public_key_pem: &[u8]) -> Result<Self> {
+        let decoding_key = DecodingKey::from_ec_pem(public_key_pem).map_err(|error| {
+            Error::Jwt(JwtError::processing(
+                JwtOperation::Decode,
+                format!("failed to parse ES384 public key: {error}"),
+            ))
+        })?;
+        let key_id = jwks::es384_kid_from_public_key_pem(public_key_pem)?;
+        let header = canonical_es384_header_with_kid(&key_id);
+        let validation = validation_with_es384_only();
+        let mut decoding_keys_by_kid = HashMap::new();
+        decoding_keys_by_kid.insert(key_id.clone(), decoding_key.clone());
+
+        Ok(Self {
+            encoding_key: None,
+            key_id,
+            decoding_keys_by_kid,
+            fallback_decoding_key: Some(decoding_key),
+            header,
+            validation,
+        })
     }
 
-    /// Returns updated options with a custom header.
-    pub fn with_header(self, header: Header) -> Self {
-        Self {
-            header: Some(header),
-            ..self
+    /// Creates verification-only ES384 options from JWKS keys.
+    ///
+    /// This enables key selection by `kid` and rejects JWTs that do not include
+    /// a matching `kid`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a JWT processing error if no valid ES384 verification key can be
+    /// constructed from the provided JWKS entries.
+    pub fn for_es384_jwks_keys(keys: &[jwks::EcP384Jwk]) -> Result<Self> {
+        if keys.is_empty() {
+            return Err(Error::Jwt(JwtError::processing(
+                JwtOperation::Validate,
+                "JWKS key set is empty",
+            )));
         }
+
+        let mut decoding_keys_by_kid = HashMap::new();
+        for key in keys {
+            let decoding_key = key.to_decoding_key()?;
+            decoding_keys_by_kid.insert(key.kid.clone(), decoding_key);
+        }
+
+        let key_id = keys[0].kid.clone();
+        let header = canonical_es384_header_with_kid(&key_id);
+        let validation = validation_with_es384_only();
+
+        Ok(Self {
+            encoding_key: None,
+            key_id,
+            decoding_keys_by_kid,
+            fallback_decoding_key: None,
+            header,
+            validation,
+        })
+    }
+
+    /// Returns the active signing key id (`kid`).
+    pub fn key_id(&self) -> &str {
+        &self.key_id
+    }
+
+    /// Returns the number of configured verification keys.
+    pub fn verification_key_count(&self) -> usize {
+        self.decoding_keys_by_kid.len()
+    }
+
+    /// Returns whether verification accepts missing `kid` by using a fallback
+    /// decoding key.
+    pub fn allows_missing_kid_fallback(&self) -> bool {
+        self.fallback_decoding_key.is_some()
+    }
+
+    /// Returns updated options with an explicit `kid` for signing.
+    ///
+    /// This always keeps a canonical ES384 JWT header (`alg = ES384`,
+    /// `typ = JWT`, `kid = ...`).
+    pub fn with_key_id(mut self, key_id: impl Into<String>) -> Self {
+        let key_id = key_id.into();
+        self.key_id = key_id.clone();
+        self.header = canonical_es384_header_with_kid(&key_id);
+        self
+    }
+
+    /// Returns updated options with a replaced verification-key map.
+    ///
+    /// The first key is used as fallback only when
+    /// `allow_missing_kid_fallback` is `true`.
+    pub fn with_verification_keys(
+        mut self,
+        keys: HashMap<String, DecodingKey>,
+        allow_missing_kid_fallback: bool,
+    ) -> Self {
+        let fallback = if allow_missing_kid_fallback {
+            keys.values().next().cloned()
+        } else {
+            None
+        };
+        self.decoding_keys_by_kid = keys;
+        self.fallback_decoding_key = fallback;
+        self
+    }
+
+    /// Returns updated options with an added verification key.
+    pub fn with_added_verification_key(mut self, kid: impl Into<String>, key: DecodingKey) -> Self {
+        self.decoding_keys_by_kid.insert(kid.into(), key);
+        self
     }
 
     /// Returns updated options with custom validation settings.
     pub fn with_validation(self, validation: Validation) -> Self {
-        Self {
-            validation: Some(validation),
-            ..self
-        }
+        let mut validation = validation;
+        validation.algorithms = vec![Algorithm::ES384];
+
+        Self { validation, ..self }
     }
 }
 
@@ -175,39 +343,157 @@ impl JsonWebTokenOptions {
 ///
 /// # Key management
 ///
-/// The default constructor generates a fresh random symmetric signing key.
-/// This is convenient for tests or short-lived local development, but it also
-/// means tokens issued by one instance become invalid when a new instance with
-/// a different random key is created.
+/// The default constructor uses built-in ES384 development keys.
+/// This is convenient for tests or local development.
 ///
 /// For persistent sessions across restarts or multiple instances, construct the
 /// codec with explicit keys via [`JsonWebToken::new_with_options`].
 #[derive(Clone)]
 pub struct JsonWebToken<P> {
-    enc_key: EncodingKey,
-    dec_key: DecodingKey,
+    enc_key: Option<EncodingKey>,
+    key_id: String,
+    verification_state: std::sync::Arc<RwLock<VerificationState>>,
     header: Header,
     validation: Validation,
     phantom_payload: PhantomData<P>,
+}
+
+#[derive(Clone)]
+struct VerificationState {
+    dec_keys_by_kid: HashMap<String, DecodingKey>,
+    fallback_dec_key: Option<DecodingKey>,
 }
 
 impl<P> JsonWebToken<P> {
     /// Creates a codec from explicit options.
     pub fn new_with_options(options: JsonWebTokenOptions) -> Self {
         let JsonWebTokenOptions {
-            enc_key,
-            dec_key,
+            encoding_key,
+            key_id,
+            decoding_keys_by_kid,
+            fallback_decoding_key,
             header,
             validation,
         } = options;
 
         Self {
-            enc_key,
-            dec_key,
-            header: header.unwrap_or_default(),
-            validation: validation.unwrap_or_default(),
+            enc_key: encoding_key,
+            key_id,
+            verification_state: std::sync::Arc::new(RwLock::new(VerificationState {
+                dec_keys_by_kid: decoding_keys_by_kid,
+                fallback_dec_key: fallback_decoding_key,
+            })),
+            header,
+            validation,
             phantom_payload: PhantomData,
         }
+    }
+
+    /// Returns the signing `kid` used by this codec.
+    pub fn key_id(&self) -> &str {
+        &self.key_id
+    }
+
+    /// Returns the number of currently configured verification keys.
+    pub fn verification_key_count(&self) -> usize {
+        self.verification_state
+            .read()
+            .map(|state| state.dec_keys_by_kid.len())
+            .unwrap_or(0)
+    }
+
+    /// Returns whether a verification key for the given `kid` exists.
+    pub fn has_verification_key(&self, kid: &str) -> bool {
+        self.verification_state
+            .read()
+            .map(|state| state.dec_keys_by_kid.contains_key(kid))
+            .unwrap_or(false)
+    }
+
+    /// Returns whether this codec allows verification without `kid`.
+    pub fn allows_missing_kid_fallback(&self) -> bool {
+        self.verification_state
+            .read()
+            .map(|state| state.fallback_dec_key.is_some())
+            .unwrap_or(false)
+    }
+
+    /// Atomically replaces all verification keys.
+    pub fn replace_verification_keys(
+        &self,
+        keys: HashMap<String, DecodingKey>,
+        allow_missing_kid_fallback: bool,
+    ) {
+        if let Ok(mut state) = self.verification_state.write() {
+            let fallback = if allow_missing_kid_fallback {
+                keys.values().next().cloned()
+            } else {
+                None
+            };
+            state.dec_keys_by_kid = keys;
+            state.fallback_dec_key = fallback;
+        }
+    }
+
+    /// Atomically replaces all verification keys from canonical ES384 JWK entries.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when any provided key cannot be converted.
+    pub fn replace_verification_keys_from_jwks(
+        &self,
+        keys: &[jwks::EcP384Jwk],
+        allow_missing_kid_fallback: bool,
+    ) -> Result<()> {
+        let mut decoding_keys = HashMap::new();
+        for key in keys {
+            let decoding_key = key.to_decoding_key()?;
+            decoding_keys.insert(key.kid.clone(), decoding_key);
+        }
+        self.replace_verification_keys(decoding_keys, allow_missing_kid_fallback);
+        Ok(())
+    }
+
+    fn decoding_key_for_header(&self, header: &Header) -> Result<DecodingKey> {
+        if header.alg != Algorithm::ES384 {
+            return Err(Error::Jwt(JwtError::processing(
+                JwtOperation::Validate,
+                format!(
+                    "JWT header algorithm mismatch: expected ES384 but got {:?}",
+                    header.alg
+                ),
+            )));
+        }
+
+        if header.typ.as_deref() != Some("JWT") {
+            return Err(Error::Jwt(JwtError::processing(
+                JwtOperation::Validate,
+                "JWT header `typ` must be `JWT`",
+            )));
+        }
+
+        let state = self.verification_state.read().map_err(|_| {
+            Error::Jwt(JwtError::processing(
+                JwtOperation::Validate,
+                "verification key state lock is poisoned",
+            ))
+        })?;
+
+        if let Some(kid) = header.kid.as_deref() {
+            return state.dec_keys_by_kid.get(kid).cloned().ok_or_else(|| {
+                Error::Jwt(JwtError::processing(
+                    JwtOperation::Validate,
+                    format!("JWT `kid` `{kid}` is not configured for verification"),
+                ))
+            });
+        }
+
+        state.fallback_dec_key.clone().ok_or_else(|| {
+            Error::Jwt(JwtError::processing(
+                JwtOperation::Validate,
+                "JWT header is missing `kid` and no fallback verification key is configured",
+            ))
+        })
     }
 }
 
@@ -224,20 +510,41 @@ where
     type Payload = P;
 
     fn encode(&self, payload: &Self::Payload) -> Result<Vec<u8>> {
-        let token =
-            jsonwebtoken::encode(&self.header, payload, &self.enc_key).map_err(|error| {
-                Error::Jwt(JwtError::processing(
-                    JwtOperation::Encode,
-                    format!("JWT encoding failed: {error}"),
-                ))
-            })?;
+        let Some(enc_key) = &self.enc_key else {
+            return Err(Error::Jwt(JwtError::processing(
+                JwtOperation::Encode,
+                "JWT encoding key is not configured for this codec",
+            )));
+        };
+        let token = jsonwebtoken::encode(&self.header, payload, enc_key).map_err(|error| {
+            Error::Jwt(JwtError::processing(
+                JwtOperation::Encode,
+                format!("JWT encoding failed: {error}"),
+            ))
+        })?;
 
         Ok(token.into_bytes())
     }
 
     fn decode(&self, encoded_value: &[u8]) -> Result<Self::Payload> {
+        let header = decode_header(std::str::from_utf8(encoded_value).map_err(|error| {
+            Error::Jwt(JwtError::processing(
+                JwtOperation::Decode,
+                format!("JWT bytes are not valid UTF-8: {error}"),
+            ))
+        })?)
+        .map_err(|error| {
+            Error::Jwt(JwtError::processing_with_preview(
+                JwtOperation::Decode,
+                format!("JWT header decoding failed: {error}"),
+                Some(format!("token_len={}", encoded_value.len())),
+            ))
+        })?;
+
+        let decoding_key = self.decoding_key_for_header(&header)?;
+
         let claims =
-            jsonwebtoken::decode::<Self::Payload>(encoded_value, &self.dec_key, &self.validation)
+            jsonwebtoken::decode::<Self::Payload>(encoded_value, &decoding_key, &self.validation)
                 .map_err(|error| {
                 // Do not include token bytes in the error to avoid leaking token
                 // material into logs or error messages if log levels are
@@ -248,13 +555,6 @@ where
                     Some(format!("token_len={}", encoded_value.len())),
                 ))
             })?;
-
-        if self.header != claims.header {
-            return Err(Error::Jwt(JwtError::processing(
-                JwtOperation::Validate,
-                "Header of the decoded value does not match the one used for encoding",
-            )));
-        }
 
         Ok(claims.claims)
     }

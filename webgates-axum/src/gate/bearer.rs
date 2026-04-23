@@ -1,6 +1,6 @@
 //! Bearer gate implementation supporting two compile-time distinct modes:
 //! - JWT bearer authentication & authorization (policy-based)
-//! - Static shared-secret bearer token (boolean authorization)
+//! - Static bearer token (boolean authorization)
 //!
 //! Each mode exposes only the relevant builder methods at compile time:
 //!
@@ -69,7 +69,7 @@
 //! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
 //! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("svc-a", codec)
-//!     .with_static_token("shared-secret"); // now static token mode (no with_policy)
+//!     .with_static_token("internal-static-token"); // now static token mode (no with_policy)
 //! ```
 //!
 //! Static token optional:
@@ -83,7 +83,7 @@
 //! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
 //! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("svc-a", codec)
-//!     .with_static_token("shared-secret")
+//!     .with_static_token("internal-static-token")
 //!     .allow_anonymous_with_optional_user(); // installs StaticTokenAuthorized(bool)
 //! ```
 //!

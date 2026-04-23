@@ -24,6 +24,7 @@ prometheus = ["audit-logging", "webgates/prometheus", "dep:prometheus"]
 [dependencies]
 http = "1"
 prometheus = { workspace = true, optional = true }
+serde = { workspace = true }
 subtle = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
@@ -34,8 +35,10 @@ webgates = { path = "../webgates", features = ["authn", "codecs", "repositories"
 webgates-codecs = { path = "../webgates-codecs" }
 
 [dev-dependencies]
+axum = "0.8"
 chrono = { workspace = true }
 prost = "0.14"
+serde_json = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tonic = { version = "0.14", features = ["transport"] }
 webgates = { path = "../webgates", features = ["authn", "codecs", "repositories"] }

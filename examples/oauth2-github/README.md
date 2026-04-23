@@ -42,10 +42,13 @@ Create a `.env` file in your current working directory (see Run section) or expo
   - GITHUB_REDIRECT_URL=http://localhost:3000/auth/callback
 
 - First‑party JWT/session settings:
-  - JWT_SECRET=dev-very-secret-key           (required; use a strong secret in prod)
+  - JWT_ES384_PRIVATE_KEY_PATH=...           (recommended in production)
+  - JWT_ES384_PUBLIC_KEY_PATH=...            (recommended in production)
+  - JWT_ES384_PRIVATE_KEY_PEM=...            (optional inline fallback)
+  - JWT_ES384_PUBLIC_KEY_PEM=...             (optional inline fallback)
   - JWT_ISSUER=my-app                        (optional; default example value)
   - AUTH_COOKIE_NAME=auth-token              (optional; default example value)
-  - JWT_TTL_SECS=86400                       (optional; token lifetime in seconds; default 86400)
+  - JWT_TTL_SECS=900                         (optional; token lifetime in seconds; default 900)
   - POST_LOGIN_REDIRECT=/                    (optional; where to send the user after login)
 
 - Server:
@@ -57,10 +60,11 @@ Example `.env`:
 GITHUB_CLIENT_ID=iv1.abc123xyz
 GITHUB_CLIENT_SECRET=shhh_its_a_secret
 GITHUB_REDIRECT_URL=http://localhost:3000/auth/callback
-JWT_SECRET=local-dev-secret-change-me
+JWT_ES384_PRIVATE_KEY_PATH=examples/oauth2-github/keys/auth-es384-private.pem
+JWT_ES384_PUBLIC_KEY_PATH=examples/oauth2-github/keys/auth-es384-public.pem
 JWT_ISSUER=my-app
 AUTH_COOKIE_NAME=auth-token
-JWT_TTL_SECS=86400
+JWT_TTL_SECS=900
 POST_LOGIN_REDIRECT=/
 APP_ADDR=127.0.0.1:3000
 ```
@@ -136,7 +140,9 @@ You can extend this to look up roles/groups from your database or organization t
 
 - In production:
   - Always use HTTPS and set `Secure` cookies.
-  - Keep JWT signing keys in a secret manager; rotate periodically.
+  - Keep JWT ES384 private keys only on the auth authority and distribute only
+    the matching public key to verifier nodes.
+  - Keep key material in a secret manager and rotate deliberately.
   - Validate scope needs (request the minimum).
   - Avoid logging access tokens or raw PII. The example logs minimally and never prints secrets.
 

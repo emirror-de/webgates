@@ -48,6 +48,7 @@ Use JWT types from the `jwt` module:
 - `webgates_codecs::jwt::JsonWebTokenOptions`
 - `webgates_codecs::jwt::JwtValidationService`
 - `webgates_codecs::jwt::JwtValidationResult`
+- `webgates_codecs::jwt::jwks::{EcP384Jwk, JwksDocument, JwksProvider}`
 
 Use crate-root error and codec types from:
 
@@ -68,6 +69,7 @@ The `jwt` module provides:
 - `JsonWebTokenOptions`
 - `JwtValidationService<C>`
 - `JwtValidationResult<T>`
+- `jwks` module for canonical ES384 JWKS key modeling
 
 ## Quick start
 
@@ -129,31 +131,65 @@ match validation_service.validate_token(std::str::from_utf8(&encoded)?) {
 
 ## Production guidance
 
-### Use stable keys
+### Use stable ES384 keys
 
-`JsonWebTokenOptions::default()` generates a fresh random symmetric secret. That is convenient for tests and short-lived local development, but it is not suitable when tokens must survive restarts or be shared across multiple instances.
+`JsonWebTokenOptions::default()` uses an embedded ES384 development keypair. That is convenient for tests and short-lived local development, but it is not suitable when tokens must survive restarts or be validated across multiple instances.
 
-For production, provide explicit encoding and decoding keys and continue using the canonical `webgates_codecs::jwt::*` paths:
+For production, provide explicit ES384 key material and continue using the canonical `webgates_codecs::jwt::*` paths:
 
 ```rust
 use webgates_codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
 use webgates_core::accounts::Account;
 use webgates_core::groups::Group;
 use webgates_core::roles::Role;
-use jsonwebtoken::{DecodingKey, EncodingKey};
+type AppClaims = JwtClaims<Account<Role, Group>>;
+
+let private_pem = std::fs::read("/run/secrets/jwt-es384-private.pem")?;
+let public_pem = std::fs::read("/run/secrets/jwt-es384-public.pem")?;
+
+let codec = JsonWebToken::<AppClaims>::new_with_options(
+    JsonWebTokenOptions::from_es384_pem(&private_pem, &public_pem)?,
+);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+If a node only validates tokens and does not mint them, use verification-only options:
+
+```rust
+use webgates_codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
+use webgates_core::accounts::Account;
+use webgates_core::groups::Group;
+use webgates_core::roles::Role;
 
 type AppClaims = JwtClaims<Account<Role, Group>>;
 
-let secret = b"replace-this-with-a-stable-secret-from-secure-config";
+let public_pem = std::fs::read("/run/secrets/jwt-es384-public.pem")?;
 
 let codec = JsonWebToken::<AppClaims>::new_with_options(
-    JsonWebTokenOptions::default()
-        .with_encoding_key(EncodingKey::from_secret(secret))
-        .with_decoding_key(DecodingKey::from_secret(secret)),
+    JsonWebTokenOptions::for_es384_verification_only(&public_pem)?,
 );
+# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-Keep secrets in environment variables or a secret manager. Do not hardcode production secrets in source control.
+For JWKS-backed verification with strict `kid` selection:
+
+```rust,ignore
+use webgates_codecs::jwt::jwks::EcP384Jwk;
+use webgates_codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
+use webgates_core::accounts::Account;
+use webgates_core::groups::Group;
+use webgates_core::roles::Role;
+
+type AppClaims = JwtClaims<Account<Role, Group>>;
+
+let jwk = EcP384Jwk::from_public_key_pem("auth-key-1", public_pem.as_bytes())?;
+let codec = JsonWebToken::<AppClaims>::new_with_options(
+    JsonWebTokenOptions::for_es384_jwks_keys(&[jwk])?,
+);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+Keep private keys in a secret manager or restricted runtime secret volume. Do not hardcode production key material in source control.
 
 ### Validate at the boundary
 

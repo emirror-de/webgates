@@ -1247,11 +1247,13 @@ dependencies = [
  "serde",
  "serde_json",
  "strum 0.27.2",
+ "thiserror 2.0.18",
  "tokio",
  "tracing",
  "tracing-subscriber",
  "webgates",
  "webgates-axum",
+ "webgates-codecs",
  "webgates-repositories",
 ]
 
@@ -3609,6 +3611,7 @@ dependencies = [
  "axum",
  "axum-extra",
  "chrono",
+ "dotenvy",
  "prometheus",
  "serde",
  "tokio",
@@ -3868,6 +3871,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "axum-extra",
+ "dotenvy",
  "serde",
  "tokio",
  "tower",
@@ -4906,6 +4910,7 @@ dependencies = [
  "axum",
  "axum-extra",
  "chrono",
+ "dotenvy",
  "serde",
  "tokio",
  "tracing-subscriber",
@@ -6459,12 +6464,18 @@ dependencies = [
 name = "webgates-codecs"
 version = "0.1.0-dev"
 dependencies = [
+ "base64",
  "chrono",
  "jsonwebtoken",
+ "p384",
  "rand 0.9.4",
+ "reqwest 0.13.2",
  "serde",
+ "serde_json",
  "serde_with",
+ "sha2",
  "thiserror 2.0.18",
+ "tokio",
  "tracing",
  "uuid",
  "webgates-core",
@@ -6542,10 +6553,13 @@ dependencies = [
 name = "webgates-tonic"
 version = "0.1.0-dev"
 dependencies = [
+ "axum",
  "chrono",
  "http",
  "prometheus",
  "prost",
+ "serde",
+ "serde_json",
  "subtle",
  "thiserror 2.0.18",
  "tokio",

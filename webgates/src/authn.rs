@@ -62,7 +62,7 @@
 //! let credentials = Credentials::new(&"user@example.com".to_string(), "password");
 //! let claims = RegisteredClaims::new(
 //!     "my-app",
-//!     chrono::Utc::now().timestamp() as u64 + 3600,
+//!     chrono::Utc::now().timestamp() as u64 + 900,
 //! );
 //!
 //! let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());

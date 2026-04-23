@@ -113,11 +113,11 @@ Performs constant-time bearer token matching. Inserts `StaticTokenAuthorized` in
 use webgates_tonic::context::StaticTokenAuthorized;
 
 // Strict: rejects requests with a missing or wrong token.
-let layer = Gate::bearer("my-svc", codec).with_static_token("shared-secret");
+let layer = Gate::bearer("my-svc", codec).with_static_token("internal-static-token");
 
 // Optional: forwards all requests; the marker reports whether the token matched.
 let layer = Gate::bearer("my-svc", codec)
-    .with_static_token("shared-secret")
+    .with_static_token("internal-static-token")
     .allow_anonymous_with_optional_user();
 
 // In the handler:

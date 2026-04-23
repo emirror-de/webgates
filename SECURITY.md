@@ -64,38 +64,35 @@ Note that the `rust_crypto` backend depends on the `rsa` crate which was affecte
 potentially allow key recovery.
 
 ### Key Management
-- **Development Default**: Generates ephemeral random key per process (testing only)
+- **Development Default**: Uses embedded ES384 development keys (testing only)
 - **Production Requirements**:
-  - Use stable, high-entropy secret (≥32 bytes recommended)
-  - Load from environment variables or secret management systems
-  - Store outside source control
-  - Rotate periodically (currently a manual process)
+  - Use a stable ES384 keypair
+  - Keep private keys only on auth-authority nodes
+  - Distribute only the public key to verifier-only resource nodes
+  - Load key material from environment variables, mounted files, or secret management systems
+  - Store key material outside source control
+  - Rotate keys deliberately with a rollout plan
 
 **Example Production Setup**:
 ```rust
-// Load from environment (recommended)
-let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET not set");
+// Load PEM key material from files or env-backed secrets (recommended)
+let private_pem = std::fs::read("/run/secrets/jwt-es384-private.pem")?;
+let public_pem = std::fs::read("/run/secrets/jwt-es384-public.pem")?;
 
-// Construct symmetric encoding/decoding keys
-let enc_key = jsonwebtoken::EncodingKey::from_secret(secret.as_bytes());
-let dec_key = jsonwebtoken::DecodingKey::from_secret(secret.as_bytes());
-
-// Build options with persistent keys (avoid JsonWebToken::default in production)
+// Build options with persistent ES384 keys (avoid JsonWebToken::default in production)
 use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
-let options = JsonWebTokenOptions {
-    enc_key,
-    dec_key,
-    header: None,
-    validation: None,
-};
+let options = JsonWebTokenOptions::from_es384_pem(&private_pem, &public_pem)?;
 
-// Create a codec that survives restarts as long as JWT_SECRET stays the same
+// Create a codec that survives restarts as long as key material remains stable
 use std::sync::Arc;
 use webgates::prelude::*;
 let jwt_codec = Arc::new(
     JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(options)
 );
+# Ok::<(), Box<dyn std::error::Error>>(())
 ```
+
+For verifier-only resource nodes, use `JsonWebTokenOptions::for_es384_verification_only(&public_pem)?` so the node can validate but cannot mint JWTs.
 
 ---
 

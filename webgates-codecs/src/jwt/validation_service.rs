@@ -11,6 +11,7 @@
 //! Expiration, signature, and other JWT-level checks remain owned by the
 //! configured codec and its underlying JWT validation settings.
 use crate::Codec;
+use crate::errors::{JwtError, JwtOperation};
 use crate::jwt::JwtClaims;
 use crate::jwt::validation_result::JwtValidationResult;
 
@@ -33,6 +34,12 @@ use webgates_core::authz::access_hierarchy::AccessHierarchy;
 pub struct JwtValidationService<C> {
     codec: Arc<C>,
     expected_issuer: String,
+}
+
+/// Verifier contract used by JWT gate runtimes.
+pub trait JwtClaimsVerifier<T>: Clone {
+    /// Verifies a raw token and returns decoded claims on success.
+    fn verify_token(&self, token_value: &str) -> std::result::Result<T, JwtError>;
 }
 
 impl<C> JwtValidationService<C> {
@@ -97,6 +104,30 @@ where
         }
 
         JwtValidationResult::Valid(jwt)
+    }
+}
+
+impl<C, R, G> JwtClaimsVerifier<JwtClaims<Account<R, G>>> for JwtValidationService<C>
+where
+    C: Codec<Payload = JwtClaims<Account<R, G>>> + Clone,
+    R: AccessHierarchy + Eq,
+    G: Eq + Clone,
+{
+    fn verify_token(
+        &self,
+        token_value: &str,
+    ) -> std::result::Result<JwtClaims<Account<R, G>>, JwtError> {
+        match self.validate_token(token_value) {
+            JwtValidationResult::Valid(jwt) => Ok(jwt),
+            JwtValidationResult::InvalidToken => Err(JwtError::processing(
+                JwtOperation::Validate,
+                "token verification failed",
+            )),
+            JwtValidationResult::InvalidIssuer { expected, actual } => Err(JwtError::processing(
+                JwtOperation::Validate,
+                format!("token issuer mismatch: expected `{expected}`, got `{actual}`"),
+            )),
+        }
     }
 }
 
@@ -169,6 +200,7 @@ mod tests {
                 not_before_time: None,
                 issued_at_time: 1_000_000_000,
                 jwt_id: None,
+                session_id: None,
             };
 
             Ok(JwtClaims {

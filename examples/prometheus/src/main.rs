@@ -14,11 +14,10 @@
 //! - http://localhost:3000/metrics - Prometheus metrics endpoint
 
 use axum_extra::extract::CookieJar;
-use webgates::codecs::jsonwebtoken::{DecodingKey, EncodingKey, Validation};
 use webgates::{
     accounts::Account,
     authz::access_policy::AccessPolicy,
-    codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims},
+    codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims},
     cookie_template::CookieTemplate,
     credentials::Credentials,
     groups::Group,
@@ -30,6 +29,7 @@ use webgates_repositories::{
     services::account_insert::AccountInsertService,
 };
 
+use std::fs;
 use std::sync::Arc;
 
 use axum::{
@@ -46,6 +46,32 @@ use serde::Deserialize;
 struct LoginForm {
     username: String,
     password: String,
+}
+
+const PROMETHEUS_ES384_PRIVATE_KEY_PEM: &str = r#"-----BEGIN PRIVATE KEY-----
+MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCFT7MfRqWZfNgVX/cH
+bxFTlPkBeCKqjsLkZXD/J3ZYHV1EtQksdrKtOzTr2hMs6pmhZANiAASyND9eQ5Qk
+7ZteSEPMpExbVJenRWwyobExJMb62mmp3eA7Fszy8uBbLj8HRB16y3QbLcTxCBoo
+ldBXfNFzM133OuTV2bBWXq5h34l+A0h4gU/odZ678LfAgnrRYMG4ZjU=
+-----END PRIVATE KEY-----
+"#;
+
+const PROMETHEUS_ES384_PUBLIC_KEY_PEM: &str = r#"-----BEGIN PUBLIC KEY-----
+MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEsjQ/XkOUJO2bXkhDzKRMW1SXp0VsMqGx
+MSTG+tppqd3gOxbM8vLgWy4/B0Qdest0Gy3E8QgaKJXQV3zRczNd9zrk1dmwVl6u
+Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
+-----END PUBLIC KEY-----
+"#;
+
+fn load_env_or_file(var_name: &str, path_var_name: &str, fallback: &str) -> String {
+    if let Ok(path) = dotenvy::var(path_var_name) {
+        return match fs::read_to_string(path) {
+            Ok(value) => value,
+            Err(error) => panic!("failed to read {path_var_name} file: {error}"),
+        };
+    }
+
+    dotenvy::var(var_name).unwrap_or_else(|_| fallback.to_string())
 }
 
 #[tokio::main]
@@ -83,13 +109,24 @@ async fn main() {
     // Create some test users
     create_test_users(Arc::clone(&account_repo), Arc::clone(&secret_repo)).await;
 
-    // Create JWT codec with proper shared secret
-    let shared_secret = "my-super-secret-key-for-demo"; // In production, use a proper secret from env
-    let jwt_options = JsonWebTokenOptions {
-        enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: DecodingKey::from_secret(shared_secret.as_bytes()),
-        header: Some(Default::default()),
-        validation: Some(Validation::default()),
+    // Create ES384 JWT codec.
+    let _ = dotenvy::dotenv();
+    let private_key_pem = load_env_or_file(
+        "JWT_ES384_PRIVATE_KEY_PEM",
+        "JWT_ES384_PRIVATE_KEY_PATH",
+        PROMETHEUS_ES384_PRIVATE_KEY_PEM,
+    );
+    let public_key_pem = load_env_or_file(
+        "JWT_ES384_PUBLIC_KEY_PEM",
+        "JWT_ES384_PUBLIC_KEY_PATH",
+        PROMETHEUS_ES384_PUBLIC_KEY_PEM,
+    );
+    let jwt_options = match webgates::codecs::jwt::JsonWebTokenOptions::from_es384_pem(
+        private_key_pem.as_bytes(),
+        public_key_pem.as_bytes(),
+    ) {
+        Ok(options) => options,
+        Err(error) => panic!("invalid JWT ES384 key pair: {error}"),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
@@ -281,7 +318,7 @@ async fn login_handler(
     let credentials = Credentials::new(&form.username, &form.password);
     let registered_claims = RegisteredClaims::new(
         "prometheus-demo",
-        (chrono::Utc::now().timestamp() + 3600) as u64, // 1 hour expiry
+        (chrono::Utc::now().timestamp() + (15 * 60)) as u64, // 15-minute expiry
     );
 
     let cookie_template = CookieTemplate::recommended()

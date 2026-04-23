@@ -8,6 +8,7 @@ license = "MIT"
 axum = "0.8"
 axum-extra = "0.12.5"
 chrono = { workspace = true }
+dotenvy = { workspace = true }
 prometheus = { workspace = true }
 serde = { workspace = true }
 tokio = { workspace = true }

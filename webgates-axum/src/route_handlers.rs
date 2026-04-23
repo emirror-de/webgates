@@ -23,6 +23,8 @@
 //! - [`logout`] --- handlers for cookie-only and session-backed logout flows:
 //!   - [`logout::logout`] --- cookie-only logout handler
 //!   - [`logout::logout_with_sessions`] --- session-backed logout handler
+//! - [`jwks`] --- JWKS publication handlers for auth authorities:
+//!   - [`jwks::jwks`] --- returns canonical `/.well-known/jwks.json`
 //!
 //! # Typical usage
 //!
@@ -62,7 +64,7 @@
 //! ) -> Result<CookieJar, axum::http::StatusCode> {
 //!     let claims = RegisteredClaims::new(
 //!         "my-app",
-//!         chrono::Utc::now().timestamp() as u64 + 3600,
+//!         chrono::Utc::now().timestamp() as u64 + 900,
 //!     );
 //!
 //!     login(
@@ -109,3 +111,6 @@ pub mod login;
 
 /// Logout handlers for cookie-only and session-backed authentication flows.
 pub mod logout;
+
+/// JWKS publication handlers for auth authorities.
+pub mod jwks;

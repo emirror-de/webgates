@@ -283,6 +283,76 @@ where
     _phantom: PhantomData<(R, G)>,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+
+    use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
+    use webgates_core::groups::Group;
+    use webgates_core::roles::Role;
+
+    struct StubTokenExchanger;
+
+    impl TokenExchanger for StubTokenExchanger {
+        fn exchange_code(&self, _request: TokenRequest) -> OAuth2TokenExchangeFuture {
+            Box::pin(async move {
+                Err(OAuth2Error::token_exchange(
+                    "stub exchanger should not be reached in this test",
+                ))
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn oauth2_with_jwt_codec_mints_jti_and_leaves_sid_absent() {
+        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let runtime = OAuth2Gate::<Role, Group>::new()
+            .auth_url("https://provider.example/authorize")
+            .token_url("https://provider.example/token")
+            .client_id("client-id")
+            .redirect_url("https://app.example/callback")
+            .with_account_mapper(|_token| Box::pin(async { Ok(Account::<Role, Group>::new("u")) }))
+            .with_jwt_codec("issuer", Arc::clone(&codec), 900)
+            .build();
+        let runtime = match runtime {
+            Ok(runtime) => runtime,
+            Err(error) => panic!("oauth2 runtime should build: {}", error),
+        };
+
+        let input = CallbackInput {
+            code: Some("auth-code".to_string()),
+            state: Some("state-1".to_string()),
+            error: None,
+            error_description: None,
+            state_cookie: Some(Cookie::new("oauth2-state", "state-1")),
+            pkce_cookie: Some(Cookie::new("oauth2-pkce", "pkce-1")),
+        };
+
+        let outcome = runtime.evaluate_callback(input, &StubTokenExchanger).await;
+        let _ = outcome;
+
+        // Build a minimal runtime path that actually mints by providing a concrete
+        // exchanger result via oauth2 crate type conversions would be excessive here,
+        // so verify minting semantics directly through the configured encoder closure.
+        let encoder = match runtime.jwt_encoder.as_ref() {
+            Some(encoder) => encoder.clone(),
+            None => panic!("jwt encoder should be configured"),
+        };
+        let token = match encoder(Account::<Role, Group>::new("user@example.com")) {
+            Ok(token) => token,
+            Err(error) => panic!("token should be minted: {}", error),
+        };
+
+        let decoded = match codec.decode(token.as_bytes()) {
+            Ok(claims) => claims,
+            Err(error) => panic!("minted token should decode: {}", error),
+        };
+        assert!(decoded.registered_claims.jwt_id.is_some());
+        assert!(decoded.registered_claims.session_id.is_none());
+    }
+}
+
 /// Public, cloneable config exported for adapters. This type contains the
 /// validated fields required to construct an adapter-side wrapper without
 /// exposing the internal builder implementation details.
@@ -608,7 +678,8 @@ where
         let issuer = issuer.to_string();
         self.jwt_encoder = Some(Arc::new(move |account: Account<R, G>| {
             let exp = Utc::now().timestamp() as u64 + ttl_secs;
-            let registered = RegisteredClaims::new(&issuer, exp);
+            let mut registered = RegisteredClaims::new(&issuer, exp);
+            registered.session_id = None;
             let claims = JwtClaims::new(account, registered);
             let bytes = codec
                 .encode(&claims)

@@ -687,7 +687,7 @@ mod tests {
 
         let registered_claims = crate::codecs::jwt::RegisteredClaims::new(
             "test-issuer",
-            chrono::Utc::now().timestamp() as u64 + 3600,
+            chrono::Utc::now().timestamp() as u64 + 900,
         );
 
         {
@@ -827,7 +827,7 @@ mod tests {
 
         let registered_claims = crate::codecs::jwt::RegisteredClaims::new(
             "test-issuer",
-            chrono::Utc::now().timestamp() as u64 + 3600,
+            chrono::Utc::now().timestamp() as u64 + 900,
         );
 
         let nonexistent_credentials =

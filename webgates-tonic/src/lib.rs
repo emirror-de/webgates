@@ -85,7 +85,7 @@ use webgates_tonic::gate::Gate;
 
 let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 let layer = Gate::bearer("my-svc", codec)
-    .with_static_token("shared-secret");
+    .with_static_token("internal-static-token");
 // Handlers retrieve `webgates_tonic::context::StaticTokenAuthorized`
 // from request extensions.
 ```

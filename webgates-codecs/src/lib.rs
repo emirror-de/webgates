@@ -13,6 +13,7 @@ This crate provides:
 - Structured codec and JWT error types
 - JWT claim types and a JWT codec in [`jwt`]
 - JWT validation helpers re-exported through [`jwt`]
+- Canonical ES384 JWKS key modeling in [`jwt::jwks`]
 
 The crate depends only on shared core types from `webgates-core` and does not
 include HTTP, cookie, or framework-specific integration concerns.

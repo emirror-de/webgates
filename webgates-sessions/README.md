@@ -161,6 +161,18 @@ Typical Axum composition includes:
 
 This keeps cookie extraction and `Set-Cookie` mutation in the Axum adapter while renewal rules and revocation semantics remain here.
 
+## Distributed deployment model
+
+Use the same lifecycle for both single-node and distributed deployments:
+
+- **Auth authority**: owns login, refresh-token session state, renewal, logout, and access-token minting.
+- **Resource services**: validate short-lived access tokens locally and enforce authorization.
+- **Single-node deployment**: run both roles in one process.
+
+This keeps the public behavior identical across deployment modes while limiting
+cross-node coupling. Revocation consistency is bounded by the short access-token
+TTL.
+
 ## Security notes
 
 - Use persistent signing keys in production.
@@ -190,3 +202,6 @@ Typical validation commands for this crate:
 ## License
 
 MIT
+
+For a full distributed setup and operations guide, see
+`docs/distributed-sessions.md` in the repository root.

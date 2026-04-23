@@ -96,14 +96,14 @@ async fn main() {
     // The comparison is constant-time.
 
     let _strict_static =
-        Gate::bearer("example-svc", Arc::clone(&codec)).with_static_token("my-shared-secret");
+        Gate::bearer("example-svc", Arc::clone(&codec)).with_static_token("internal-static-token");
 
     // ── 4. Optional static-token gate ────────────────────────────────────────
     // All requests are forwarded. Handlers read `StaticTokenAuthorized` to
     // decide whether to perform privileged operations.
 
     let optional_static = Gate::bearer("example-svc", Arc::clone(&codec))
-        .with_static_token("my-shared-secret")
+        .with_static_token("internal-static-token")
         .allow_anonymous_with_optional_user();
 
     let svc = optional_static.layer(tower::service_fn(|req: Request<TonicBody>| async move {
@@ -119,7 +119,7 @@ async fn main() {
 
     let req = Request::builder()
         .uri("/example.Service/Call")
-        .header(http::header::AUTHORIZATION, "Bearer my-shared-secret")
+        .header(http::header::AUTHORIZATION, "Bearer internal-static-token")
         .body(TonicBody::empty())
         .expect("valid request");
     let _ = svc.oneshot(req).await;

@@ -14,7 +14,7 @@ Start with `simple-usage` for a self-contained Axum server that exercises cookie
 | `permission-registry` | `permission-registry-example` | Optional permission mapping registry for reverse lookup and audit logging |
 | `rate-limiting` | `rate-limiting-example` | Combining `webgates-axum` gates with `tower` rate limiting middleware |
 | `prometheus` | `prometheus-example` | Prometheus metrics integration for auth and authorization events |
-| `distributed` | `distributed` | Shared-secret bearer mode across two cooperating nodes using nested enum permissions |
+| `distributed` | `distributed` | Canonical authority/resource deployment with ES384-signed JWTs and public-key verification |
 | `oauth2-github` | `oauth2-github` | GitHub OAuth2 Authorization Code + PKCE flow with first-party JWT cookie issuance |
 
 Backend-specific examples also live under the `webgates-repositories` crate:
@@ -81,11 +81,11 @@ Then visit:
 
 ### distributed
 
-Requires an `.env` file in `examples/distributed/`. Copy the provided `.env.example` and fill in your own secret:
+Requires an `.env` file in `examples/distributed/`. Copy the provided `.env.example` and point it to ES384 PEM key files (or inline PEM values):
 
 ```bash
 cp examples/distributed/.env.example examples/distributed/.env
-# Edit .env and set a strong random value for webgates_SHARED_SECRET
+# Edit .env and set JWT_ES384_* key variables
 ```
 
 Start both nodes (each in a separate terminal from the workspace root):

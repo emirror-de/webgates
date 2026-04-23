@@ -99,7 +99,11 @@ use super::cookie_session_service::CookieSessionService;
 ///             .unwrap_or_default()
 ///             .as_secs()
 ///             + 900;
-///         let claims = JwtClaims::new(account, RegisteredClaims::new("my-app", exp));
+///         let claims = JwtClaims::new(
+///             account,
+///             RegisteredClaims::new("my-app", exp)
+///                 .with_session_id(session.session_id.into_uuid().to_string()),
+///         );
 ///         let result = self
 ///             .jwt
 ///             .encode(&claims)

@@ -14,13 +14,12 @@
 // - GET /logout -> clears the session cookie.
 //
 // Running
-// - Ensure webgates_SHARED_SECRET is set (a .env is provided in this example).
+// - Optional: load .env for local app settings.
 // - From this example directory, run: cargo run
 use webgates::accounts::Account;
 use webgates::authz::access_hierarchy::AccessHierarchy;
 use webgates::authz::access_policy::AccessPolicy;
-use webgates::codecs::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
+use webgates::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
 use webgates::cookie_template::CookieTemplate;
 use webgates::credentials::Credentials;
 use webgates_axum::gate::Gate;
@@ -29,6 +28,7 @@ use webgates_repositories::memory::account::MemoryAccountRepository;
 use webgates_repositories::memory::secret::MemorySecretRepository;
 use webgates_repositories::services::account_insert::AccountInsertService;
 
+use std::fs;
 use std::sync::Arc;
 
 use axum::extract::Json;
@@ -39,6 +39,32 @@ use serde::{Deserialize, Serialize};
 use tracing::debug;
 
 pub const ISSUER: &str = "auth-node";
+
+const CUSTOM_ROLES_ES384_PRIVATE_KEY_PEM: &str = r#"-----BEGIN PRIVATE KEY-----
+MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCFT7MfRqWZfNgVX/cH
+bxFTlPkBeCKqjsLkZXD/J3ZYHV1EtQksdrKtOzTr2hMs6pmhZANiAASyND9eQ5Qk
+7ZteSEPMpExbVJenRWwyobExJMb62mmp3eA7Fszy8uBbLj8HRB16y3QbLcTxCBoo
+ldBXfNFzM133OuTV2bBWXq5h34l+A0h4gU/odZ678LfAgnrRYMG4ZjU=
+-----END PRIVATE KEY-----
+"#;
+
+const CUSTOM_ROLES_ES384_PUBLIC_KEY_PEM: &str = r#"-----BEGIN PUBLIC KEY-----
+MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEsjQ/XkOUJO2bXkhDzKRMW1SXp0VsMqGx
+MSTG+tppqd3gOxbM8vLgWy4/B0Qdest0Gy3E8QgaKJXQV3zRczNd9zrk1dmwVl6u
+Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
+-----END PUBLIC KEY-----
+"#;
+
+fn load_env_or_file(var_name: &str, path_var_name: &str, fallback: &str) -> String {
+    if let Ok(path) = dotenvy::var(path_var_name) {
+        return match fs::read_to_string(path) {
+            Ok(value) => value,
+            Err(error) => panic!("failed to read {path_var_name} file: {error}"),
+        };
+    }
+
+    dotenvy::var(var_name).unwrap_or_else(|_| fallback.to_string())
+}
 
 /// A custom role definition.
 #[derive(
@@ -259,15 +285,23 @@ async fn main() {
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
-    // Load .env; webgates_SHARED_SECRET must be set (and shared between login and verification).
-    dotenvy::dotenv().expect("Could not read .env file.");
-    let shared_secret =
-        dotenvy::var("webgates_SHARED_SECRET").expect("webgates_SHARED_SECRET env var not set.");
-    let jwt_options = JsonWebTokenOptions {
-        enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: DecodingKey::from_secret(shared_secret.as_bytes()),
-        header: Some(Header::default()),
-        validation: Some(Validation::default()),
+    let _ = dotenvy::dotenv();
+    let private_key_pem = load_env_or_file(
+        "JWT_ES384_PRIVATE_KEY_PEM",
+        "JWT_ES384_PRIVATE_KEY_PATH",
+        CUSTOM_ROLES_ES384_PRIVATE_KEY_PEM,
+    );
+    let public_key_pem = load_env_or_file(
+        "JWT_ES384_PUBLIC_KEY_PEM",
+        "JWT_ES384_PUBLIC_KEY_PATH",
+        CUSTOM_ROLES_ES384_PUBLIC_KEY_PEM,
+    );
+    let jwt_options = match webgates::codecs::jwt::JsonWebTokenOptions::from_es384_pem(
+        private_key_pem.as_bytes(),
+        public_key_pem.as_bytes(),
+    ) {
+        Ok(options) => options,
+        Err(error) => panic!("invalid JWT ES384 key pair: {error}"),
     };
     let jwt_codec = Arc::new(JsonWebToken::<
         JwtClaims<Account<CustomRoleDefinition, CustomGroupDefinition>>,
@@ -360,7 +394,7 @@ async fn main() {
                 let registered_claims = RegisteredClaims::new(
                     // same as in distributed example, so you can re-use the consumer_node
                     "auth-node",
-                    (Utc::now() + TimeDelta::weeks(1)).timestamp() as u64,
+                    (Utc::now() + TimeDelta::minutes(15)).timestamp() as u64,
                 );
                 let secrets_repository = Arc::clone(&secrets_repository);
                 let account_repository = Arc::clone(&account_repository);

@@ -20,6 +20,7 @@ use webgates::gate::{self as core_gate, Gate as CoreGate, GateExt};
 pub mod bearer;
 pub mod cookie;
 pub mod oauth2;
+pub mod remote_jwks_cookie;
 
 /// Axum-facing Gate entry point.
 #[derive(Clone, Debug, Default)]

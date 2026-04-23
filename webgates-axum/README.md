@@ -6,6 +6,7 @@ This crate is the Axum-facing adapter layer for `webgates`. It exposes a small p
 
 - `webgates_axum::gate::Gate` as the canonical entry point for cookie, bearer, and OAuth2 integration
 - `webgates_axum::route_handlers::login::login` and `webgates_axum::route_handlers::logout::logout` for ready-made auth cookie handlers
+- `webgates_axum::route_handlers::jwks::jwks` for canonical JWKS publication on auth authorities
 - `webgates_axum::route_handlers::login::login_with_sessions` and `webgates_axum::route_handlers::logout::logout_with_sessions` for session-backed auth and refresh-cookie handlers
 - `webgates_axum::route_handlers::login::SessionLoginRequest` and `webgates_axum::route_handlers::login::SessionLoginDependencies` as the constructible input types for the session-backed login handler
 - `webgates_axum::session::CookieSessionLayer` for transparent cookie-backed session renewal
@@ -80,6 +81,7 @@ use webgates_axum::route_handlers::login::login;
 use webgates_axum::route_handlers::login::login_with_sessions;
 use webgates_axum::route_handlers::login::SessionLoginRequest;
 use webgates_axum::route_handlers::login::SessionLoginDependencies;
+use webgates_axum::route_handlers::jwks::jwks;
 use webgates_axum::route_handlers::logout::logout;
 use webgates_axum::route_handlers::logout::logout_with_sessions;
 use webgates_axum::session::CookieSessionLayer;
@@ -209,12 +211,35 @@ Typical configuration includes:
 - optional account repository/inserter
 - optional first-party JWT codec for session issuance
 
+When using OAuth2 with JWT issuance, prefer short-lived access tokens
+(for example, `JWT_TTL_SECS=900`) and keep signing in the auth authority only.
+
 The resulting router exposes:
 
 - `/login`
 - `/callback`
 
 mounted under the base path you pass to `into_router(...)`.
+
+## JWKS publication endpoint
+
+Auth authorities can expose canonical JWKS using the built-in handler:
+
+```rust,ignore
+use axum::{routing::get, Router};
+use webgates::codecs::jwt::jwks::JwksProvider;
+use webgates_axum::route_handlers;
+
+let provider = JwksProvider::from_es384_public_pem(public_key_pem.as_bytes())?;
+let app = Router::new().route(
+    "/.well-known/jwks.json",
+    get(move || {
+        let provider = provider.clone();
+        async move { route_handlers::jwks::jwks(provider).await }
+    }),
+);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
 
 ## Features
 
@@ -254,6 +279,10 @@ SurrealDB support is optional and subject to SurrealDB’s BUSL-1.1 licensing. R
 - `examples/rate-limiting`
 - `webgates-repositories/examples/sea-orm`
 - `webgates-repositories/examples/surrealdb`
+
+For the canonical distributed authority/resource operations model, key handling,
+and rollout guidance, see `docs/distributed-sessions.md` in the repository
+root.
 
 Session-backed Axum integrations typically combine:
 

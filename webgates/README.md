@@ -62,7 +62,7 @@ Framework-agnostic access gates:
 
 - `Gate::cookie("issuer", codec)` for JWTs in HTTP-only cookies
 - `Gate::bearer("issuer", codec)` for `Authorization: Bearer`
-- `with_static_token(...)` for shared-secret bearer mode
+- `with_static_token(...)` for static bearer-token mode
 - `allow_anonymous_with_optional_user()` for non-blocking optional user context
 - `require_login()` for baseline role plus supervisors
 
@@ -82,7 +82,7 @@ JWT support is available through:
 - `codecs::jwt::JsonWebToken`
 - `codecs::jwt::JsonWebTokenOptions`
 
-Use persistent keys in production.
+Use persistent ES384 keys in production.
 
 ### Domain
 
@@ -184,6 +184,9 @@ crate. In the Axum integration, use:
 This keeps token issuance, renewal rules, replay handling, and revocation in the
 framework-agnostic session layer while transport-specific cookie behavior stays
 in `webgates-axum`.
+
+For the distributed authority/resource operating model and key management,
+see `docs/distributed-sessions.md` in the repository root.
 
 ## Related crates
 

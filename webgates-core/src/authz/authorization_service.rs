@@ -92,6 +92,11 @@ where
     pub fn policy_denies_all_access(&self) -> bool {
         self.policy.denies_all()
     }
+
+    /// Returns a clone of the configured access policy.
+    pub fn clone_policy(&self) -> AccessPolicy<R, G> {
+        self.policy.clone()
+    }
 }
 
 #[cfg(test)]

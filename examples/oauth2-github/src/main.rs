@@ -8,6 +8,7 @@ use axum::{
 use dotenvy::dotenv;
 use oauth2::TokenResponse;
 use std::env;
+use std::fs;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing::info;
@@ -15,7 +16,6 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use webgates::accounts::Account;
 use webgates::authz::access_hierarchy::AccessHierarchy;
 use webgates::authz::access_policy::AccessPolicy;
-use webgates::codecs::jsonwebtoken;
 use webgates::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
 use webgates::cookie;
 use webgates::cookie_template::CookieTemplate;
@@ -29,6 +29,17 @@ use webgates_repositories::memory::account::MemoryAccountRepository;
 #[derive(serde::Deserialize)]
 struct GithubUser {
     login: String,
+}
+
+fn load_env_or_file(var_name: &str, path_var_name: &str) -> Option<String> {
+    if let Ok(path) = env::var(path_var_name) {
+        return Some(
+            fs::read_to_string(path)
+                .unwrap_or_else(|error| panic!("failed to read {path_var_name} file: {error}")),
+        );
+    }
+
+    env::var(var_name).ok()
 }
 
 /// Logging wrapper around an AccountRepository that emits info! logs on query/insert.
@@ -127,24 +138,28 @@ async fn main() {
         .expect("APP_ADDR must be host:port");
 
     // JWT config (first-party cookie)
-    let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| "local-dev-secret-change-me".into());
     let jwt_issuer = env::var("JWT_ISSUER").unwrap_or_else(|_| "my-app".into());
     let auth_cookie_name = env::var("AUTH_COOKIE_NAME").unwrap_or_else(|_| "auth-token".into());
     let post_login_redirect = env::var("POST_LOGIN_REDIRECT").unwrap_or_else(|_| "/".into());
     let jwt_ttl_secs: u64 = env::var("JWT_TTL_SECS")
         .ok()
         .and_then(|s| s.parse::<u64>().ok())
-        .unwrap_or(60 * 60 * 24); // 24h
+        .unwrap_or(15 * 60); // 15m
 
-    // Build a JWT codec with a persistent symmetric key (from env for demo)
-    let jwt_codec = Arc::new(
-        JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(JsonWebTokenOptions {
-            enc_key: jsonwebtoken::EncodingKey::from_secret(jwt_secret.as_bytes()),
-            dec_key: jsonwebtoken::DecodingKey::from_secret(jwt_secret.as_bytes()),
-            header: None,
-            validation: None,
-        }),
-    );
+    // Build an ES384 JWT codec.
+    let jwt_options = match (
+        load_env_or_file("JWT_ES384_PRIVATE_KEY_PEM", "JWT_ES384_PRIVATE_KEY_PATH"),
+        load_env_or_file("JWT_ES384_PUBLIC_KEY_PEM", "JWT_ES384_PUBLIC_KEY_PATH"),
+    ) {
+        (Some(private_key_pem), Some(public_key_pem)) => JsonWebTokenOptions::from_es384_pem(
+            private_key_pem.as_bytes(),
+            public_key_pem.as_bytes(),
+        )
+        .expect("JWT_ES384_PRIVATE_KEY_PEM and JWT_ES384_PUBLIC_KEY_PEM must be valid PEM keys"),
+        _ => JsonWebTokenOptions::default(),
+    };
+    let jwt_codec =
+        Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
 
     let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
     let logging_repo = Arc::new(LoggingAccountRepository::<Role, Group, _>::new(Arc::clone(
@@ -301,7 +316,7 @@ async fn homepage(Extension(opt_user): Extension<Option<Account<Role, Group>>>) 
 
   <div class="note">
     <p>Required environment variables: <code>GITHUB_CLIENT_ID</code>, <code>GITHUB_CLIENT_SECRET</code>.</p>
-    <p>Optional: <code>GITHUB_REDIRECT_URL</code> (default <code>http://localhost:3000/auth/callback</code>), <code>JWT_SECRET</code>, <code>JWT_ISSUER</code>, <code>AUTH_COOKIE_NAME</code>, <code>POST_LOGIN_REDIRECT</code>.</p>
+    <p>Optional: <code>GITHUB_REDIRECT_URL</code> (default <code>http://localhost:3000/auth/callback</code>), <code>JWT_ES384_PRIVATE_KEY_PEM</code>, <code>JWT_ES384_PUBLIC_KEY_PEM</code>, <code>JWT_ISSUER</code>, <code>AUTH_COOKIE_NAME</code>, <code>POST_LOGIN_REDIRECT</code>.</p>
   </div>
 </body>
 </html>

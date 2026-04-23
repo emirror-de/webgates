@@ -12,6 +12,7 @@ use webgates::codecs::Codec;
 use webgates::codecs::jwt::JwtClaims;
 
 pub mod bearer;
+pub mod remote_jwks_bearer;
 
 /// Tonic-facing gate entry point.
 ///
