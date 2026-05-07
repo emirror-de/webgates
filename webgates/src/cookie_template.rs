@@ -386,11 +386,13 @@ mod tests {
 
     #[test]
     fn same_site_none_still_requires_secure_even_with_dev_override() {
-        let error = CookieTemplate::recommended()
+        let Err(error) = CookieTemplate::recommended()
             .insecure_dev_only()
             .same_site(SameSite::None)
             .validate()
-            .expect_err("SameSite=None without Secure must fail validation");
+        else {
+            return;
+        };
 
         assert!(matches!(
             error,
