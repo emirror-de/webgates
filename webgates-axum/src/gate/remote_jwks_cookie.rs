@@ -275,22 +275,26 @@ fn extract_cookie_token(req: &Request<Body>, cookie_name: &str) -> Option<String
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::*;
+    use super::{super::*, *};
     use std::sync::Arc;
 
     use axum::Router;
     use axum::routing::get;
     use http::Request;
+    use jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER as JWT_CRYPTO_PROVIDER;
     use tower::ServiceExt as _;
     use webgates::accounts::Account;
     use webgates::authz::access_policy::AccessPolicy;
-    use webgates::codecs::Codec as _;
     use webgates::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
     use webgates::groups::Group;
     use webgates::roles::Role;
     use webgates_codecs::jwt::remote_verifier::{RemoteJwksVerifier, RemoteJwksVerifierConfig};
 
     type AppClaims = JwtClaims<Account<Role, Group>>;
+
+    fn install_jwt_crypto_provider() {
+        let _ = JWT_CRYPTO_PROVIDER.install_default();
+    }
 
     /// Build a `RemoteJwksVerifier` that is pre-loaded with the dev key set
     /// without performing any network I/O.
@@ -374,6 +378,7 @@ Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
 
     #[tokio::test]
     async fn gate_rejects_missing_cookie() {
+        install_jwt_crypto_provider();
         let verifier = make_verifier().await;
         let gate = RemoteJwksCookieGate::new("auth-node", verifier)
             .with_policy(AccessPolicy::require_role(Role::Admin));
@@ -392,6 +397,7 @@ Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
 
     #[tokio::test]
     async fn gate_rejects_invalid_token() {
+        install_jwt_crypto_provider();
         let verifier = make_verifier().await;
         let gate = RemoteJwksCookieGate::new("auth-node", verifier).require_login();
 
@@ -406,6 +412,7 @@ Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
 
     #[tokio::test]
     async fn gate_rejects_wrong_issuer() {
+        install_jwt_crypto_provider();
         let verifier = make_verifier().await;
         // The verifier uses the dev key; the token is signed with the dev key
         // but the gate expects issuer "auth-node" while the token has "wrong-issuer".
