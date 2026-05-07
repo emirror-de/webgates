@@ -173,6 +173,9 @@ async fn main() {
         .expect("GITHUB_CLIENT_SECRET must be set (GitHub OAuth app)");
     let github_redirect = env::var("GITHUB_REDIRECT_URL")
         .unwrap_or_else(|_| format!("http://{}/auth/callback", addr));
+    let allow_insecure_local_cookies = env::var("ALLOW_INSECURE_LOCAL_COOKIES")
+        .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
+        .unwrap_or(false);
 
     // Construct OAuth2 gate for GitHub
     // The account mapper below fetches info from GitHub's user APIs:
@@ -187,7 +190,14 @@ async fn main() {
         .redirect_url(github_redirect)
         .add_scope("read:user")
         .add_scope("user:email")
-        .configure_cookie_template(|tpl: CookieTemplate| tpl.name(auth_cookie_name.clone()))
+        .configure_cookie_template(|tpl: CookieTemplate| {
+            let tpl = tpl.name(auth_cookie_name.clone());
+            if allow_insecure_local_cookies {
+                tpl.insecure_dev_only()
+            } else {
+                tpl
+            }
+        })
         .expect("valid oauth2 cookie template")
         .with_post_login_redirect(post_login_redirect.clone())
         .with_jwt_codec(&jwt_issuer, Arc::clone(&jwt_codec), jwt_ttl_secs)
@@ -234,8 +244,14 @@ async fn main() {
             Gate::cookie::<_, Role, Group>(&jwt_issuer, Arc::clone(&jwt_codec))
                 .require_login()
                 .configure_cookie_template(|tpl: CookieTemplate| {
-                    tpl.name(auth_cookie_name.clone())
-                        .persistent(cookie::time::Duration::hours(24))
+                    let tpl = tpl
+                        .name(auth_cookie_name.clone())
+                        .persistent(cookie::time::Duration::hours(24));
+                    if allow_insecure_local_cookies {
+                        tpl.insecure_dev_only()
+                    } else {
+                        tpl
+                    }
                 })
                 .expect("valid cookie template"),
         );
@@ -248,8 +264,14 @@ async fn main() {
                 Gate::cookie::<_, Role, Group>(&jwt_issuer, Arc::clone(&jwt_codec))
                     .allow_anonymous_with_optional_user()
                     .configure_cookie_template(|tpl: CookieTemplate| {
-                        tpl.name(auth_cookie_name.clone())
-                            .persistent(cookie::time::Duration::hours(24))
+                        let tpl = tpl
+                            .name(auth_cookie_name.clone())
+                            .persistent(cookie::time::Duration::hours(24));
+                        if allow_insecure_local_cookies {
+                            tpl.insecure_dev_only()
+                        } else {
+                            tpl
+                        }
                     })
                     .expect("valid cookie template"),
             ),
@@ -259,8 +281,13 @@ async fn main() {
             get({
                 let name = auth_cookie_name.clone();
                 move |cookie_jar| async move {
-                    let cookie_template =
-                        webgates::cookie_template::CookieTemplate::recommended().name(name);
+                    let cookie_template = if allow_insecure_local_cookies {
+                        webgates::cookie_template::CookieTemplate::recommended()
+                            .name(name)
+                            .insecure_dev_only()
+                    } else {
+                        webgates::cookie_template::CookieTemplate::recommended().name(name)
+                    };
                     let jar = route_handlers::logout::logout(cookie_jar, cookie_template).await;
                     (jar, axum::response::Redirect::to("/"))
                 }
@@ -316,7 +343,8 @@ async fn homepage(Extension(opt_user): Extension<Option<Account<Role, Group>>>) 
 
   <div class="note">
     <p>Required environment variables: <code>GITHUB_CLIENT_ID</code>, <code>GITHUB_CLIENT_SECRET</code>.</p>
-    <p>Optional: <code>GITHUB_REDIRECT_URL</code> (default <code>http://localhost:3000/auth/callback</code>), <code>JWT_ES384_PRIVATE_KEY_PEM</code>, <code>JWT_ES384_PUBLIC_KEY_PEM</code>, <code>JWT_ISSUER</code>, <code>AUTH_COOKIE_NAME</code>, <code>POST_LOGIN_REDIRECT</code>.</p>
+    <p>Optional: <code>GITHUB_REDIRECT_URL</code> (default <code>http://localhost:3000/auth/callback</code>), <code>JWT_ES384_PRIVATE_KEY_PEM</code>, <code>JWT_ES384_PUBLIC_KEY_PEM</code>, <code>JWT_ISSUER</code>, <code>AUTH_COOKIE_NAME</code>, <code>POST_LOGIN_REDIRECT</code>, <code>ALLOW_INSECURE_LOCAL_COOKIES</code>.</p>
+    <p>Secure cookies are enabled by default. Set <code>ALLOW_INSECURE_LOCAL_COOKIES=true</code> only for intentional local HTTP development, never for staging or production.</p>
   </div>
 </body>
 </html>

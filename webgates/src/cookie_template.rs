@@ -1,8 +1,9 @@
 //! Secure cookie template builder for authentication cookies.
 //!
 //! This module provides [`CookieTemplate`] for creating secure authentication
-//! cookies with sensible defaults that automatically adjust based on build configuration.
-//! The builder ensures proper security settings while maintaining development ergonomics.
+//! cookies with sensible secure defaults.
+//! The builder keeps transport safety on by default and requires an explicit
+//! opt-in for insecure local development.
 //!
 //! # Quick Start
 //!
@@ -20,10 +21,10 @@
 //!
 //! The builder automatically provides secure defaults:
 //! - **HttpOnly**: Prevents JavaScript access (XSS protection)
-//! - **Secure**: HTTPS-only in production builds
-//! - **SameSite=Strict**: CSRF protection in production
+//! - **Secure**: HTTPS-only by default
+//! - **SameSite=Strict**: CSRF protection by default
 //! - **Session cookies**: No persistence by default
-//! - **Development-friendly**: Relaxed settings in debug builds for localhost testing
+//! - **Explicit local-dev opt-in**: Insecure cookies require an intentional builder call
 
 use cookie::time::Duration;
 use cookie::{Cookie, CookieBuilder, SameSite};
@@ -34,9 +35,8 @@ pub const DEFAULT_COOKIE_NAME: &str = "webgates";
 
 /// Builder for secure authentication cookies used by `Gate`.
 ///
-/// Provides secure defaults that are automatically adjusted based on build configuration:
-/// - **Production builds**: Secure=true, HttpOnly=true, SameSite=Strict, session cookie
-/// - **Debug builds**: Secure=false (for localhost), SameSite=Lax, HttpOnly=true, session cookie
+/// Provides secure defaults independent of build configuration:
+/// - **All builds**: Secure=true, HttpOnly=true, SameSite=Strict, session cookie
 ///
 /// # Security Best Practices
 ///
@@ -67,15 +67,16 @@ pub const DEFAULT_COOKIE_NAME: &str = "webgates";
 ///
 /// # Production Safety
 ///
-/// Debug builds relax `Secure` and `SameSite` settings for local development ergonomics.
+/// Recommended defaults always keep `Secure=true` and `SameSite=Strict` unless you
+/// intentionally weaken them. For local HTTP development, call
+/// [`CookieTemplate::insecure_dev_only`] explicitly and only in trusted environments.
 /// Call [`CookieTemplate::assert_production_secure`] at application startup to detect
-/// accidental deployment of a debug binary to staging or production:
+/// accidental insecure configuration before serving requests:
 ///
 /// ```rust,no_run
 /// use webgates::cookie_template::CookieTemplate;
 ///
 /// let template = CookieTemplate::recommended().name("auth-token");
-/// // Panics if Secure=false, preventing silent insecure deployment.
 /// template.assert_production_secure();
 /// ```
 ///
@@ -101,34 +102,20 @@ pub struct CookieTemplate {
 }
 
 impl Default for CookieTemplate {
-    /// Returns default cookie settings adjusted for the current build profile.
+    /// Returns transport-safe default cookie settings.
     ///
-    /// **Debug builds** (`cfg(debug_assertions)`): `Secure=false`, `SameSite=Lax` — suitable for
-    /// `http://localhost` development only. These settings **must not** be used in staging or
-    /// production.
-    ///
-    /// **Release builds**: `Secure=true`, `SameSite=Strict` — the recommended production posture.
-    ///
-    /// Call [`CookieTemplate::assert_production_secure`] at startup to enforce that debug
-    /// defaults are never accidentally served outside a local development context.
+    /// All builds default to `Secure=true`, `SameSite=Strict`, `HttpOnly=true`, and a
+    /// session-only lifetime. Local HTTP development must opt into insecure cookies
+    /// explicitly via [`CookieTemplate::insecure_dev_only`].
     fn default() -> Self {
-        // In debug (development) builds we relax a couple of flags to improve local ergonomics
-        // (allow http and slightly looser cross-site navigation) while still keeping HttpOnly
-        // and a session-only lifetime. In release we enforce the strict, secure posture.
-        let (secure, same_site) = if cfg!(debug_assertions) {
-            (false, SameSite::Lax)
-        } else {
-            (true, SameSite::Strict)
-        };
-
         Self {
             name: Cow::Borrowed(DEFAULT_COOKIE_NAME),
             value: Cow::Borrowed(""),
             path: Cow::Borrowed("/"),
             domain: None,
-            secure,
+            secure: true,
             http_only: true,
-            same_site,
+            same_site: SameSite::Strict,
             max_age: None, // session cookie – safer by default
         }
     }
@@ -187,15 +174,15 @@ impl CookieTemplate {
         self
     }
 
-    /// Convenience: DISABLE secure flag for local dev ONLY.
+    /// Convenience: weaken transport cookie settings for local development only.
     ///
-    /// In `release` builds this will panic to prevent accidental insecure
-    /// deployment. You must call this intentionally; no environment detection
-    /// is performed here.
+    /// This disables `Secure` and relaxes `SameSite` to `Lax` so cookies can work over
+    /// `http://localhost` during intentional local testing. Do not use this in staging or
+    /// production.
     #[must_use]
-    #[cfg(debug_assertions)]
     pub fn insecure_dev_only(mut self) -> Self {
         self.secure = false;
+        self.same_site = SameSite::Lax;
         self
     }
 
@@ -245,12 +232,12 @@ impl CookieTemplate {
 
     /// Asserts that the template is configured with production-safe cookie attributes.
     ///
-    /// Panics if [`CookieTemplate::secure`] is `false`, which indicates that the debug-build
-    /// defaults are active. Call this once at application startup (before binding a listener)
-    /// to prevent accidental deployment of a debug binary to staging or production environments.
+    /// Panics if [`CookieTemplate::secure`] is `false`. Call this once at application startup
+    /// before binding a listener to prevent accidental insecure cookie configuration in
+    /// staging or production environments.
     ///
-    /// This is a no-op in tests or any context where you explicitly need `Secure=false`
-    /// (e.g., local development). Simply do not call it in those environments.
+    /// If you explicitly opt into insecure local-development cookies, do not call this in
+    /// that environment.
     ///
     /// # Panics
     ///
@@ -262,18 +249,16 @@ impl CookieTemplate {
     /// use webgates::cookie_template::CookieTemplate;
     ///
     /// let auth_template = CookieTemplate::recommended().name("auth-token");
-    /// // Panics in debug builds, ensuring they are never deployed to production.
     /// auth_template.assert_production_secure();
     /// ```
     pub fn assert_production_secure(&self) {
         assert!(
             self.secure,
             "CookieTemplate '{}' has Secure=false. \
-             This indicates debug-build defaults are active. \
-             Do NOT deploy debug builds (compiled with debug_assertions) to \
-             production or staging environments. \
-             Either build in release mode or explicitly call `.secure(true)` \
-             after confirming the deployment context.",
+             This indicates an explicitly insecure cookie configuration. \
+             Do NOT use insecure cookies in production or staging environments. \
+             Remove `.insecure_dev_only()` or call `.secure(true)` after confirming \
+             the deployment context.",
             self.name
         );
     }
@@ -372,4 +357,53 @@ pub enum CookieTemplateBuilderError {
     #[error("SameSite=None requires Secure=true (browser enforcement & CSRF protection)")]
     /// SameSite=None requires Secure=true for browser security and CSRF protection.
     InsecureNoneSameSite,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn recommended_defaults_are_secure_and_strict() {
+        let template = CookieTemplate::recommended();
+        let cookie = template.build_with_value("token");
+
+        assert_eq!(cookie.secure(), Some(true));
+        assert_eq!(cookie.http_only(), Some(true));
+        assert_eq!(cookie.same_site(), Some(SameSite::Strict));
+        assert_eq!(cookie.max_age(), None);
+    }
+
+    #[test]
+    fn insecure_dev_only_is_explicit_and_relaxes_transport_settings() {
+        let template = CookieTemplate::recommended().insecure_dev_only();
+        let cookie = template.build_with_value("token");
+
+        assert_eq!(cookie.secure(), Some(false));
+        assert_eq!(cookie.http_only(), Some(true));
+        assert_eq!(cookie.same_site(), Some(SameSite::Lax));
+    }
+
+    #[test]
+    fn same_site_none_still_requires_secure_even_with_dev_override() {
+        let error = CookieTemplate::recommended()
+            .insecure_dev_only()
+            .same_site(SameSite::None)
+            .validate()
+            .expect_err("SameSite=None without Secure must fail validation");
+
+        assert!(matches!(
+            error,
+            CookieTemplateBuilderError::InsecureNoneSameSite
+        ));
+    }
+
+    #[test]
+    fn production_assertion_rejects_explicit_insecure_configuration() {
+        let template = CookieTemplate::recommended().insecure_dev_only();
+
+        let panic = std::panic::catch_unwind(|| template.assert_production_secure());
+
+        assert!(panic.is_err());
+    }
 }

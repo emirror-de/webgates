@@ -288,9 +288,14 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
+    use crate::codecs::jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER as JWT_CRYPTO_PROVIDER;
     use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
     use webgates_core::groups::Group;
     use webgates_core::roles::Role;
+
+    fn install_jwt_crypto_provider() {
+        let _ = JWT_CRYPTO_PROVIDER.install_default();
+    }
 
     struct StubTokenExchanger;
 
@@ -306,6 +311,7 @@ mod tests {
 
     #[tokio::test]
     async fn oauth2_with_jwt_codec_mints_jti_and_leaves_sid_absent() {
+        install_jwt_crypto_provider();
         let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
         let runtime = OAuth2Gate::<Role, Group>::new()
             .auth_url("https://provider.example/authorize")
