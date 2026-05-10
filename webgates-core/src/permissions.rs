@@ -5,12 +5,13 @@
 //!
 //! It exposes:
 //! - [`permission_id::PermissionId`] for stable 64-bit permission identifiers
-//! - [`Permissions`] for compact granted-permission storage
+//! - [`self::Permissions`] for compact granted-permission storage
 //! - [`application_validator::ApplicationValidator`] and [`collision_checker::PermissionCollisionChecker`] for validation
 //! - [`validation_report::ValidationReport`] and [`permission_collision::PermissionCollision`] for validation results
 //! - [`mapping::PermissionMapping`] and [`mapping::PermissionMappingError`] for registry-style lookups
 //! - [`errors::PermissionsError`] for permission-category errors
-//! - [`as_permission_name::AsPermissionName`] for application-defined permission enums
+//! - [`as_permission_name::AsPermissionName`] for application-defined permission
+//!   enums
 //!
 //! Permission names are normalized before hashing, which keeps checks
 //! deterministic across processes and deployments without requiring a central
@@ -107,6 +108,8 @@ use std::fmt;
 /// High-level builder for validating application permission sets at startup.
 pub mod application_validator;
 /// Trait for application-defined permission enums that produce a name string.
+///
+/// See `as_permission_name::AsPermissionName`.
 pub mod as_permission_name;
 /// Low-level collision checker for runtime permission validation and analysis.
 pub mod collision_checker;
@@ -124,6 +127,8 @@ pub mod permission_id;
 /// macro and its supporting documentation.
 pub mod validate_permissions;
 /// Validation outcome produced by the collision checker and application validator.
+///
+/// See [`validation_report::ValidationReport`].
 pub mod validation_report;
 
 /// A collection of granted permissions.

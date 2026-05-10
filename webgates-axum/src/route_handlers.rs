@@ -11,20 +11,20 @@
 //!
 //! # Public API
 //!
-//! - [`login`] --- handlers and input types for cookie-only and session-backed
+//! - `login` --- handlers and input types for cookie-only and session-backed
 //!   login flows:
-//!   - [`login::login`] --- cookie-only login handler
-//!   - [`login::login_with_sessions`] --- session-backed login handler
-//!   - [`login::SessionLoginRequest`] --- input struct for
-//!     [`login::login_with_sessions`]
-//!   - [`login::SessionLoginDependencies`] --- dependency struct for
-//!     [`login::login_with_sessions`]
+//!   - `login::login` --- cookie-only login handler
+//!   - `login::login_with_sessions` --- session-backed login handler
+//!   - `login::SessionLoginRequest` --- input struct for
+//!     `login::login_with_sessions`
+//!   - `login::SessionLoginDependencies` --- dependency struct for
+//!     `login::login_with_sessions`
 //!
-//! - [`logout`] --- handlers for cookie-only and session-backed logout flows:
-//!   - [`logout::logout`] --- cookie-only logout handler
-//!   - [`logout::logout_with_sessions`] --- session-backed logout handler
-//! - [`jwks`] --- JWKS publication handlers for auth authorities:
-//!   - [`jwks::jwks`] --- returns canonical `/.well-known/jwks.json`
+//! - `logout` --- handlers for cookie-only and session-backed logout flows:
+//!   - `logout::logout` --- cookie-only logout handler
+//!   - `logout::logout_with_sessions` --- session-backed logout handler
+//! - `jwks` --- JWKS publication handlers for auth authorities:
+//!   - `jwks::jwks` --- returns canonical `/.well-known/jwks.json`
 //!
 //! # Typical usage
 //!
@@ -107,9 +107,14 @@
 
 /// Login handlers and required input types for cookie-only and session-backed
 /// authentication flows.
+///
+/// This submodule contains `login`, `login_with_sessions`,
+/// `SessionLoginRequest`, and `SessionLoginDependencies`.
 pub mod login;
 
 /// Logout handlers for cookie-only and session-backed authentication flows.
+///
+/// This submodule contains `logout` and `logout_with_sessions`.
 pub mod logout;
 
 /// JWKS publication handlers for auth authorities.

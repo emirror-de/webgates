@@ -1,7 +1,7 @@
 //! Authorization-category native errors.
 //!
 //! This module defines category-native errors for authorization (authz) concerns,
-//! focused on permission hash collisions. Import [`AuthzError`] from the
+//! focused on permission hash collisions. Import `AuthzError` from the
 //! canonical public path `webgates_core::authz::errors::AuthzError`.
 //!
 //! # Overview

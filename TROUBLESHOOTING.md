@@ -40,16 +40,16 @@ Refer to `FEATURE_MATRIX.md` for the full list of available features and their d
 
 ## Feature matrix check fails
 
-**Symptom**: `python3 scripts/check_feature_contract.py --check-only` reports drift between documented and actual features.
+**Symptom**: The documented feature combinations or validation commands no longer match the actual workspace manifests.
 
-**Fix**: Update `FEATURE_MATRIX.md` to match the `[features]` sections in the relevant `Cargo.toml` files, then re-run the script.
+**Fix**: Update `FEATURE_MATRIX.md` to match the `[features]` sections in the relevant `Cargo.toml` files, then re-run the Nix-shell validation commands documented there.
 
 ## Outdated API documentation
 
 Regenerate docs locally:
 
 ```bash
-cargo doc --workspace --no-deps
+nix develop -c cargo doc --workspace --no-deps
 ```
 
 Then open `target/doc/webgates/index.html` in your browser.
@@ -110,8 +110,8 @@ Then open `target/doc/webgates/index.html` in your browser.
 **Fix**: Run locally before pushing:
 
 ```bash
-cargo fmt --all
-cargo clippy --workspace --all-targets -- -D warnings
+nix develop -c cargo fmt --all
+nix develop -c cargo clippy --workspace --all-targets -- -D warnings
 ```
 
 ## Still stuck?

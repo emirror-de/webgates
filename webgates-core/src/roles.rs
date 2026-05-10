@@ -7,7 +7,7 @@
 //! - [`Role::Moderator`]
 //! - [`Role::Admin`]
 //!
-//! This ordering matters because [`crate::authz::AccessHierarchy`] uses the type's
+//! This ordering matters because [`crate::authz::access_hierarchy::AccessHierarchy`] uses the type's
 //! total ordering to determine whether one role is the same as, or supervises,
 //! another role.
 //!
@@ -30,7 +30,7 @@
 //!
 //! If your application needs a different hierarchy, define your own enum in
 //! least-privileged to most-privileged order and implement
-//! [`crate::authz::AccessHierarchy`] for it.
+//! [`crate::authz::access_hierarchy::AccessHierarchy`] for it.
 //!
 //! ```rust
 //! use serde::{Deserialize, Serialize};
@@ -64,7 +64,7 @@ use serde::{Deserialize, Serialize};
 
 /// Built-in roles ordered from least privileged to most privileged.
 ///
-/// When used with [`crate::authz::AccessPolicy::require_role_or_supervisor`],
+/// When used with [`crate::authz::access_policy::AccessPolicy::<Role, crate::groups::Group>::require_role_or_supervisor`],
 /// a higher-privileged role satisfies requirements for lower-privileged roles.
 ///
 /// # Example

@@ -8,7 +8,7 @@
 //! # Strict JWT mode
 //!
 //! On success, the middleware inserts:
-//! - [`JwtAuthContext`] — wraps the decoded [`Account`] and [`RegisteredClaims`].
+//! - `JwtAuthContext` — wraps the decoded account and registered claims.
 //!
 //! Retrieve it in a handler:
 //!
@@ -31,12 +31,12 @@
 //!
 //! # Optional JWT mode
 //!
-//! The middleware inserts [`OptionalJwtAuthContext`], which wraps
+//! The middleware inserts `OptionalJwtAuthContext`, which wraps
 //! `Option<Account>` and `Option<RegisteredClaims>`.
 //!
 //! # Static-token mode
 //!
-//! The middleware inserts [`StaticTokenAuthorized`] which carries a `bool`
+//! The middleware inserts `StaticTokenAuthorized`, which carries a `bool`
 //! indicating whether the provided token matched the configured static token.
 
 use webgates::accounts::Account;

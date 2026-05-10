@@ -1,6 +1,6 @@
 //! Error types and tonic status mapping for webgates-tonic.
 //!
-//! This module provides [`AuthError`], a typed error enum that represents
+//! This module provides `AuthError`, a typed error enum that represents
 //! every authentication and authorization failure that can occur inside the
 //! bearer gate middleware. Each variant maps to a specific [`tonic::Status`]
 //! code so that callers receive safe, opaque gRPC status responses without

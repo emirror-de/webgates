@@ -132,7 +132,7 @@ impl LoginResult {
 }
 
 /// Result of a session-backed login attempt produced by
-/// [`SessionLoginService::authenticate`].
+/// [`SessionLoginService::authenticate_with_sessions`].
 #[derive(Debug)]
 #[cfg(feature = "sessions")]
 pub enum SessionLoginResult {

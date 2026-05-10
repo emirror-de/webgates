@@ -107,30 +107,31 @@ The following commands must pass for the feature matrix to be considered valid:
 
 ```bash
 # Core validation commands
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-cargo test --workspace --doc
+nix develop -c cargo fmt --all --check
+nix develop -c cargo clippy --workspace --all-targets -- -D warnings
+nix develop -c cargo test --workspace --all-targets
+nix develop -c cargo test --workspace --doc
 
 # Minimal feature combination tests (webgates)
-cargo test -p webgates --no-default-features --features codecs
-cargo test -p webgates --no-default-features --features cookies
-cargo test -p webgates --no-default-features --features oauth2
-cargo test -p webgates --no-default-features --features authn
-cargo test -p webgates --features wasm
-cargo test -p webgates --features full
+nix develop -c cargo test -p webgates --no-default-features --features codecs
+nix develop -c cargo test -p webgates --no-default-features --features cookies
+nix develop -c cargo test -p webgates --no-default-features --features oauth2
+nix develop -c cargo test -p webgates --no-default-features --features authn
+nix develop -c cargo test -p webgates --features wasm
+nix develop -c cargo test -p webgates --features full
 
 # Repository backend tests
-cargo test -p webgates-repositories --features surrealdb
-cargo test -p webgates-repositories --features sea-orm
-cargo test -p webgates-repositories --all-features
+nix develop -c cargo test -p webgates-repositories --features surrealdb
+nix develop -c cargo test -p webgates-repositories --features sea-orm
+nix develop -c cargo test -p webgates-repositories --all-features
 
 # All other crates with default features
-cargo test -p webgates-core
-cargo test -p webgates-axum --all-features
-cargo test -p webgates-sessions
-cargo test -p webgates-codecs
-cargo test -p webgates-secrets
+nix develop -c cargo test -p webgates-core
+nix develop -c cargo test -p webgates-axum --all-features
+nix develop -c cargo test -p webgates-sessions
+nix develop -c cargo test -p webgates-codecs
+nix develop -c cargo test -p webgates-secrets
+nix develop -c cargo test -p webgates-tonic --all-features
 ```
 
 ## Maintenance
@@ -140,13 +141,13 @@ When adding, removing, or modifying features:
 1. Update this document first
 2. Update the relevant `Cargo.toml` files
 3. Update README documentation
-4. Run the feature contract validation script: `./scripts/check_feature_contract.py`
-5. Verify all CI commands pass
+4. Verify all documented features and commands stay aligned with the corresponding `Cargo.toml` files
+5. Run the relevant Nix-shell validation commands from this document
 6. Update CI workflow if new minimal combinations are required
 
 ## Validation
 
-Run `./scripts/check_feature_contract.py` to validate that:
+Use the Nix-shell validation commands above to validate that:
 - All documented features exist in the actual `Cargo.toml` files
 - No undocumented features exist in `Cargo.toml` files
 - All minimal feature combinations compile successfully

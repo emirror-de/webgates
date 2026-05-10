@@ -27,7 +27,7 @@ OAuth2 flows, or any client-side tonic utilities.
 | [`gate::Gate`] | Canonical builder for tonic bearer gates. |
 | [`gate::bearer`] | Bearer gate types and handler-visible extension types. |
 | [`context`] | Typed request-extension models for handlers. |
-| [`errors`] | `AuthError` and its mapping to [`tonic::Status`]. |
+| [`errors`] | `errors::AuthError` and its mapping to [`tonic::Status`]. |
 
 ## Feature flags
 
@@ -118,8 +118,14 @@ async fn my_handler(
 /// Gate builders and tower middleware for tonic services.
 pub mod gate;
 
-/// Typed request-extension models inserted into tonic request extensions by the gate.
+/// Typed request-extension models inserted into tonic request extensions by the
+/// gate.
+///
+/// See `crate::context` for `JwtAuthContext`, `OptionalJwtAuthContext`, and
+/// `StaticTokenAuthorized`.
 pub mod context;
 
 /// Authentication error types and their mapping to [`tonic::Status`] codes.
+///
+/// See `crate::errors::AuthError`.
 pub mod errors;

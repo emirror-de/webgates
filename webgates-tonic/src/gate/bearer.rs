@@ -72,7 +72,8 @@ use crate::errors::AuthError;
 /// JWT mode configuration (compile-time type parameter for [`BearerGate`]).
 ///
 /// This type is not directly constructible by users; it is produced as the
-/// mode parameter by [`Gate::bearer`] and consumed by the builder methods on
+/// mode parameter by [`crate::gate::Gate::bearer`] and consumed by the builder
+/// methods on
 /// [`BearerGate`].
 #[derive(Clone)]
 pub struct JwtConfig<R, G>

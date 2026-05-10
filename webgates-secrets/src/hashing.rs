@@ -7,7 +7,7 @@
 //!
 //! # Key Components
 //!
-//! - [`HashingService`] - Service for hashing and verifying passwords
+//! - [`hashing_service::HashingService`] - Service for hashing and verifying passwords
 //! - [`HashedValue`] - Represents a hashed password with algorithm metadata
 //! - [`argon2`] - Argon2 algorithm implementation with secure defaults
 //!

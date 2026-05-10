@@ -1,7 +1,7 @@
 //! Logout handlers for cookie-only and session-backed authentication flows.
 //!
-//! - [`logout`] --- removes the auth cookie using the supplied cookie template.
-//! - [`logout_with_sessions`] --- revokes the targeted session in the session
+//! - `logout` --- removes the auth cookie using the supplied cookie template.
+//! - `logout_with_sessions` --- revokes the targeted session in the session
 //!   repository and removes both the auth and refresh cookies.
 
 use webgates::authn::logout::{LogoutService, SessionLogoutService};

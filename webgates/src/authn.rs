@@ -35,7 +35,7 @@
 //! - transparent renewal through an adapter such as
 //!   `webgates_axum::session::cookie_session_layer::CookieSessionLayer`
 //!
-//! Use [`SessionLogoutService`] when logout should revoke either the current
+//! Use [`logout::SessionLogoutService`] when logout should revoke either the current
 //! session or the full session family instead of only clearing transport-level
 //! cookies.
 //!

@@ -25,8 +25,10 @@
 //! # How it works
 //!
 //! The macro generates a test that:
-//! 1. Converts each permission string into a [`crate::permissions::PermissionId`]
-//! 2. Validates the full set with [`crate::permissions::PermissionCollisionChecker`]
+//! 1. Converts each permission string into a
+//!    [`crate::permissions::permission_id::PermissionId`]
+//! 2. Validates the full set with
+//!    [`crate::permissions::collision_checker::PermissionCollisionChecker`]
 //! 3. Fails the test when duplicates or hash collisions are detected
 //!
 //! # When to use
@@ -55,7 +57,7 @@
 ///
 /// Use this macro to validate a complete set of permission names during tests.
 /// It generates a test that checks the provided strings with
-/// [`crate::permissions::PermissionCollisionChecker`].
+/// [`crate::permissions::collision_checker::PermissionCollisionChecker`].
 ///
 /// The macro accepts both square bracket and parenthesis invocation forms.
 ///

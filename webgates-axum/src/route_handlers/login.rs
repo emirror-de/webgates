@@ -8,9 +8,9 @@
 //!
 //! # Available handlers
 //!
-//! - [`login`] --- cookie-only: verifies credentials, mints a JWT, and writes
+//! - `login` --- cookie-only: verifies credentials, mints a JWT, and writes
 //!   the auth cookie.
-//! - [`login_with_sessions`] --- session-backed: verifies credentials, issues a
+//! - `login_with_sessions` --- session-backed: verifies credentials, issues a
 //!   session-backed auth and refresh token pair, and writes both cookies.
 //!
 //! # Session-backed login input types
@@ -18,9 +18,9 @@
 //! Downstream users must be able to name and construct both session-backed input
 //! types:
 //!
-//! - [`SessionLoginRequest`] --- carries credentials, session configuration,
+//! - `SessionLoginRequest` --- carries credentials, session configuration,
 //!   cookie templates, and the issuance timestamp.
-//! - [`SessionLoginDependencies`] --- carries the credential verifier, account
+//! - `SessionLoginDependencies` --- carries the credential verifier, account
 //!   repository, session repository, and auth-token issuer.
 
 use webgates::accounts::Account;

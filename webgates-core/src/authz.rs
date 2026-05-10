@@ -52,7 +52,7 @@
 //!
 //! # Hierarchical roles
 //!
-//! Use [`access_policy::AccessPolicy::require_role_or_supervisor`] when a higher-privileged role
+//! Use [`access_policy::AccessPolicy::<R, G>::require_role_or_supervisor`] when a higher-privileged role
 //! should satisfy a lower-privileged requirement.
 //!
 //! ```rust

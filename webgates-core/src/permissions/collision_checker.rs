@@ -30,7 +30,7 @@ use std::collections::HashMap;
 /// - **Lifecycle**: Can still be queried after validation completes.
 ///
 /// For simple startup validation with automatic logging, prefer
-/// [`ApplicationValidator`](crate::permissions::ApplicationValidator).
+/// [`ApplicationValidator`](crate::permissions::application_validator::ApplicationValidator).
 ///
 /// # Examples
 ///

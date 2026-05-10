@@ -9,7 +9,7 @@
 //!
 //! # Usage
 //!
-//! Use [`Error`] and [`Result`] when returning the crate's shared error type from
+//! Use [`enum@Error`] and [`Result`] when returning the crate's shared error type from
 //! core helpers:
 //!
 //! ```rust
@@ -35,7 +35,7 @@ use thiserror::Error;
 use crate::errors_core::{ErrorSeverity, UserFriendlyError};
 use crate::permissions::errors::PermissionsError;
 
-/// Result alias using [`Error`] as the crate-local error type.
+/// Result alias using [`enum@Error`] as the crate-local error type.
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Root error enum for `webgates-core`.

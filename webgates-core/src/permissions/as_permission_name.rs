@@ -1,10 +1,10 @@
 //! Trait for converting custom types to permission names.
 //!
-//! This module provides the [`AsPermissionName`] trait, which enables custom types
+//! This module provides the `AsPermissionName` trait, which enables custom types
 //! (especially enums) to define their string representation for use with the
 //! permission system. This is useful for structured permission definitions.
 //!
-//! The canonical public path is [`webgates_core::permissions::as_permission_name::AsPermissionName`].
+//! The canonical public path is `webgates_core::permissions::as_permission_name::AsPermissionName`.
 //!
 //! # Usage
 //!

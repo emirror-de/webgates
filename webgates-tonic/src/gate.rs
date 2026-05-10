@@ -1,7 +1,7 @@
 //! Gate entry point for tonic server-side authentication and authorization.
 //!
-//! Use [`Gate`] as the canonical entry point to construct bearer token gates
-//! for tonic services. The module also exposes the [`bearer`] submodule for
+//! Use `Gate` as the canonical entry point to construct bearer token gates
+//! for tonic services. The module also exposes the `bearer` submodule for
 //! handler-visible types.
 
 use std::sync::Arc;

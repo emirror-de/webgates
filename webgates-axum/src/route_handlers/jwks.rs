@@ -2,8 +2,8 @@
 //!
 //! Two handlers are provided:
 //!
-//! - [`jwks`] — low-level handler that accepts a [`JwksProvider`] value directly.
-//! - [`jwks_from_authority`] — ergonomic handler that reads the provider from
+//! - `jwks` — low-level handler that accepts a `JwksProvider` value directly.
+//! - `jwks_from_authority` — ergonomic handler that reads the provider from
 //!   Axum [`State`](axum::extract::State) holding an `Arc<JwtAuthority<P>>`.
 //!   This is the recommended entry point when using the authority bundle.
 //!
@@ -56,7 +56,7 @@ pub async fn jwks(provider: JwksProvider) -> impl IntoResponse {
     )
 }
 
-/// Returns the canonical JWKS response using an [`JwtAuthority`] held in Axum [`State`].
+/// Returns the canonical JWKS response using a `JwtAuthority` held in Axum [`State`].
 ///
 /// This is the recommended handler when using the authority bundle. Mount it with
 /// `.with_state(Arc::clone(&authority))` on the router.

@@ -369,11 +369,11 @@ where
     G: Eq + Clone + Send + Sync + 'static,
 {
     /// Provider authorization endpoint (the URL used to initiate the auth redirect).
-    /// Example: "https://provider.example.com/oauth2/authorize"
+    /// Example: `<https://provider.example.com/oauth2/authorize>`
     pub auth_url: String,
 
     /// Provider token endpoint used to exchange the authorization code for tokens.
-    /// Example: "https://provider.example.com/oauth2/token"
+    /// Example: `<https://provider.example.com/oauth2/token>`
     pub token_url: String,
 
     /// OAuth2 client identifier registered with the provider.

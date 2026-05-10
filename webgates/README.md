@@ -6,8 +6,8 @@ User-facing composition crate for the webgates workspace.
 cookie, secret, and OAuth2 support behind a single dependency for application
 code. Most users should depend on this crate directly.
 
-Framework integrations live in sibling crates such as `webgates-axum`.
-Persistence backends live in `webgates-repositories`.
+Framework integrations live in sibling crates such as `webgates-axum` and
+`webgates-tonic`. Persistence backends live in `webgates-repositories`.
 
 ## When to use this crate
 
@@ -31,14 +31,18 @@ such as:
 
 ## Install
 
-Standard setup with the composed default feature set:
+Standard dependency declaration:
 
 ```toml
 [dependencies]
 webgates = "0.1"
 ```
 
-Minimal setup without the composed defaults:
+This crate enables no optional features by default. Use `default-features = false`
+when you want to make that choice explicit in your manifest or pair it with an
+explicit feature list.
+
+Minimal setup with no optional features:
 
 ```toml
 [dependencies]
@@ -101,20 +105,22 @@ The crate exposes the core authentication and authorization model:
 ```rust
 use std::sync::Arc;
 use webgates::accounts::Account;
-use webgates::authz::AccessPolicy;
+use webgates::authz::access_policy::AccessPolicy;
 use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
 use webgates::gate::Gate;
-use webgates::prelude::{Group, Role};
+use webgates::groups::Group;
+use webgates::roles::Role;
 
 type AppClaims = JwtClaims<Account<Role, Group>>;
 let codec = Arc::new(JsonWebToken::<AppClaims>::default());
 
 let gate = Gate::cookie::<_, Role, Group>("my-app", Arc::clone(&codec))
     .require_login()
-    .with_policy(AccessPolicy::require_permission("admin:read"));
+    .with_policy(AccessPolicy::<Role, Group>::require_permission("admin:read"));
 ```
 
 Use `webgates-axum` if you want ready-made Axum middleware and route handlers.
+Use `webgates-tonic` if you want tonic server-side bearer-token integration.
 If you use another framework, build an adapter around the gate runtime APIs.
 
 ## Features
@@ -195,6 +201,7 @@ see `docs/distributed-sessions.md` in the repository root.
 - `webgates-secrets`: secret and hashing primitives
 - `webgates-sessions`: framework-agnostic session lifecycle and renewal primitives
 - `webgates-axum`: Axum integration, including session-backed login/logout handlers and transparent cookie renewal middleware
+- `webgates-tonic`: tonic integration for bearer-token authentication and authorization on gRPC servers
 - `webgates-repositories`: repository traits and storage backends, including session repository backends
 
 ## Security checklist

@@ -49,11 +49,11 @@ The builder supports:
 Prefer direct imports from stable module paths:
 
 ```rust
-use webgates_tonic::gate::Gate;
 use webgates_tonic::context::JwtAuthContext;
 use webgates_tonic::context::OptionalJwtAuthContext;
 use webgates_tonic::context::StaticTokenAuthorized;
 use webgates_tonic::errors::AuthError;
+use webgates_tonic::gate::Gate;
 ```
 
 Do not rely on convenience prelude-style imports. Prefer the explicit paths above.
@@ -68,10 +68,10 @@ Applies the configured `AccessPolicy` to every request. Returns `UNAUTHENTICATED
 use std::sync::Arc;
 
 use webgates::accounts::Account;
-use webgates::authz::AccessPolicy;
+use webgates::authz::access_policy::AccessPolicy;
 use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
-use webgates::roles::Role;
 use webgates::groups::Group;
+use webgates::roles::Role;
 use webgates_tonic::gate::Gate;
 
 type Claims = JwtClaims<Account<Role, Group>>;

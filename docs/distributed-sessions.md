@@ -259,8 +259,8 @@ From repository root:
 ```bash
 nix develop -c cargo check -p distributed
 nix develop -c cargo test -p distributed
-nix develop -c cargo test -p webgates --all-features authn
-nix develop -c cargo test -p webgates-axum --all-features session
+nix develop -c cargo test -p webgates --all-features
+nix develop -c cargo test -p webgates-axum --all-features
 ```
 
 ## Related references
