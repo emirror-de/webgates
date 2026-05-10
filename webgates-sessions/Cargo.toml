@@ -25,9 +25,9 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["sync", "time"] }
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v7", "js"] }
-webgates-codecs = { path = "../webgates-codecs" }
-webgates-core = { path = "../webgates-core" }
-webgates-secrets = { path = "../webgates-secrets" }
+webgates-codecs = { path = "../webgates-codecs", version = "0.1.0" }
+webgates-core = { path = "../webgates-core", version = "0.1.0" }
+webgates-secrets = { path = "../webgates-secrets", version = "0.1.0" }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
