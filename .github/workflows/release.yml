@@ -3,7 +3,7 @@ name: Release verification
 on:
     push:
         tags:
-            - "**"
+            - "v*"
 
 permissions:
     contents: read
@@ -40,6 +40,27 @@ jobs:
                   rustc --version
                   cargo --version
 
+            - name: Format check
+              run: cargo fmt --all -- --check
+
+            - name: Clippy check (workspace)
+              run: cargo clippy --workspace --all-targets -- -D warnings
+
+            - name: Feature contract check
+              run: python3 ./scripts/check_feature_contract.py --check-only
+
+            - name: Workspace doc tests
+              run: cargo test --workspace --doc
+
+            - name: Feature matrix smoke tests
+              run: |
+                  cargo test -p webgates --no-default-features --features codecs
+                  cargo test -p webgates --no-default-features --features cookies
+                  cargo test -p webgates --no-default-features --features oauth2
+                  cargo test -p webgates --no-default-features --features authn
+                  cargo test -p webgates --features wasm
+                  cargo test -p webgates --features full
+
             - name: Build (release)
               run: cargo build --workspace --release
 
@@ -50,8 +71,8 @@ jobs:
               run: cargo install cargo-audit
 
             - name: Run cargo audit
-              # Keep the same ignores as main CI to avoid known advisories blocking the release workflow
-              run: cargo audit --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2024-0436
+              # Keep the same ignores as the repository advisory policy to avoid known upstream issues blocking release verification.
+              run: cargo audit --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2025-0141 --ignore RUSTSEC-2026-0097
 
             - name: Install cargo-deny
               run: cargo install cargo-deny

@@ -248,7 +248,7 @@ where
         &self.cookie_template
     }
 
-    /// Whether optional mode is enabled (no blocking; adapters insert Option context).
+    /// Returns whether optional mode is enabled.
     pub fn installs_optional_extensions(&self) -> bool {
         self.install_optional_extensions
     }

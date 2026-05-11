@@ -359,9 +359,10 @@ mod tests {
     }
 }
 
-/// Public, cloneable config exported for adapters. This type contains the
-/// validated fields required to construct an adapter-side wrapper without
-/// exposing the internal builder implementation details.
+/// Public, cloneable OAuth2 configuration for adapters.
+///
+/// This type contains the validated fields needed to construct adapter-side
+/// OAuth2 integration.
 #[derive(Clone)]
 pub struct OAuth2Config<R, G>
 where

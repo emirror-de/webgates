@@ -4358,9 +4358,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.38"
+version = "0.23.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69f9466fb2c14ea04357e91413efb882e2a6d4a406e625449bc0a5d360d53a21"
+checksum = "7c2c118cb077cca2822033836dfb1b975355dfb784b5e8da48f7b6c5db74e60e"
 dependencies = [
  "aws-lc-rs",
  "log",
@@ -4423,9 +4423,9 @@ checksum = "f87165f0995f63a9fbeea62b64d10b4d9d8e78ec6d7d51fb2125fda7bb36788f"
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.12"
+version = "0.103.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8279bb85272c9f10811ae6a6c547ff594d6a7f3c6c6b02ee9726d1d0dcfcdd06"
+checksum = "61c429a8649f110dddef65e2a5ad240f747e85f7758a6bccc7e5777bd33f756e"
 dependencies = [
  "aws-lc-rs",
  "ring",
@@ -6404,7 +6404,7 @@ dependencies = [
 
 [[package]]
 name = "webgates"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "chrono",
  "const-crypto",
@@ -6434,7 +6434,7 @@ dependencies = [
 
 [[package]]
 name = "webgates-axum"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "axum",
  "axum-extra",
@@ -6462,7 +6462,7 @@ dependencies = [
 
 [[package]]
 name = "webgates-codecs"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64",
  "chrono",
@@ -6483,7 +6483,7 @@ dependencies = [
 
 [[package]]
 name = "webgates-core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "const-crypto",
  "roaring",
@@ -6499,7 +6499,7 @@ dependencies = [
 
 [[package]]
 name = "webgates-repositories"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "sea-orm",
  "sea-query 0.32.7",
@@ -6521,7 +6521,7 @@ dependencies = [
 
 [[package]]
 name = "webgates-secrets"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "argon2",
  "serde",
@@ -6533,7 +6533,7 @@ dependencies = [
 
 [[package]]
 name = "webgates-sessions"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "chrono",
  "rand 0.9.4",
@@ -6551,7 +6551,7 @@ dependencies = [
 
 [[package]]
 name = "webgates-tonic"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "axum",
  "chrono",

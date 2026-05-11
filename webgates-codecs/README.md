@@ -176,6 +176,50 @@ These are especially useful for auth authorities and resource servers that need 
 
 ### Use stable ES384 keys
 
+If you want a node to bootstrap its local key files on startup, you can ask `webgates-codecs` to create them the first time the process runs and then reuse them on later starts:
+
+```rust
+use webgates_codecs::jwt::{Es384KeyPairLoader, JwtClaims};
+use webgates_core::accounts::Account;
+use webgates_core::groups::Group;
+use webgates_core::roles::Role;
+
+# async fn demo() -> Result<(), Box<dyn std::error::Error>> {
+let key_pair = Es384KeyPairLoader::new(
+    "./var/keys/jwt-es384-private.pem",
+    "./var/keys/jwt-es384-public.pem",
+)
+.initialize_if_required()
+.await?;
+
+let jwt_codec = key_pair.to_codec::<JwtClaims<Account<Role, Group>>>()?;
+# let _ = jwt_codec;
+# Ok(())
+# }
+```
+
+This loader returns an error if only one of the two files already exists, because that usually indicates a broken or partial deployment state. It also hides the raw file reads so startup code can focus on wiring rather than filesystem details.
+
+If your node also publishes JWKS, you can build an authority from the same loaded key pair:
+
+```rust
+use webgates_codecs::jwt::authority::JwtAuthority;
+use webgates_codecs::jwt::{Es384KeyPairLoader, JwtClaims};
+
+# async fn demo() -> Result<(), Box<dyn std::error::Error>> {
+let key_pair = Es384KeyPairLoader::new(
+    "./var/keys/jwt-es384-private.pem",
+    "./var/keys/jwt-es384-public.pem",
+)
+.initialize_if_required()
+.await?;
+
+let authority = key_pair.to_authority::<JwtClaims<()>>()?;
+# let _ = authority;
+# Ok(())
+# }
+```
+
 `JsonWebTokenOptions::default()` uses an embedded ES384 development keypair. That is convenient for tests and local development, but it is not suitable when tokens must survive restarts or be validated across multiple instances.
 
 For production, provide explicit ES384 key material:

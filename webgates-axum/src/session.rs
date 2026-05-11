@@ -21,7 +21,7 @@
 //!
 //! # Renewal model
 //!
-//! The layer implements the agreed option B behavior:
+//! The layer applies the following renewal behavior:
 //! - valid auth token outside the proactive renewal window: pass through
 //! - near-expiry auth token: attempt opportunistic renewal, but continue on
 //!   failure

@@ -69,9 +69,28 @@ use webgates::groups::Group;
 use webgates::roles::Role;
 ```
 
-A common cookie-based gate setup looks like this:
+A minimal codec-only setup looks like this:
 
 ```rust
+#[cfg(feature = "codecs")]
+# {
+use std::sync::Arc;
+use webgates::accounts::Account;
+use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
+use webgates::groups::Group;
+use webgates::roles::Role;
+
+type AppClaims = JwtClaims<Account<Role, Group>>;
+let codec = Arc::new(JsonWebToken::<AppClaims>::default());
+let _ = codec;
+# }
+```
+
+When the `cookies` feature is enabled, you can build a cookie-based gate:
+
+```rust
+#[cfg(feature = "cookies")]
+# {
 use std::sync::Arc;
 use webgates::accounts::Account;
 use webgates::authz::access_policy::AccessPolicy;
@@ -88,6 +107,7 @@ let gate = Gate::cookie::<_, Role, Group>("my-app", Arc::clone(&codec))
     .with_policy(AccessPolicy::<Role, Group>::require_permission("admin:read"));
 
 let _ = gate;
+# }
 ```
 
 ## Feature model

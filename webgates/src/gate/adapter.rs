@@ -15,10 +15,8 @@
 /// Implementors convert a framework-agnostic gate value into a framework- or
 /// application-specific artifact, such as a middleware layer or runtime object.
 ///
-/// This trait is intentionally minimal: it mirrors the existing per-gate adapter
-/// traits (like `CookieGateAdapter`) so we can add a single `adapt_with`
-/// convenience method to all gate types without duplicating it in every gate
-/// implementation.
+/// The trait stays small so gate types can share the same `adapt_with`
+/// convenience method without duplicating adapter APIs.
 pub trait GateAdapter<G> {
     /// Framework-specific output type produced by the adapter.
     type Output;

@@ -1,6 +1,6 @@
 # Security Policy
 
-This document outlines the security practices, built-in protections, and deployment guidance for `webgates` v2.0.0-dev.
+This document outlines the security practices, built-in protections, and deployment guidance for `webgates` v1.0.0.
 
 ---
 
@@ -8,10 +8,10 @@ This document outlines the security practices, built-in protections, and deploym
 
 | Version | Supported |
 | ------- | --------- |
-| 2.0.0-dev | ✅ |
-| < 2.0.0-dev | ❌ |
+| 1.x | ✅ |
+| < 1.0.0 | ❌ |
 
-Only the latest stable release and the most recent release candidate receive security updates.
+Security updates are provided for the latest stable 1.x release line.
 
 ---
 
@@ -234,7 +234,7 @@ async fn logout_handler(cookie_jar: CookieJar) -> CookieJar {
 
 ## 10. Observability & Monitoring
 
-### Current State (v2.0.0-dev)
+### Current state (v1.0.0)
 - **Structured Logging**: Comprehensive tracing integration with contextual metadata for all authentication operations
 - **Prometheus Metrics**: Built-in counters and histograms (authorization decisions, JWT validation latency, account operations)
 - **Audit Logging**: Emits structured tracing events when `audit-logging` is enabled; integrate with your tracing subscriber/sink

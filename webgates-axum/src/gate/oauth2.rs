@@ -58,7 +58,7 @@ use webgates::gate::oauth2::{
 };
 use webgates_repositories::account_repository::AccountRepository;
 
-/// Axum-facing OAuth2 gate builder (thin wrapper over the core builder).
+/// Axum-facing OAuth2 gate builder.
 #[derive(Clone)]
 pub struct OAuth2Gate<R, G>
 where

@@ -1,6 +1,6 @@
 [package]
 name = "webgates-axum"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 rust-version = "1.91"
 license = "MIT"
@@ -37,11 +37,11 @@ tower = { version = "0.5", features = ["limit", "util", "timeout", "buffer", "lo
 tower-http = { version = "0.6", features = ["trace"] }
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v7"] }
-webgates = { path = "../webgates", version = "0.1.0", features = ["authn", "codecs", "cookies", "oauth2", "repositories", "secrets", "sessions"] }
-webgates-codecs = { path = "../webgates-codecs", version = "0.1.0" }
-webgates-repositories = { path = "../webgates-repositories", version = "0.1.0", features = ["sessions"] }
+webgates = { path = "../webgates", version = "1.0.0", features = ["authn", "codecs", "cookies", "oauth2", "repositories", "secrets", "sessions"] }
+webgates-codecs = { path = "../webgates-codecs", version = "1.0.0" }
+webgates-repositories = { path = "../webgates-repositories", version = "1.0.0", features = ["sessions"] }
 
 [dev-dependencies]
 axum = "0.8"
 tokio-test = "0.4.4"
-webgates-repositories = { path = "../webgates-repositories", version = "0.1.0", features = ["sessions"] }
+webgates-repositories = { path = "../webgates-repositories", version = "1.0.0", features = ["sessions"] }

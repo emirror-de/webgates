@@ -14,6 +14,10 @@ reason = "bincode is unmaintained but reachable only via surrealdb->surrealmx; a
 id = "RUSTSEC-2023-0089"
 reason = "atomic-polyfill is unmaintained but reachable only via surrealdb->heapless; awaiting upstream surrealdb to replace it."
 
+[[advisories.ignore]]
+id = "RUSTSEC-2026-0097"
+reason = "rand 0.8.5 is reachable only through surrealdb and related transitive dependencies; awaiting upstream ecosystem updates before removal."
+
 # Ignore RUSTSEC-2023-0071 (Marvin Attack timing side-channel in the `rsa` crate).
 # There is currently no upstream fix available for `rsa` 0.9.x.  The advisory is
 # suppressed here because `rsa` is only reachable as a transitive dependency via
