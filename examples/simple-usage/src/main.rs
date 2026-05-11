@@ -6,7 +6,7 @@
 use axum_extra::extract::CookieJar;
 use webgates::accounts::Account;
 use webgates::authz::access_policy::AccessPolicy;
-use webgates::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
+use webgates::codecs::jwt::{Es384KeyPairLoader, JsonWebToken, JwtClaims, RegisteredClaims};
 use webgates::cookie;
 use webgates::cookie_template::CookieTemplate;
 use webgates::credentials::Credentials;
@@ -22,7 +22,7 @@ use webgates_repositories::memory::account::MemoryAccountRepository;
 use webgates_repositories::memory::secret::MemorySecretRepository;
 use webgates_repositories::services::account_insert::AccountInsertService;
 
-use std::fs;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::{
@@ -45,30 +45,33 @@ struct LoginForm {
     password: String,
 }
 
-const SIMPLE_USAGE_ES384_PRIVATE_KEY_PEM: &str = r#"-----BEGIN PRIVATE KEY-----
-MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCFT7MfRqWZfNgVX/cH
-bxFTlPkBeCKqjsLkZXD/J3ZYHV1EtQksdrKtOzTr2hMs6pmhZANiAASyND9eQ5Qk
-7ZteSEPMpExbVJenRWwyobExJMb62mmp3eA7Fszy8uBbLj8HRB16y3QbLcTxCBoo
-ldBXfNFzM133OuTV2bBWXq5h34l+A0h4gU/odZ678LfAgnrRYMG4ZjU=
------END PRIVATE KEY-----
-"#;
+fn map_codec_error(error: webgates::codecs::Error) -> webgates::errors::Error {
+    match error {
+        webgates::codecs::Error::Codecs(error) => webgates::errors::Error::Codecs(error),
+        webgates::codecs::Error::Jwt(error) => webgates::errors::Error::Jwt(error),
+    }
+}
 
-const SIMPLE_USAGE_ES384_PUBLIC_KEY_PEM: &str = r#"-----BEGIN PUBLIC KEY-----
-MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEsjQ/XkOUJO2bXkhDzKRMW1SXp0VsMqGx
-MSTG+tppqd3gOxbM8vLgWy4/B0Qdest0Gy3E8QgaKJXQV3zRczNd9zrk1dmwVl6u
-Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
------END PUBLIC KEY-----
-"#;
+fn resolve_key_paths() -> Result<(PathBuf, PathBuf)> {
+    let private_key_path = dotenvy::var("JWT_ES384_PRIVATE_KEY_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("./var/keys/jwt-es384-private.pem"));
+    let public_key_path = dotenvy::var("JWT_ES384_PUBLIC_KEY_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("./var/keys/jwt-es384-public.pem"));
 
-fn load_env_or_file(var_name: &str, path_var_name: &str, fallback: &str) -> String {
-    if let Ok(path) = dotenvy::var(path_var_name) {
-        return match fs::read_to_string(path) {
-            Ok(value) => value,
-            Err(error) => panic!("failed to read {path_var_name} file: {error}"),
-        };
+    if dotenvy::var("JWT_ES384_PRIVATE_KEY_PEM").is_ok()
+        || dotenvy::var("JWT_ES384_PUBLIC_KEY_PEM").is_ok()
+    {
+        return Err(webgates::errors::Error::Codecs(
+            webgates::codecs::errors::CodecsError::codec(
+                webgates::codecs::errors::CodecOperation::Encode,
+                "simple-usage now expects JWT_ES384_PRIVATE_KEY_PATH and JWT_ES384_PUBLIC_KEY_PATH instead of inline PEM environment variables",
+            ),
+        ));
     }
 
-    dotenvy::var(var_name).unwrap_or_else(|_| fallback.to_string())
+    Ok((private_key_path, public_key_path))
 }
 
 #[tokio::main]
@@ -91,27 +94,18 @@ async fn main() -> Result<()> {
     // Create some test users
     create_test_users(Arc::clone(&account_repo), Arc::clone(&secret_repo)).await;
 
-    // Create ES384 JWT codec.
+    // Create or reuse ES384 JWT keys and build the codec from them.
     let _ = dotenvy::dotenv();
-    let private_key_pem = load_env_or_file(
-        "JWT_ES384_PRIVATE_KEY_PEM",
-        "JWT_ES384_PRIVATE_KEY_PATH",
-        SIMPLE_USAGE_ES384_PRIVATE_KEY_PEM,
+    let (private_key_path, public_key_path) = resolve_key_paths()?;
+    let key_pair = Es384KeyPairLoader::new(private_key_path, public_key_path)
+        .initialize_if_required()
+        .await
+        .map_err(map_codec_error)?;
+    let jwt_codec = Arc::new(
+        key_pair
+            .to_codec::<JwtClaims<Account<Role, Group>>>()
+            .map_err(map_codec_error)?,
     );
-    let public_key_pem = load_env_or_file(
-        "JWT_ES384_PUBLIC_KEY_PEM",
-        "JWT_ES384_PUBLIC_KEY_PATH",
-        SIMPLE_USAGE_ES384_PUBLIC_KEY_PEM,
-    );
-    let jwt_options = match webgates::codecs::jwt::JsonWebTokenOptions::from_es384_pem(
-        private_key_pem.as_bytes(),
-        public_key_pem.as_bytes(),
-    ) {
-        Ok(options) => options,
-        Err(error) => panic!("invalid JWT ES384 key pair: {error}"),
-    };
-    let jwt_codec =
-        Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
 
     // Build app with different protection levels
     let app = Router::new()
@@ -176,6 +170,14 @@ async fn main() -> Result<()> {
             jwt_codec,
         });
 
+    println!(
+        "🔐 JWT private key: {}",
+        key_pair.private_key_path().display()
+    );
+    println!(
+        "🔐 JWT public key: {}",
+        key_pair.public_key_path().display()
+    );
     println!("🚀 Server starting on http://localhost:3000");
     println!("📚 Available endpoints:");
     println!("  • GET  / - Home page (login form)");

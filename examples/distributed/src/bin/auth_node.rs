@@ -7,45 +7,36 @@ use webgates::credentials::Credentials;
 use webgates::groups::Group;
 use webgates::roles::Role;
 use webgates_axum::route_handlers;
-use webgates_codecs::jwt::JwtClaims;
-use webgates_codecs::jwt::authority::JwtAuthority;
+use webgates_codecs::jwt::{Es384KeyPairLoader, JwtClaims};
 use webgates_repositories::memory::account::MemoryAccountRepository;
 use webgates_repositories::memory::secret::MemorySecretRepository;
 use webgates_repositories::services::account_insert::AccountInsertService;
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use chrono::{TimeDelta, Utc};
 use tracing::debug;
 
-use std::fs;
-
 const ISSUER: &str = "auth-node";
 
-const DISTRIBUTED_ES384_PRIVATE_KEY_PEM: &str = r#"-----BEGIN PRIVATE KEY-----
-MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCFT7MfRqWZfNgVX/cH
-bxFTlPkBeCKqjsLkZXD/J3ZYHV1EtQksdrKtOzTr2hMs6pmhZANiAASyND9eQ5Qk
-7ZteSEPMpExbVJenRWwyobExJMb62mmp3eA7Fszy8uBbLj8HRB16y3QbLcTxCBoo
-ldBXfNFzM133OuTV2bBWXq5h34l+A0h4gU/odZ678LfAgnrRYMG4ZjU=
------END PRIVATE KEY-----
-"#;
+fn resolve_key_paths() -> Result<(PathBuf, PathBuf), String> {
+    let private_key_path = dotenvy::var("JWT_ES384_PRIVATE_KEY_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("./var/keys/jwt-es384-private.pem"));
+    let public_key_path = dotenvy::var("JWT_ES384_PUBLIC_KEY_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("./var/keys/jwt-es384-public.pem"));
 
-const DISTRIBUTED_ES384_PUBLIC_KEY_PEM: &str = r#"-----BEGIN PUBLIC KEY-----
-MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEsjQ/XkOUJO2bXkhDzKRMW1SXp0VsMqGx
-MSTG+tppqd3gOxbM8vLgWy4/B0Qdest0Gy3E8QgaKJXQV3zRczNd9zrk1dmwVl6u
-Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
------END PUBLIC KEY-----
-"#;
-
-fn load_env_or_file(var_name: &str, path_var_name: &str, fallback: &str) -> String {
-    if let Ok(path) = dotenvy::var(path_var_name) {
-        return match fs::read_to_string(path) {
-            Ok(value) => value,
-            Err(error) => panic!("failed to read {path_var_name} file: {error}"),
-        };
+    if dotenvy::var("JWT_ES384_PRIVATE_KEY_PEM").is_ok()
+        || dotenvy::var("JWT_ES384_PUBLIC_KEY_PEM").is_ok()
+    {
+        return Err(
+            "distributed auth_node now expects JWT_ES384_PRIVATE_KEY_PATH and JWT_ES384_PUBLIC_KEY_PATH instead of inline PEM environment variables".to_string(),
+        );
     }
 
-    dotenvy::var(var_name).unwrap_or_else(|_| fallback.to_string())
+    Ok((private_key_path, public_key_path))
 }
 
 #[tokio::main]
@@ -56,26 +47,25 @@ async fn main() {
     debug!("Tracing initialized.");
 
     let _ = dotenvy::dotenv();
-    let private_key_pem = load_env_or_file(
-        "JWT_ES384_PRIVATE_KEY_PEM",
-        "JWT_ES384_PRIVATE_KEY_PATH",
-        DISTRIBUTED_ES384_PRIVATE_KEY_PEM,
-    );
-    let public_key_pem = load_env_or_file(
-        "JWT_ES384_PUBLIC_KEY_PEM",
-        "JWT_ES384_PUBLIC_KEY_PATH",
-        DISTRIBUTED_ES384_PUBLIC_KEY_PEM,
-    );
+    let (private_key_path, public_key_path) = resolve_key_paths()
+        .unwrap_or_else(|error| panic!("invalid JWT key configuration: {error}"));
 
     // One constructor — codec and JWKS provider are wired automatically with a stable kid.
+    let key_pair = Es384KeyPairLoader::new(private_key_path, public_key_path)
+        .initialize_if_required()
+        .await
+        .unwrap_or_else(|error| panic!("failed to initialize JWT ES384 key pair: {error}"));
     let authority = Arc::new(
-        JwtAuthority::<JwtClaims<webgates::accounts::Account<Role, Group>>>::from_es384_pem(
-            private_key_pem.as_bytes(),
-            public_key_pem.as_bytes(),
-        )
-        .unwrap_or_else(|error| panic!("invalid JWT ES384 key pair: {error}")),
+        key_pair
+            .to_authority::<JwtClaims<webgates::accounts::Account<Role, Group>>>()
+            .unwrap_or_else(|error| panic!("invalid JWT ES384 key pair: {error}")),
     );
-    debug!("JWT authority initialized (kid = {}).", authority.key_id());
+    debug!(
+        "JWT authority initialized (kid = {}, private = {}, public = {}).",
+        authority.key_id(),
+        key_pair.private_key_path().display(),
+        key_pair.public_key_path().display()
+    );
 
     let account_repository = Arc::new(MemoryAccountRepository::default());
     debug!("Account repository initialized.");

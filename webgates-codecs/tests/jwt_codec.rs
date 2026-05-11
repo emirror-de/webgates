@@ -1,13 +1,20 @@
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use tokio::runtime::Builder;
 
 use jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER as JWT_CRYPTO_PROVIDER;
 use jsonwebtoken::{Algorithm, Validation};
 use uuid::Uuid;
 use webgates_codecs::Codec;
+use webgates_codecs::jwt::authority::JwtAuthority;
 use webgates_codecs::jwt::jwks::EcP384Jwk;
 use webgates_codecs::jwt::validation_result::JwtValidationResult;
 use webgates_codecs::jwt::validation_service::JwtValidationService;
-use webgates_codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
+use webgates_codecs::jwt::{
+    Es384KeyPairLoader, Es384KeyPairPaths, JsonWebToken, JsonWebTokenOptions, JwtClaims,
+    RegisteredClaims,
+};
 use webgates_core::accounts::Account;
 use webgates_core::groups::Group;
 use webgates_core::permissions::Permissions;
@@ -84,6 +91,29 @@ fn codec_with_es384_keys(private_key: &[u8], public_key: &[u8]) -> JsonWebToken<
     };
 
     JsonWebToken::new_with_options(options)
+}
+
+fn unique_temp_dir(label: &str) -> std::path::PathBuf {
+    let unique = format!(
+        "webgates-codecs-{label}-{}-{}",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos()
+    );
+    std::env::temp_dir().join(unique)
+}
+
+fn block_on_test_future<F, T>(future: F) -> T
+where
+    F: std::future::Future<Output = T>,
+{
+    Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap_or_else(|error| panic!("failed to build test tokio runtime: {error}"))
+        .block_on(future)
 }
 
 #[test]
@@ -252,6 +282,85 @@ fn jwt_codec_rejects_token_when_header_validation_configuration_differs() {
     let result = decoder.decode(&encoded);
 
     assert!(result.is_err());
+}
+
+#[test]
+fn es384_key_pair_loader_initializes_and_loads_missing_key_files() {
+    let dir = unique_temp_dir("init-create");
+    let paths = Es384KeyPairPaths::new(dir.join("jwt/private.pem"), dir.join("jwt/public.pem"));
+    let loader = Es384KeyPairLoader::new(
+        paths.private_key_path().to_path_buf(),
+        paths.public_key_path().to_path_buf(),
+    );
+
+    let key_pair = block_on_test_future(loader.initialize_if_required())
+        .unwrap_or_else(|error| panic!("key initialization should succeed: {error}"));
+
+    assert_eq!(key_pair.paths(), &paths);
+    assert!(key_pair.private_key_path().is_file());
+    assert!(key_pair.public_key_path().is_file());
+    JsonWebTokenOptions::from_es384_pem(key_pair.private_key_pem(), key_pair.public_key_pem())
+        .unwrap_or_else(|error| panic!("generated key pair should be valid: {error}"));
+    let _: JsonWebToken<TestClaims> = key_pair
+        .to_codec()
+        .unwrap_or_else(|error| panic!("generated key pair should build a codec: {error}"));
+    let authority: JwtAuthority<TestClaims> = key_pair
+        .to_authority()
+        .unwrap_or_else(|error| panic!("generated key pair should build an authority: {error}"));
+    assert_eq!(
+        authority.key_id(),
+        authority.jwks_provider().key_id().expect("kid must be set")
+    );
+
+    std::fs::remove_dir_all(&dir)
+        .unwrap_or_else(|error| panic!("temporary directory should be removable: {error}"));
+}
+
+#[test]
+fn es384_key_pair_loader_reuses_existing_key_files() {
+    let dir = unique_temp_dir("init-reuse");
+    let paths = Es384KeyPairPaths::new(dir.join("jwt/private.pem"), dir.join("jwt/public.pem"));
+    let loader = Es384KeyPairLoader::new(
+        paths.private_key_path().to_path_buf(),
+        paths.public_key_path().to_path_buf(),
+    );
+    std::fs::create_dir_all(dir.join("jwt"))
+        .unwrap_or_else(|error| panic!("temporary directory should be creatable: {error}"));
+    std::fs::write(paths.private_key_path(), TEST_ES384_PRIVATE_KEY_PEM)
+        .unwrap_or_else(|error| panic!("private key fixture should be writable: {error}"));
+    std::fs::write(paths.public_key_path(), TEST_ES384_PUBLIC_KEY_PEM)
+        .unwrap_or_else(|error| panic!("public key fixture should be writable: {error}"));
+
+    let key_pair = block_on_test_future(loader.initialize_if_required())
+        .unwrap_or_else(|error| panic!("existing keys should be reused: {error}"));
+
+    assert_eq!(key_pair.paths(), &paths);
+    assert_eq!(key_pair.private_key_pem(), TEST_ES384_PRIVATE_KEY_PEM);
+    assert_eq!(key_pair.public_key_pem(), TEST_ES384_PUBLIC_KEY_PEM);
+
+    std::fs::remove_dir_all(&dir)
+        .unwrap_or_else(|error| panic!("temporary directory should be removable: {error}"));
+}
+
+#[test]
+fn es384_key_pair_loader_rejects_partial_key_state() {
+    let dir = unique_temp_dir("init-partial");
+    let paths = Es384KeyPairPaths::new(dir.join("jwt/private.pem"), dir.join("jwt/public.pem"));
+    let loader = Es384KeyPairLoader::new(
+        paths.private_key_path().to_path_buf(),
+        paths.public_key_path().to_path_buf(),
+    );
+    std::fs::create_dir_all(dir.join("jwt"))
+        .unwrap_or_else(|error| panic!("temporary directory should be creatable: {error}"));
+    std::fs::write(paths.private_key_path(), TEST_ES384_PRIVATE_KEY_PEM)
+        .unwrap_or_else(|error| panic!("private key fixture should be writable: {error}"));
+
+    let result = block_on_test_future(loader.initialize_if_required());
+
+    assert!(result.is_err());
+
+    std::fs::remove_dir_all(&dir)
+        .unwrap_or_else(|error| panic!("temporary directory should be removable: {error}"));
 }
 
 #[test]

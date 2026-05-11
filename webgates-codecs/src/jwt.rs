@@ -17,15 +17,19 @@
 //! - [`validation_result::JwtValidationResult`]
 
 use crate::errors::{JwtError, JwtOperation};
+use crate::jwt::authority::JwtAuthority;
 use crate::{Codec, Error, Result};
 
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::marker::PhantomData;
+use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
 use chrono::Utc;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode_header};
+use p384::elliptic_curve::rand_core::OsRng;
+use p384::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
@@ -47,6 +51,284 @@ fn canonical_es384_header_with_kid(kid: &str) -> Header {
     header.typ = Some("JWT".to_string());
     header.kid = Some(kid.to_string());
     header
+}
+
+/// File paths for an ES384 key pair managed on disk.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Es384KeyPairPaths {
+    private_key_path: PathBuf,
+    public_key_path: PathBuf,
+}
+
+impl Es384KeyPairPaths {
+    /// Creates key pair paths from explicit private and public key locations.
+    pub fn new(private_key_path: impl Into<PathBuf>, public_key_path: impl Into<PathBuf>) -> Self {
+        Self {
+            private_key_path: private_key_path.into(),
+            public_key_path: public_key_path.into(),
+        }
+    }
+
+    /// Returns the private key file path.
+    pub fn private_key_path(&self) -> &Path {
+        &self.private_key_path
+    }
+
+    /// Returns the public key file path.
+    pub fn public_key_path(&self) -> &Path {
+        &self.public_key_path
+    }
+
+    /// Returns whether both key files currently exist.
+    pub fn both_exist(&self) -> bool {
+        self.private_key_path.is_file() && self.public_key_path.is_file()
+    }
+}
+
+/// In-memory ES384 key material loaded from disk or generated on startup.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Es384KeyPair {
+    paths: Es384KeyPairPaths,
+    private_key_pem: Vec<u8>,
+    public_key_pem: Vec<u8>,
+}
+
+impl Es384KeyPair {
+    /// Creates an in-memory key pair from explicit paths and PEM bytes.
+    pub fn new(
+        paths: Es384KeyPairPaths,
+        private_key_pem: impl Into<Vec<u8>>,
+        public_key_pem: impl Into<Vec<u8>>,
+    ) -> Self {
+        Self {
+            paths,
+            private_key_pem: private_key_pem.into(),
+            public_key_pem: public_key_pem.into(),
+        }
+    }
+
+    /// Returns the file paths associated with this key pair.
+    pub fn paths(&self) -> &Es384KeyPairPaths {
+        &self.paths
+    }
+
+    /// Returns the private key file path.
+    pub fn private_key_path(&self) -> &Path {
+        self.paths.private_key_path()
+    }
+
+    /// Returns the public key file path.
+    pub fn public_key_path(&self) -> &Path {
+        self.paths.public_key_path()
+    }
+
+    /// Returns the PEM-encoded private key bytes.
+    pub fn private_key_pem(&self) -> &[u8] {
+        &self.private_key_pem
+    }
+
+    /// Returns the PEM-encoded public key bytes.
+    pub fn public_key_pem(&self) -> &[u8] {
+        &self.public_key_pem
+    }
+
+    /// Converts the loaded key pair into JWT codec options.
+    pub fn to_jwt_options(&self) -> Result<JsonWebTokenOptions> {
+        JsonWebTokenOptions::from_es384_pem(&self.private_key_pem, &self.public_key_pem)
+    }
+
+    /// Builds a JWT codec directly from this loaded key pair.
+    pub fn to_codec<P>(&self) -> Result<JsonWebToken<P>> {
+        Ok(JsonWebToken::new_with_options(self.to_jwt_options()?))
+    }
+
+    /// Builds a JWT authority directly from this loaded key pair.
+    pub fn to_authority<P>(&self) -> Result<JwtAuthority<P>>
+    where
+        P: Serialize + DeserializeOwned + Clone,
+    {
+        JwtAuthority::from_es384_pem(&self.private_key_pem, &self.public_key_pem)
+    }
+}
+
+/// Loads or initializes an ES384 key pair from the filesystem.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Es384KeyPairLoader {
+    paths: Es384KeyPairPaths,
+}
+
+impl Es384KeyPairLoader {
+    /// Creates a new loader for the given private and public key paths.
+    pub fn new(private_key_path: impl Into<PathBuf>, public_key_path: impl Into<PathBuf>) -> Self {
+        Self {
+            paths: Es384KeyPairPaths::new(private_key_path, public_key_path),
+        }
+    }
+
+    /// Returns the configured key paths.
+    pub fn paths(&self) -> &Es384KeyPairPaths {
+        &self.paths
+    }
+
+    /// Creates the key pair if missing and then loads both PEM files.
+    ///
+    /// If both files already exist, they are reused unchanged. If neither file
+    /// exists, a new ES384 key pair is generated, written to disk, and loaded.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when only one key file exists, when directories or
+    /// files cannot be created or read, or when the resulting PEM bytes are not
+    /// a valid ES384 key pair.
+    pub async fn initialize_if_required(&self) -> Result<Es384KeyPair> {
+        let private_exists = self.paths.private_key_path.is_file();
+        let public_exists = self.paths.public_key_path.is_file();
+
+        match (private_exists, public_exists) {
+            (true, true) => self.load().await,
+            (false, false) => {
+                self.create_parent_directories().await?;
+                let (private_key_pem, public_key_pem) = generate_es384_key_pair_pem()?;
+                tokio::fs::write(&self.paths.private_key_path, &private_key_pem)
+                    .await
+                    .map_err(|error| {
+                        Error::Jwt(JwtError::processing(
+                            JwtOperation::Encode,
+                            format!(
+                                "failed to write ES384 private key `{}`: {error}",
+                                self.paths.private_key_path.display()
+                            ),
+                        ))
+                    })?;
+                tokio::fs::write(&self.paths.public_key_path, &public_key_pem)
+                    .await
+                    .map_err(|error| {
+                        Error::Jwt(JwtError::processing(
+                            JwtOperation::Encode,
+                            format!(
+                                "failed to write ES384 public key `{}`: {error}",
+                                self.paths.public_key_path.display()
+                            ),
+                        ))
+                    })?;
+                self.validate_loaded_pair(Es384KeyPair::new(
+                    self.paths.clone(),
+                    private_key_pem,
+                    public_key_pem,
+                ))
+            }
+            _ => Err(Error::Jwt(JwtError::processing(
+                JwtOperation::Encode,
+                format!(
+                    "ES384 key initialization requires both key files to exist or neither to exist; private=`{}`, public=`{}`",
+                    self.paths.private_key_path.display(),
+                    self.paths.public_key_path.display()
+                ),
+            ))),
+        }
+    }
+
+    /// Loads both PEM files from disk.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either file cannot be read or if the loaded bytes do
+    /// not form a valid ES384 key pair.
+    pub async fn load(&self) -> Result<Es384KeyPair> {
+        let private_key_pem = tokio::fs::read(&self.paths.private_key_path)
+            .await
+            .map_err(|error| {
+                Error::Jwt(JwtError::processing(
+                    JwtOperation::Decode,
+                    format!(
+                        "failed to read ES384 private key `{}`: {error}",
+                        self.paths.private_key_path.display()
+                    ),
+                ))
+            })?;
+        let public_key_pem =
+            tokio::fs::read(&self.paths.public_key_path)
+                .await
+                .map_err(|error| {
+                    Error::Jwt(JwtError::processing(
+                        JwtOperation::Decode,
+                        format!(
+                            "failed to read ES384 public key `{}`: {error}",
+                            self.paths.public_key_path.display()
+                        ),
+                    ))
+                })?;
+
+        self.validate_loaded_pair(Es384KeyPair::new(
+            self.paths.clone(),
+            private_key_pem,
+            public_key_pem,
+        ))
+    }
+
+    async fn create_parent_directories(&self) -> Result<()> {
+        if let Some(parent) = self.paths.private_key_path.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            tokio::fs::create_dir_all(parent).await.map_err(|error| {
+                Error::Jwt(JwtError::processing(
+                    JwtOperation::Encode,
+                    format!(
+                        "failed to create private key directory `{}`: {error}",
+                        parent.display()
+                    ),
+                ))
+            })?;
+        }
+
+        if let Some(parent) = self.paths.public_key_path.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            tokio::fs::create_dir_all(parent).await.map_err(|error| {
+                Error::Jwt(JwtError::processing(
+                    JwtOperation::Encode,
+                    format!(
+                        "failed to create public key directory `{}`: {error}",
+                        parent.display()
+                    ),
+                ))
+            })?;
+        }
+
+        Ok(())
+    }
+
+    fn validate_loaded_pair(&self, key_pair: Es384KeyPair) -> Result<Es384KeyPair> {
+        key_pair.to_jwt_options()?;
+        Ok(key_pair)
+    }
+}
+
+fn generate_es384_key_pair_pem() -> Result<(Vec<u8>, Vec<u8>)> {
+    let signing_key = p384::ecdsa::SigningKey::random(&mut OsRng);
+    let verifying_key = signing_key.verifying_key();
+
+    let private_key_pem = signing_key
+        .to_pkcs8_pem(LineEnding::LF)
+        .map_err(|error| {
+            Error::Jwt(JwtError::processing(
+                JwtOperation::Encode,
+                format!("failed to encode ES384 private key as PKCS#8 PEM: {error}"),
+            ))
+        })?
+        .to_string()
+        .into_bytes();
+    let public_key_pem = verifying_key
+        .to_public_key_pem(LineEnding::LF)
+        .map_err(|error| {
+            Error::Jwt(JwtError::processing(
+                JwtOperation::Encode,
+                format!("failed to encode ES384 public key as PEM: {error}"),
+            ))
+        })?
+        .into_bytes();
+
+    Ok((private_key_pem, public_key_pem))
 }
 
 /// Registered claims defined by the JWT specification.
