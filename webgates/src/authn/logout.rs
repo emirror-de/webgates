@@ -1,9 +1,7 @@
-/// Application service for handling user logout.
-pub struct LogoutService {
-    // Logout is stateless, no fields needed.
-}
+/// Stateless service for transport-level logout.
+pub struct LogoutService {}
 
-/// Application service for handling session-backed logout.
+/// Stateless service for session-backed logout.
 ///
 /// This service keeps session revocation in the framework-agnostic core while
 /// transport adapters remain responsible for cookie removal and request-bound
@@ -14,22 +12,18 @@ pub struct SessionLogoutService<R> {
 }
 
 impl LogoutService {
-    /// Create a new logout service.
+    /// Creates a new logout service.
     pub fn new() -> Self {
         Self {}
     }
 
-    /// Handle logout operation.
+    /// Performs transport-level logout.
     ///
-    /// In a cookie-based authentication system, logout is handled
-    /// by removing the authentication cookie. This method exists
-    /// for consistency with the application service pattern and
-    /// potential future extensions (e.g., token blacklisting,
-    /// logging, cleanup operations).
-    pub fn logout(&self) {
-        // Currently no additional business logic needed for logout.
-        // The actual cookie removal is handled by the infrastructure layer.
-    }
+    /// In cookie-based authentication systems, logout is usually implemented by
+    /// removing the authentication cookie. This method currently has no extra
+    /// business logic, but gives callers a stable service entry point that can
+    /// evolve without changing adapter code.
+    pub fn logout(&self) {}
 }
 
 #[cfg(feature = "sessions")]
@@ -45,6 +39,9 @@ where
     }
 
     /// Revokes the session state targeted by `request`.
+    ///
+    /// Use this service when logout should invalidate persisted session state,
+    /// not just clear transport-level cookies.
     pub async fn logout(
         &self,
         request: crate::sessions::logout::LogoutRequest,

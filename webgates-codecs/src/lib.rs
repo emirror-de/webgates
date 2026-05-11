@@ -5,7 +5,7 @@
 /*!
 # webgates-codecs
 
-User-focused JWT codecs and validation helpers for the `webgates` ecosystem.
+JWT encoding, decoding, validation, and JWKS helpers for `webgates` applications.
 
 This crate is the codec layer of the workspace. It gives you the building blocks
 for encoding, decoding, and validating JWT payloads without pulling in HTTP,
@@ -90,13 +90,11 @@ pub enum Error {
     Jwt(#[from] JwtError),
 }
 
-/// A pluggable payload encoder/decoder.
+/// Encodes and decodes typed payloads.
 ///
-/// This trait defines the small abstraction that higher-level crates build on.
-/// A codec takes a typed payload, produces an opaque encoded representation,
-/// and can later decode that representation back into the typed payload.
-///
-/// See the module-level documentation for detailed guidance and examples.
+/// Higher-level crates build on this small abstraction. A codec takes a typed
+/// payload, produces an opaque encoded representation, and can later decode
+/// that representation back into the typed payload.
 pub trait Codec
 where
     Self: Clone,
@@ -107,15 +105,13 @@ where
 
     /// Encodes a payload into an opaque, implementation-defined byte vector.
     ///
-    /// Implementations MUST:
-    /// - Serialize + sign / encrypt (where applicable)
-    /// - Return an error if encoding or cryptographic operations fail
+    /// Returns an error if serialization, signing, encryption, or other
+    /// encoding steps fail.
     fn encode(&self, payload: &Self::Payload) -> Result<Vec<u8>>;
 
     /// Decodes a previously encoded payload.
     ///
-    /// Implementations MUST:
-    /// - Fully validate integrity/authenticity before returning
-    /// - Reject malformed or tampered data with an appropriate error
+    /// Returns an error if the value is malformed, tampered with, or otherwise
+    /// fails integrity or authenticity validation.
     fn decode(&self, encoded_value: &[u8]) -> Result<Self::Payload>;
 }

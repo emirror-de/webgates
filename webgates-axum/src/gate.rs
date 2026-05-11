@@ -2,7 +2,7 @@
 #![deny(unsafe_code)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
-//! Axum gate entry points.
+//! Build Axum middleware layers for cookie, bearer, and OAuth2 authentication flows.
 //!
 //! This module is the main middleware-facing entry point for `webgates-axum`.
 //! It adapts the framework-agnostic gate builders from `webgates` into Axum
@@ -136,11 +136,10 @@ where
     }
 }
 
-/// Adapter converting core OAuth2 gate configuration into the axum OAuth2 wrapper.
+/// Adapter converting core OAuth2 gate configuration into the Axum OAuth2 wrapper.
 ///
-/// The adapter returns the axum-side `oauth2::OAuth2Gate` wrapper. This is a
-/// thin mapping: we construct the wrapper and let integrators further configure
-/// it (for example, set a custom token exchanger) before calling `into_router`.
+/// The adapter returns the Axum-side `oauth2::OAuth2Gate` wrapper so callers
+/// can continue configuring route behavior before calling `into_router`.
 #[derive(Clone, Debug, Default)]
 struct OAuth2Adapter;
 

@@ -1,15 +1,14 @@
 //! Error types for secret-related operations.
 //!
-//! This module contains the structured error type used when secret construction
-//! or verification fails in `webgates-secrets`.
+//! This module contains the structured error type used when secret creation or
+//! verification fails in `webgates-secrets`.
 //!
-//! # Overview
-//! - `SecretError`: category-native error enum for hashing flows
-//! - Uses `HashingOperation` for hashing context
+//! [`SecretError`] adds caller-safe messaging around hashing failures that
+//! happen at the `Secret` value-object boundary.
 //!
 //! # Examples
 //!
-//! Hashing failure with algorithm context:
+//! Create a secret error with algorithm context:
 //! ```rust
 //! use webgates_secrets::errors::SecretError;
 //! use webgates_secrets::hashing::errors::HashingOperation;
@@ -27,10 +26,9 @@ use std::hash::{Hash, Hasher};
 use thiserror::Error;
 use webgates_core::errors_core::{ErrorSeverity, UserFriendlyError};
 
-/// Secret-related errors.
+/// Error returned when secret creation or verification fails.
 ///
-/// Use this error type when secret creation or verification fails at the secret
-/// value-object boundary.
+/// Use this type when failures occur at the `Secret` value-object boundary.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum SecretError {
@@ -49,7 +47,7 @@ pub enum SecretError {
 }
 
 impl SecretError {
-    /// Constructs a hashing error with algorithm context.
+    /// Creates a hashing error with algorithm context.
     pub fn hashing_with_algorithm(
         operation: HashingOperation,
         message: impl Into<String>,
@@ -63,7 +61,7 @@ impl SecretError {
         }
     }
 
-    /// Constructs a hashing error with full context.
+    /// Creates a hashing error with full context.
     pub fn hashing_with_context(
         operation: HashingOperation,
         message: impl Into<String>,

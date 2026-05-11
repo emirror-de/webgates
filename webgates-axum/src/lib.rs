@@ -5,11 +5,11 @@
 /*!
 # webgates-axum
 
-User-focused Axum integration for the `webgates` stack.
+Axum integration for `webgates` authentication, authorization, login/logout handlers, and session renewal.
 
 This crate is the Axum-facing transport adapter for `webgates`. It takes the
 framework-agnostic authentication and authorization model from `webgates` and
-connects it to real Axum routers, middleware layers, cookies, login/logout
+connects it to Axum routers, middleware layers, cookies, login/logout
 handlers, JWKS routes, and session renewal flows.
 
 ## When to use this crate
@@ -26,7 +26,7 @@ The core domain types, authentication logic, repositories, codecs, and
 framework-agnostic gate configuration still live in the sibling `webgates`
 crate.
 
-## How to approach this crate
+## Key modules
 
 Most applications can learn this crate in three steps:
 
@@ -37,7 +37,7 @@ Most applications can learn this crate in three steps:
 This crate does not provide a convenience prelude and does not re-export Axum.
 Use Axum directly from your own dependency list.
 
-## Quick start
+## Examples
 
 ```rust
 use axum::{routing::get, Router};
@@ -78,7 +78,7 @@ pub mod gate;
 /// Session middleware for transparent cookie-backed renewal.
 pub mod session;
 
-/// Pre-built route handlers for login and logout flows.
+/// Pre-built route handlers for login, logout, and JWKS flows.
 ///
 /// Import handler functions and session-login input types from the public
 /// submodules:

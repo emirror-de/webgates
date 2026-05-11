@@ -1,4 +1,4 @@
-//! JWT infrastructure components.
+//! JWT claim types, codecs, validation helpers, and JWKS support.
 //!
 //! This module contains the main JWT-facing API of `webgates-codecs`.
 //!

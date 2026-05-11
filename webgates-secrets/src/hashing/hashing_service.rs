@@ -2,43 +2,32 @@ use super::HashedValue;
 use crate::hashing::errors::HashingError;
 use webgates_core::verification_result::VerificationResult;
 
-/// Abstraction over password and secret hashing plus verification.
+/// Hashes and verifies secrets.
 ///
-/// Implement this trait to plug in alternative hashing algorithms or services,
-/// such as Argon2 variants, bcrypt, scrypt, external KMS/HSM integrations, or
-/// remote verification APIs.
+/// Callers use this trait to create stored hashes and verify plaintext values
+/// against them. Implementations should return opaque, self-contained hash
+/// strings that are safe to persist directly.
 ///
-/// # Requirements
-/// Implementations SHOULD:
-/// - Use a modern, memory‑hard password hashing algorithm (default provided: Argon2id)
-/// - Embed salt & parameters in the produced [`HashedValue`] when the format supports it
-/// - Return only opaque, self‑contained hash strings (safe to store directly)
+/// # Implementor notes
 ///
-/// # Error Semantics
-/// - Return `Ok(HashedValue)` / `Ok(VerificationResult)` for normal outcomes
-/// - Return `Err(..)` only for exceptional failures (misconfiguration, resource exhaustion,
-///   serialization/encoding failure, upstream service error, etc.)
+/// Implementations should use a modern, memory-hard password hashing algorithm,
+/// embed salts and parameters when the format supports it, and return errors
+/// only for exceptional failures such as misconfiguration or backend issues.
 ///
-/// # Enumeration & Timing
-/// This trait itself does not enforce constant‑time behavior; callers such as
-/// the login flow will layer enumeration resistance. However, implementations
-/// SHOULD avoid obviously data‑dependent early exits where practical.
+/// This trait does not enforce constant-time behavior by itself, but
+/// implementations should avoid obviously data-dependent early exits where
+/// practical.
 ///
-/// See [`Argon2Hasher`](crate::hashing::argon2::Argon2Hasher) for a production‑ready implementation.
+/// See [`Argon2Hasher`](crate::hashing::argon2::Argon2Hasher) for the default
+/// production-ready implementation.
 pub trait HashingService {
     /// Hashes a plaintext secret into an opaque, self-contained representation.
-    ///
-    /// Expectations:
-    /// - MUST NOT return the plaintext
-    /// - SHOULD generate a cryptographically secure random salt per invocation
-    /// - SHOULD embed algorithm parameters allowing future verification / upgrades
     fn hash_value(&self, plain_value: &str) -> Result<HashedValue, HashingError>;
     /// Verifies a plaintext input against a previously produced hash.
     ///
-    /// Returns:
-    /// - `Ok(VerificationResult::Ok)` if the value matches
-    /// - `Ok(VerificationResult::Unauthorized)` if it does not match
-    /// - `Err(..)` only if verification could not be performed (e.g. malformed hash)
+    /// Returns `Ok(VerificationResult::Ok)` if the value matches,
+    /// `Ok(VerificationResult::Unauthorized)` if it does not match, and
+    /// `Err(..)` only if verification could not be performed.
     fn verify_value(
         &self,
         plain_value: &str,

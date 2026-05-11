@@ -3,10 +3,11 @@
 //! These services coordinate repository traits for common persistence workflows
 //! without introducing a broader application-layer dependency.
 //!
-//! # Features
-//! - Works with any `AccountRepository` / `SecretRepository` implementation.
-//! - Uses Argon2 hashing via `webgates_secrets::hashing` for secrets.
-//! - Optional audit logging when the `audit-logging` feature is enabled.
+//! # Usage notes
+//!
+//! - works with any `AccountRepository` and `SecretRepository` implementation
+//! - uses Argon2 hashing via `webgates_secrets::hashing` for secrets
+//! - supports optional audit logging when the `audit-logging` feature is enabled
 //!
 //! # Examples
 //!

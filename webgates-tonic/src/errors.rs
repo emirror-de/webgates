@@ -62,7 +62,7 @@ pub enum AuthError {
 }
 
 impl AuthError {
-    /// Converts this error into the appropriate [`tonic::Status`].
+    /// Converts this authentication or authorization failure into the gRPC status returned to the caller.
     ///
     /// Token-level and metadata-level failures map to `UNAUTHENTICATED`.
     /// Policy denial after successful authentication maps to

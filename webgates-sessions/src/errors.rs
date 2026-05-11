@@ -1,12 +1,11 @@
 //! Session-layer error types.
 //!
-//! This module defines the minimal compiling error categories used by
-//! `webgates-sessions` while the rest of the session domain is still being
-//! implemented.
+//! This module defines the typed error categories used by framework-agnostic
+//! session workflows.
 
 use thiserror::Error;
 
-/// Result type used throughout `webgates-sessions`.
+/// Result type for fallible session operations.
 pub type Result<T> = std::result::Result<T, SessionError>;
 
 /// Root error type for framework-agnostic session workflows.
@@ -32,16 +31,16 @@ pub enum SessionError {
     #[error(transparent)]
     Revocation(#[from] RevocationError),
 
-    /// Placeholder error used for not-yet-implemented session functionality.
+    /// Fallback error for unsupported or unavailable session functionality.
     #[error("{message}")]
     Unimplemented {
-        /// Safe, caller-facing message describing the missing functionality.
+        /// Safe, caller-facing message describing the unsupported behavior.
         message: String,
     },
 }
 
 impl SessionError {
-    /// Creates a placeholder error for not-yet-implemented session behavior.
+    /// Creates an error for unsupported or unavailable session behavior.
     pub fn unimplemented(message: impl Into<String>) -> Self {
         Self::Unimplemented {
             message: message.into(),
@@ -57,7 +56,7 @@ pub enum ConfigError {
     Invalid,
 }
 
-/// Token and credential-material related session errors.
+/// Token-related session errors.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum TokenError {
     /// Token generation failed.

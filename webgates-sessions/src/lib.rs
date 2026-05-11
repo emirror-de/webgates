@@ -5,7 +5,7 @@
 /*!
 # webgates-sessions
 
-User-focused session lifecycle building blocks for the `webgates` ecosystem.
+Framework-agnostic session lifecycle building blocks for `webgates` applications.
 
 This crate defines the core types and contracts needed to issue, renew, rotate,
 and revoke session-backed authentication without depending on HTTP adapters,
@@ -21,7 +21,7 @@ Use `webgates-sessions` when you want:
 - lease coordination for concurrent renewal attempts
 - transport-independent session services
 
-## How the crate is organized
+## Key modules
 
 The crate is split by responsibility so you can learn it in layers:
 
@@ -35,7 +35,7 @@ The crate is split by responsibility so you can learn it in layers:
 These modules keep transport concerns in adapter crates such as
 `webgates-axum`.
 
-## Quick start
+## Getting started
 
 A good first path is to read [`session`], [`tokens`], and [`services`] together.
 That gives you the main domain model, token model, and workflow layer in order.

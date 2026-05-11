@@ -5,7 +5,7 @@
 /*!
 # webgates-tonic
 
-User-focused tonic server-side integration for the `webgates` stack.
+tonic server-side integration for `webgates` bearer-token authentication and authorization.
 
 This crate is the tonic-facing transport adapter for `webgates`. It applies
 bearer-token authentication and authorization to incoming gRPC requests while
@@ -25,7 +25,7 @@ Use `webgates-tonic` when you want:
 - optional JWT auth context for mixed public/authenticated methods
 - static-token service-to-service authentication
 
-## How to approach this crate
+## Key modules
 
 Most tonic applications can learn this crate in three steps:
 
@@ -33,7 +33,7 @@ Most tonic applications can learn this crate in three steps:
 2. move to [`context`] to see what handler-visible auth state becomes available
 3. read [`errors`] if you need to understand or customize auth failure behavior
 
-## Quick start
+## Examples
 
 ```rust,no_run
 use std::sync::Arc;
@@ -65,8 +65,7 @@ A good reading order is:
 /// Gate builders and tower middleware for tonic services.
 pub mod gate;
 
-/// Typed request-extension models inserted into tonic request extensions by the
-/// gate.
+/// Typed authentication context inserted into tonic request extensions.
 ///
 /// See `crate::context` for `JwtAuthContext`, `OptionalJwtAuthContext`, and
 /// `StaticTokenAuthorized`.

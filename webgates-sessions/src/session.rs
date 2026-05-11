@@ -185,8 +185,8 @@ impl Session {
 
 /// Canonical repository-facing session record.
 ///
-/// This alias exists so repository contracts can express intent clearly without
-/// introducing a second parallel session model.
+/// Repository interfaces use this alias when they operate on persisted session
+/// records.
 pub type SessionRecord = Session;
 
 /// Repository-facing summary of a session family.

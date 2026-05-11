@@ -1,4 +1,4 @@
-//! Typed request-extension models for handler-visible authentication context.
+//! Authentication context types that gRPC handlers read from tonic request extensions.
 //!
 //! These types are inserted into [`tonic::Request`] extensions by the bearer
 //! gate middleware and later read by gRPC handlers.
@@ -7,7 +7,7 @@
 //! Rust's type system to distinguish between strict JWT, optional JWT, and
 //! static-token flows.
 //!
-//! # Strict JWT mode
+//! # Reading strict JWT context
 //!
 //! On success, the middleware inserts:
 //! - `JwtAuthContext` — wraps the decoded account and registered claims.
@@ -31,12 +31,12 @@
 //! }
 //! ```
 //!
-//! # Optional JWT mode
+//! # Reading optional JWT context
 //!
 //! The middleware inserts `OptionalJwtAuthContext`, which wraps
 //! `Option<Account>` and `Option<RegisteredClaims>`.
 //!
-//! # Static-token mode
+//! # Reading static-token authorization
 //!
 //! The middleware inserts `StaticTokenAuthorized`, which carries a `bool`
 //! indicating whether the provided token matched the configured static token.
@@ -67,7 +67,7 @@ where
     R: AccessHierarchy + Eq + std::fmt::Display + Clone,
     G: Eq + Clone,
 {
-    /// Creates a new auth context from a decoded account and its registered claims.
+    /// Returns authentication context for a request authenticated with a JWT.
     pub fn new(account: Account<R, G>, registered_claims: RegisteredClaims) -> Self {
         Self {
             account,
@@ -111,7 +111,7 @@ where
     R: AccessHierarchy + Eq + std::fmt::Display + Clone,
     G: Eq + Clone,
 {
-    /// Creates a context for an authenticated request.
+    /// Returns context for an authenticated request.
     pub fn authenticated(account: Account<R, G>, registered_claims: RegisteredClaims) -> Self {
         Self {
             account: Some(account),
@@ -119,7 +119,7 @@ where
         }
     }
 
-    /// Creates a context for an unauthenticated (anonymous) request.
+    /// Returns context for an unauthenticated request.
     pub fn anonymous() -> Self {
         Self {
             account: None,
@@ -154,7 +154,7 @@ where
 pub struct StaticTokenAuthorized(bool);
 
 impl StaticTokenAuthorized {
-    /// Creates a new instance with the given authorization state.
+    /// Returns a marker with the given authorization state.
     pub fn new(authorized: bool) -> Self {
         Self(authorized)
     }

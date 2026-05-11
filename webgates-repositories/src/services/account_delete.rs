@@ -18,16 +18,15 @@ use tracing::{debug, error, info, warn};
 use webgates_core::accounts::Account;
 use webgates_core::authz::access_hierarchy::AccessHierarchy;
 
-/// Removes the given account and its corresponding secret from repositories.
+/// Deletes an account and its authentication secret as one repository workflow.
 ///
 /// This workflow is intentionally ordered to support a compensating action:
 /// the secret is removed first and cached locally, then the account is deleted.
 /// If account deletion fails, the service attempts to restore the previously
 /// removed secret.
 ///
-/// # Type Parameters
-/// - `R`: role type used by the account domain model
-/// - `G`: group type used by the account domain model
+/// `R` is the role type used by the account domain model. `G` is the group
+/// type used by the account domain model.
 pub struct AccountDeleteService<R, G>
 where
     R: AccessHierarchy + Eq,
@@ -51,17 +50,14 @@ where
 
     /// Performs the deletion workflow against the provided repositories.
     ///
-    /// Workflow:
-    /// 1. Remove and cache the secret associated with the account.
-    /// 2. Delete the account.
-    /// 3. If account deletion fails, attempt a best-effort secret restore.
+    /// The workflow removes and caches the secret, deletes the account, and
+    /// attempts a best-effort secret restore if account deletion fails.
     ///
     /// # Errors
-    /// Returns an error when:
-    /// - the secret does not exist
-    /// - secret deletion fails
-    /// - account deletion fails
-    /// - secret restoration fails after an account deletion failure
+    ///
+    /// Returns an error when the secret does not exist, secret deletion fails,
+    /// account deletion fails, or secret restoration fails after an account
+    /// deletion failure.
     pub async fn from_repositories<AccRepo, SecRepo>(
         self,
         account_repository: Arc<AccRepo>,

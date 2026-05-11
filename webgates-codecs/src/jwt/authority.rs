@@ -1,12 +1,12 @@
-//! Auth-side authority bundle for ES384 JWT signing and JWKS publication.
+//! Sign ES384 JWTs and publish the matching JWKS document.
 //!
-//! [`JwtAuthority`] is the single entry point for auth services that need to:
-//! - Sign JWTs with an ES384 private key
-//! - Publish the corresponding public key as a JWKS document
+//! [`JwtAuthority`] is the main entry point when you need to:
+//! - sign JWTs with an ES384 private key
+//! - publish the corresponding public key as a JWKS document
 //!
-//! It composes the existing [`JsonWebToken`] codec and [`JwksProvider`] from a
-//! single pair of PEM-encoded key bytes, ensuring the `kid` is always consistent
-//! between the signing header and the published JWKS document.
+//! It composes [`JsonWebToken`] and [`JwksProvider`] from a single pair of
+//! PEM-encoded key bytes, ensuring the `kid` is always consistent between the
+//! signing header and the published JWKS document.
 //!
 //! # Example
 //!
@@ -44,10 +44,10 @@ use crate::jwt::{JsonWebToken, JsonWebTokenOptions};
 
 use serde::{Serialize, de::DeserializeOwned};
 
-/// Auth-side authority bundle that owns an ES384 signing codec and a JWKS provider.
+/// Authority bundle that owns an ES384 signing codec and a JWKS provider.
 ///
-/// Construct once at startup with [`JwtAuthority::from_es384_pem`] and share via
-/// `Arc<JwtAuthority<P>>` across handlers.
+/// Construct this type once at startup with [`JwtAuthority::from_es384_pem`]
+/// and share it across handlers with `Arc<JwtAuthority<P>>`.
 ///
 /// The `kid` embedded in every signed JWT header is guaranteed to match the `kid`
 /// in the published JWKS document.

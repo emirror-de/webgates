@@ -44,31 +44,17 @@ use axum::http::StatusCode;
 use axum_extra::extract::CookieJar;
 use tracing::error;
 
-/// Authenticates submitted credentials and writes a JWT authentication cookie.
+/// Authenticates credentials and returns a cookie jar containing the auth cookie.
 ///
 /// This is the cookie-only login handler. It validates credentials, loads the
 /// corresponding account, creates a signed auth token, and adds the auth cookie
 /// to the returned [`CookieJar`].
 ///
-/// # Arguments
-/// * `cookie_jar` - The incoming cookie jar to add the auth cookie to
-/// * `credentials` - User credentials for authentication
-/// * `registered_claims` - JWT registered claims (issuer, expiration, etc.)
-/// * `secret_verifier` - Repository for verifying user passwords
-/// * `account_repository` - Repository for loading user account data
-/// * `codec` - JWT codec for creating signed tokens
-/// * `cookie_template` - Template for creating the authentication cookie
+/// # Errors
 ///
-/// # Returns
-/// * `Ok(CookieJar)` - Updated cookie jar with authentication cookie
-/// * `Err(StatusCode)` - HTTP error code indicating failure reason
-///   - `UNAUTHORIZED` - Invalid credentials (covers both non-existent users and wrong passwords)
-///   - `INTERNAL_SERVER_ERROR` - System error during authentication
-///
-/// # Example Response Codes
-/// - 200: Login successful, cookie set
-/// - 401: Invalid username/password or account not found
-/// - 500: Internal server error
+/// Returns [`StatusCode::UNAUTHORIZED`] when the credentials are invalid and
+/// [`StatusCode::INTERNAL_SERVER_ERROR`] when authentication fails because of a
+/// repository, hashing, or token-issuance problem.
 pub async fn login<CredVeri, AccRepo, C, R, G>(
     cookie_jar: CookieJar,
     credentials: Credentials<String>,
@@ -176,10 +162,10 @@ where
     }
 }
 
-/// Dependencies required for session-backed login.
+/// Dependencies required by [`login_with_sessions`].
 ///
-/// This groups the inner-layer services and repositories so the HTTP adapter can
-/// pass one explicit dependency object instead of a long argument list.
+/// This type bundles the repositories and token issuer required by the
+/// session-backed login handler.
 pub struct SessionLoginDependencies<CredVeri, AccRepo, SessRepo, A> {
     /// Repository used to verify submitted credentials.
     pub secret_verifier: Arc<CredVeri>,
@@ -191,37 +177,34 @@ pub struct SessionLoginDependencies<CredVeri, AccRepo, SessRepo, A> {
     pub auth_token_issuer: A,
 }
 
-/// Session-backed login request configuration.
+/// Request-scoped inputs for [`login_with_sessions`].
 ///
-/// This groups the deterministic issuance inputs and cookie templates needed at
-/// the HTTP boundary.
+/// This type bundles the deterministic issuance inputs and cookie templates
+/// needed at the HTTP boundary.
 pub struct SessionLoginRequest {
     /// User credentials submitted for authentication.
     pub credentials: Credentials<String>,
     /// Session issuance configuration.
     pub session_config: SessionConfig,
-    /// Template for the auth cookie written after successful login.
+    /// Cookie template used to write the auth cookie after successful login.
     pub auth_cookie_template: CookieTemplate,
-    /// Template for the refresh-token cookie written after successful login.
+    /// Cookie template used to write the refresh-token cookie after successful login.
     pub refresh_cookie_template: CookieTemplate,
     /// Current wall-clock time used for deterministic session issuance.
     pub now: SystemTime,
 }
 
-/// Authenticates submitted credentials and writes auth and refresh-token cookies.
+/// Authenticates credentials and returns a cookie jar containing auth and refresh cookies.
 ///
 /// This is the session-backed variant of [`login`]. It validates credentials,
 /// loads the account, issues a session-backed auth and refresh-token pair, and
 /// writes both cookies in the HTTP adapter layer.
 ///
-/// # Arguments
-/// * `cookie_jar` - The incoming cookie jar to add cookies to
-/// * `request` - Session-backed login request data and cookie templates
-/// * `dependencies` - Session-backed login repositories and token issuer
+/// # Errors
 ///
-/// # Returns
-/// * `Ok(CookieJar)` - Updated cookie jar with auth and refresh cookies
-/// * `Err(StatusCode)` - HTTP error code indicating failure reason
+/// Returns [`StatusCode::UNAUTHORIZED`] when the credentials are invalid and
+/// [`StatusCode::INTERNAL_SERVER_ERROR`] when session issuance fails because of
+/// a repository, hashing, token-issuance, or persistence problem.
 pub async fn login_with_sessions<CredVeri, AccRepo, SessRepo, A, R, G>(
     cookie_jar: CookieJar,
     request: SessionLoginRequest,

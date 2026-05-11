@@ -167,10 +167,10 @@ impl RefreshTokenHash {
 /// Borrowed view of a refresh-token hash.
 pub type RefreshTokenHashRef<'a> = &'a str;
 
-/// Minimum allowed length for an opaque refresh token.
+/// Minimum length accepted by [`RefreshTokenLength::new`].
 pub const MIN_REFRESH_TOKEN_LENGTH: usize = 32;
 
-/// Default length used for newly generated opaque refresh tokens.
+/// Default length used by [`OpaqueRefreshTokenGenerator::default`].
 pub const DEFAULT_REFRESH_TOKEN_LENGTH: usize = 64;
 
 /// Validated refresh-token length used by [`OpaqueRefreshTokenGenerator`].

@@ -1,10 +1,10 @@
-//! Remote JWKS-backed bearer gate for tonic gRPC consumer services.
+//! Bearer-token gate for tonic services that verifies JWTs with a remote JWKS verifier.
 //!
 //! [`RemoteJwksBearerGate`] wraps a [`RemoteJwksVerifier`] into a tonic-compatible
 //! tower [`Layer`] that authenticates gRPC requests via the `Authorization: Bearer`
 //! metadata header and enforces an [`AccessPolicy`].
 //!
-//! # Typical usage
+//! # Examples
 //!
 //! ```rust,no_run
 //! use std::sync::Arc;
@@ -87,7 +87,7 @@ where
         + 'static,
     G: Eq + Clone + Serialize + DeserializeOwned + Send + Sync + 'static,
 {
-    /// Builds a gate from an issuer string and a shared remote JWKS verifier.
+    /// Returns a gate from an issuer string and a shared remote JWKS verifier.
     ///
     /// The gate starts with a `deny_all` policy. Call [`with_policy`](Self::with_policy)
     /// to configure access rules.
@@ -102,7 +102,7 @@ where
         }
     }
 
-    /// Sets the access policy.
+    /// Returns this gate with the given access policy.
     #[must_use]
     pub fn with_policy(mut self, policy: AccessPolicy<R, G>) -> Self {
         self.policy = policy;
@@ -148,6 +148,9 @@ where
 }
 
 /// Tower service produced by [`RemoteJwksBearerGate`].
+///
+/// Most callers should configure and apply [`RemoteJwksBearerGate`] rather
+/// than constructing this service directly.
 #[derive(Clone)]
 pub struct RemoteJwksBearerService<S, R, G>
 where

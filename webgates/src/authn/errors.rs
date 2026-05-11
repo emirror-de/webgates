@@ -1,29 +1,30 @@
-//! Authentication-category native errors.
+//! Authentication-specific error types.
 //!
-//! This module defines category-native errors for authentication (authn) flows
-//! (login, logout, session renewal) used directly in handlers, services, and middleware.
-//! It reuses the existing `AuthenticationError` variants as the leaf error kinds.
+//! This module defines the authentication error surface used by login, logout,
+//! and session-renewal workflows.
 //!
-//! # Overview
-//!
-//! - `AuthnError`: category-native error enum for authentication flows
-//! - `AuthenticationError`: reused leaf error variants describing authn failures
+//! [`AuthenticationError`] models leaf authentication failures.
+//! [`AuthnError`] wraps those failures with category-level messaging for users,
+//! developers, and support tooling.
 //!
 //! # Examples
 //!
 //! Basic construction and user-facing message extraction:
 //!
 //! ```rust
-//! use webgates::authn::errors::{AuthnError, AuthenticationError};
+//! use webgates::authn::errors::{AuthenticationError, AuthnError};
 //! use webgates::errors_core::UserFriendlyError;
 //!
-//! let err = AuthnError::from_authentication(AuthenticationError::InvalidCredentials, Some("login form//! ".into()));
+//! let err = AuthnError::from_authentication(
+//!     AuthenticationError::InvalidCredentials,
+//!     Some("login form".into()),
+//! );
 //! assert!(err.user_message().contains("username or password"));
 //! assert!(err.developer_message().contains("Authentication failure"));
 //! assert!(err.support_code().starts_with("AUTHN-"));
 //! ```
 //!
-//! Convenience constructors:
+//! Convenience constructor:
 //!
 //! ```rust
 //! use webgates::authn::errors::AuthnError;
@@ -35,24 +36,23 @@ use crate::errors_core::{ErrorSeverity, UserFriendlyError};
 
 use thiserror::Error;
 
-/// Leaf authentication error variants reused by the authn category.
-/// Specific authentication error types for authentication flows.
+/// Leaf authentication error variants reused by [`AuthnError`].
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum AuthenticationError {
-    /// Invalid credentials provided
+    /// Invalid credentials were provided.
     #[error("Invalid credentials provided")]
     InvalidCredentials,
 }
 
-/// Category-native authentication error.
+/// Category-level authentication error.
 ///
-/// Wraps `AuthenticationError` and provides category-oriented constructors,
-/// user-friendly messaging, support codes, severity, and retryability.
+/// This type wraps [`AuthenticationError`] and adds user-facing messaging,
+/// developer-facing detail, support codes, severity, and retryability.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum AuthnError {
-    /// Authentication flow failure (e.g., invalid credentials, expired session).
+    /// Authentication flow failure, such as invalid credentials.
     #[error("Authentication error: {error}")]
     Authentication {
         /// The specific authentication failure kind.
@@ -64,12 +64,12 @@ pub enum AuthnError {
 }
 
 impl AuthnError {
-    /// Construct from a leaf `AuthenticationError` with optional context.
+    /// Creates an `AuthnError` from a leaf authentication error and optional context.
     pub fn from_authentication(error: AuthenticationError, context: Option<String>) -> Self {
         AuthnError::Authentication { error, context }
     }
 
-    /// Invalid credentials were provided.
+    /// Creates an invalid-credentials error.
     pub fn invalid_credentials(context: Option<String>) -> Self {
         Self::from_authentication(AuthenticationError::InvalidCredentials, context)
     }

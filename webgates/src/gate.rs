@@ -27,8 +27,8 @@ pub mod oauth2;
 
 /// Entry point for constructing framework-agnostic gate configurations.
 ///
-/// `Gate` itself is just a namespace-like builder entry point. The returned gate
-/// values hold configuration and policy, while adapters or runtimes perform the
+/// `Gate` is a namespace-style builder entry point. The returned gate values
+/// hold configuration and policy, while adapters or runtimes perform the
 /// actual request evaluation.
 #[derive(Clone, Debug, Default)]
 pub struct Gate;
@@ -36,8 +36,8 @@ pub struct Gate;
 impl Gate {
     /// Creates a cookie-based gate configuration.
     ///
-    /// The returned gate starts with a deny-all policy until you add a policy or
-    /// call a convenience method such as `require_login()`.
+    /// The returned gate starts with a deny-all policy until you add a policy
+    /// or call a convenience method such as `require_login()`.
     #[cfg(feature = "cookies")]
     pub fn cookie<C, R, G>(issuer: &str, codec: Arc<C>) -> cookie::CookieGate<C, R, G>
     where
@@ -50,8 +50,8 @@ impl Gate {
 
     /// Creates a bearer-based gate configuration in JWT mode.
     ///
-    /// The returned gate starts with a deny-all policy until you add a policy or
-    /// call a convenience method such as `require_login()`.
+    /// The returned gate starts with a deny-all policy until you add a policy
+    /// or call a convenience method such as `require_login()`.
     pub fn bearer<C, R, G>(
         issuer: &str,
         codec: Arc<C>,
@@ -65,6 +65,8 @@ impl Gate {
     }
 
     /// Creates an OAuth2 gate configuration.
+    ///
+    /// This builder is available only when the `oauth2` feature is enabled.
     #[cfg(feature = "oauth2")]
     pub fn oauth2<R, G>() -> oauth2::OAuth2Gate<R, G>
     where
@@ -81,7 +83,8 @@ impl Gate {
 /// can hand them to a framework-specific adapter without each gate needing its
 /// own duplicated convenience method.
 ///
-/// Example:
+/// # Example
+///
 /// ```ignore
 /// let gate = CookieGate::new_with_codec(...);
 /// let runtime = gate.adapt_with(MyAdapter);
@@ -90,7 +93,7 @@ pub trait GateExt: Sized {
     /// Adapts this gate into a framework-specific artifact using `adapter`.
     ///
     /// The adapter type must implement [`GateAdapter<Self>`]. This default
-    /// method simply forwards to `adapter.adapt(self)`.
+    /// method forwards to `adapter.adapt(self)`.
     fn adapt_with<A>(self, adapter: A) -> A::Output
     where
         A: GateAdapter<Self>,

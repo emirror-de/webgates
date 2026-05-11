@@ -15,7 +15,7 @@ use webgates_core::permissions::Permissions;
 use webgates_secrets::Secret;
 use webgates_secrets::hashing::argon2::Argon2Hasher;
 
-/// Service for creating a new account together with its authentication secret.
+/// Creates an account and stores its authentication secret.
 ///
 /// This service is a small boundary orchestrator:
 /// - it builds a domain [`Account`]
@@ -68,7 +68,7 @@ where
     R: AccessHierarchy + Eq,
     G: Eq + Clone,
 {
-    /// Creates a new account insertion builder with the provided credentials.
+    /// Creates a new account-insertion builder with the provided credentials.
     pub fn insert(user_id: &str, secret: &str) -> Self {
         Self {
             user_id: user_id.to_string(),
@@ -101,15 +101,9 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an error when:
-    /// - account creation fails in the account repository
-    /// - the account repository reports an unexpected `None`
-    /// - secret hashing fails
-    /// - secret storage fails
-    ///
-    /// # Return value
-    ///
-    /// Returns `Ok(Some(account))` on success.
+    /// Returns an error when account creation fails, the account repository
+    /// reports an unexpected `None`, secret hashing fails, or secret storage
+    /// fails.
     pub async fn into_repositories<AccRepo, SecRepo>(
         self,
         account_repository: Arc<AccRepo>,

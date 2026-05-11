@@ -12,24 +12,13 @@
 //! verification, account lookup, token creation, session issuance, and logout
 //! semantics remain owned by the core crates.
 //!
-//! # Public API
+//! # Modules
 //!
-//! - `login` --- handlers and input types for cookie-only and session-backed
-//!   login flows:
-//!   - `login::login` --- cookie-only login handler
-//!   - `login::login_with_sessions` --- session-backed login handler
-//!   - `login::SessionLoginRequest` --- input struct for
-//!     `login::login_with_sessions`
-//!   - `login::SessionLoginDependencies` --- dependency struct for
-//!     `login::login_with_sessions`
+//! - [`login`] for cookie-only and session-backed login handlers
+//! - [`logout`] for cookie-only and session-backed logout handlers
+//! - [`jwks`] for JWKS publication handlers
 //!
-//! - `logout` --- handlers for cookie-only and session-backed logout flows:
-//!   - `logout::logout` --- cookie-only logout handler
-//!   - `logout::logout_with_sessions` --- session-backed logout handler
-//! - `jwks` --- JWKS publication handlers for auth authorities:
-//!   - `jwks::jwks` --- returns canonical `/.well-known/jwks.json`
-//!
-//! # Typical usage
+//! # Examples
 //!
 //! Mount your own HTTP routes and call these handlers from your Axum handlers so
 //! request parsing, state extraction, and response mapping stay explicit in your
@@ -110,14 +99,9 @@
 //! `webgates` services and repositories. This module is only the HTTP adapter.
 
 /// Login handlers and input types for cookie-only and session-backed authentication flows.
-///
-/// This submodule contains `login`, `login_with_sessions`,
-/// `SessionLoginRequest`, and `SessionLoginDependencies`.
 pub mod login;
 
 /// Logout handlers for cookie-only and session-backed authentication flows.
-///
-/// This submodule contains `logout` and `logout_with_sessions`.
 pub mod logout;
 
 /// JWKS publication handlers for auth authorities.

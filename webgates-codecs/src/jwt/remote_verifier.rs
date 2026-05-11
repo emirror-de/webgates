@@ -1,4 +1,4 @@
-//! Transport-agnostic remote JWKS verifier for consumer services.
+//! Fetch, cache, refresh, and use a remote JWKS document to verify JWTs.
 //!
 //! [`RemoteJwksVerifier`] fetches, caches, and refreshes a remote JWKS document
 //! and exposes a [`RemoteJwksVerifier::verify_token`] method that both Axum and

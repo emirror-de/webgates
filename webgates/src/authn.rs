@@ -3,47 +3,48 @@
 //! This module contains the higher-level login and logout orchestration for
 //! `webgates`.
 //!
-//! Use it when you want more than just gate configuration: these services help
+//! Use it when you need more than gate configuration alone. These services help
 //! you verify credentials, load accounts, issue tokens, and coordinate logout or
 //! session revocation flows.
 //!
-//! The services in this module keep authentication orchestration framework
-//! agnostic:
-//! - credential verification stays at the core service layer
+//! The APIs in this module keep authentication orchestration framework-agnostic:
+//!
+//! - credential verification stays in service-level dependencies
 //! - account lookup stays in repository traits
 //! - auth-token issuance stays in codec-backed or session-backed issuers
 //! - session issuance and revocation stay in `webgates::sessions`
 //!
 //! HTTP adapters such as `webgates-axum` should call these services and remain
-//! responsible only for request parsing, cookie extraction, response mapping, and
-//! cookie mutation.
+//! responsible only for request parsing, cookie extraction, response mapping,
+//! and cookie mutation.
 //!
-//! # Key components
+//! # Primary entry points
 //!
-//! - [`login::LoginService`] - Handles credential verification and direct auth-token issuance
-//! - [`login::SessionLoginService`] - Handles credential verification and session-backed auth/refresh token issuance
-//! - [`logout::LogoutService`] - Handles non-session logout cleanup
-//! - [`logout::SessionLogoutService`] - Handles session-backed logout and revocation
-//! - [`login::LoginResult`] - Represents the outcome of direct login attempts
-//! - [`login::SessionLoginResult`] - Represents the outcome of session-backed login attempts
+//! - [`login::LoginService`] for direct auth-token login flows
+//! - [`login::SessionLoginService`] for session-backed login flows
+//! - [`logout::LogoutService`] for transport-level logout orchestration
+//! - [`logout::SessionLogoutService`] for session revocation workflows
+//! - [`login::LoginResult`] for direct login outcomes
+//! - [`login::SessionLoginResult`] for session-backed login outcomes
 //!
 //! # When to use which service
 //!
-//! Use [`login::LoginService`] when you want a direct auth-token login flow without
-//! server-side refresh-token session state.
+//! Use [`login::LoginService`] when you want a direct auth-token login flow
+//! without server-side refresh-token session state.
 //!
 //! Use [`login::SessionLoginService`] when you want:
+//!
 //! - short-lived auth tokens
 //! - long-lived refresh-token-backed sessions
 //! - refresh-token rotation and replay-aware revocation
 //! - transparent renewal through an adapter such as
 //!   `webgates_axum::session::cookie_session_layer::CookieSessionLayer`
 //!
-//! Use [`logout::SessionLogoutService`] when logout should revoke either the current
-//! session or the full session family instead of only clearing transport-level
-//! cookies.
+//! Use [`logout::SessionLogoutService`] when logout should revoke either the
+//! current session or the full session family instead of only clearing
+//! transport-level cookies.
 //!
-//! # Usage
+//! # Examples
 //!
 //! These services are often called by adapter crates, but they can also be used
 //! directly in custom application flows.
@@ -96,7 +97,9 @@
 //! with `webgates::sessions` repository contracts and are intended to sit below
 //! HTTP adapters that write auth and refresh cookies.
 
+/// Authentication-specific error types used by auth flows.
 pub mod errors;
+/// Login services and result types for direct-token and session-backed auth.
 pub mod login;
 /// Logout services for direct-token and session-backed authentication flows.
 pub mod logout;

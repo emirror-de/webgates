@@ -38,7 +38,12 @@ pub struct JwtValidationService<C> {
     expected_issuer: String,
 }
 
-/// Verifier contract used by JWT-consuming runtimes and adapters.
+/// Verifies raw JWT strings and returns decoded claims.
+///
+/// Runtimes and adapters use this trait when they need a narrow contract for
+/// token verification without depending on a concrete validation service.
+/// Implementations should reject malformed, invalid, and issuer-mismatched
+/// tokens with a [`JwtError`].
 pub trait JwtClaimsVerifier<T>: Clone {
     /// Verifies a raw token and returns decoded claims on success.
     fn verify_token(&self, token_value: &str) -> std::result::Result<T, JwtError>;
@@ -47,9 +52,8 @@ pub trait JwtClaimsVerifier<T>: Clone {
 impl<C> JwtValidationService<C> {
     /// Creates a new JWT validation service.
     ///
-    /// # Parameters
-    /// - `codec`: codec used to decode and validate raw JWT tokens
-    /// - `expected_issuer`: issuer that decoded tokens must contain
+    /// `codec` decodes and validates raw JWT tokens. `expected_issuer` is the
+    /// issuer string that decoded tokens must contain.
     pub fn new(codec: Arc<C>, expected_issuer: &str) -> Self {
         Self {
             codec,
@@ -70,13 +74,10 @@ where
     /// 1. decode the token with the configured codec
     /// 2. verify the configured issuer against the decoded claims
     ///
-    /// # Parameters
-    /// - `token_value`: raw JWT token string
-    ///
-    /// # Returns
-    /// - [`JwtValidationResult::Valid`] when decoding succeeds and the issuer matches
-    /// - [`JwtValidationResult::InvalidToken`] when decoding fails
-    /// - [`JwtValidationResult::InvalidIssuer`] when decoding succeeds but the issuer differs
+    /// Returns [`JwtValidationResult::Valid`] when decoding succeeds and the
+    /// issuer matches, [`JwtValidationResult::InvalidToken`] when decoding
+    /// fails, and [`JwtValidationResult::InvalidIssuer`] when decoding succeeds
+    /// but the issuer differs.
     pub fn validate_token(&self, token_value: &str) -> JwtValidationResult<Account<R, G>> {
         let jwt = match self.codec.decode(token_value.as_bytes()) {
             Ok(jwt) => jwt,

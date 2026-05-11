@@ -33,7 +33,7 @@ use argon2::password_hash::{PasswordHasher, SaltString, rand_core::OsRng};
 use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordVerifier, Version};
 use webgates_core::verification_result::VerificationResult;
 
-/// Argon2 parameter configuration.
+/// Configures the Argon2id memory, time, and parallelism parameters.
 #[derive(Debug, Clone, Copy)]
 pub struct Argon2Config {
     /// Memory usage in KiB for the Argon2 algorithm.
@@ -45,9 +45,9 @@ pub struct Argon2Config {
 }
 
 impl Argon2Config {
-    /// High-security configuration for production environments.
+    /// Returns a high-security configuration for production environments.
     ///
-    /// Uses 64 MiB memory, 3 iterations, and 1 thread for maximum security.
+    /// This preset uses 64 MiB of memory, 3 iterations, and 1 thread.
     pub fn high_security() -> Self {
         Self {
             memory_kib: 64 * 1024, // 64 MiB
@@ -55,9 +55,9 @@ impl Argon2Config {
             parallelism: 1,
         }
     }
-    /// Interactive configuration balanced for user-facing applications.
+    /// Returns an interactive configuration for user-facing applications.
     ///
-    /// Uses 32 MiB memory, 2 iterations, and 1 thread for reasonable performance.
+    /// This preset uses 32 MiB of memory, 2 iterations, and 1 thread.
     pub fn interactive() -> Self {
         Self {
             memory_kib: 32 * 1024,
@@ -88,7 +88,7 @@ impl Default for Argon2Config {
     }
 }
 
-/// Preset selector for convenience.
+/// Preset selector for common Argon2id configurations.
 #[derive(Debug, Clone, Copy)]
 pub enum Argon2Preset {
     /// High security preset for production environments (64 MiB memory, 3 iterations).
@@ -107,7 +107,7 @@ impl Argon2Preset {
     }
 }
 
-/// Configurable Argon2id hasher.
+/// Argon2id hasher with explicit, reviewable configuration.
 ///
 /// This is the default hashing implementation provided by the crate.
 #[derive(Clone)]
@@ -117,7 +117,7 @@ pub struct Argon2Hasher {
 }
 
 impl Argon2Hasher {
-    /// Creates a new hasher using the crate's recommended production-safe preset.
+    /// Creates a new hasher using the crate's recommended preset.
     pub fn new_recommended() -> Result<Self> {
         Self::high_security()
     }
@@ -143,43 +143,24 @@ impl Argon2Hasher {
         &self.config
     }
 
-    /// Maximum-security hasher for production environments.
+    /// Creates a high-security hasher for production environments.
     ///
-    /// **Parameters:**
-    /// - Memory: 64 MiB (65,536 KiB)
-    /// - Time cost: 3 iterations
-    /// - Parallelism: 1 thread
+    /// # Defaults
     ///
-    /// **Use cases:**
-    /// - Production servers with sufficient memory
-    /// - High-value accounts requiring maximum security
-    /// - Applications where authentication latency is acceptable (~100-200ms)
-    ///
-    /// **Security:** Provides excellent protection against brute-force attacks
-    /// and rainbow tables, suitable for protecting sensitive user credentials.
-    ///
-    /// **Performance:** Slowest option, designed for security over speed.
+    /// - memory: 64 MiB
+    /// - time cost: 3 iterations
+    /// - parallelism: 1 thread
     pub fn high_security() -> Result<Self> {
         Self::from_preset(Argon2Preset::HighSecurity)
     }
 
-    /// Balanced hasher for interactive applications.
+    /// Creates an interactive hasher for user-facing applications.
     ///
-    /// **Parameters:**
-    /// - Memory: 32 MiB (32,768 KiB)
-    /// - Time cost: 2 iterations
-    /// - Parallelism: 1 thread
+    /// # Defaults
     ///
-    /// **Use cases:**
-    /// - Web applications with user-facing login forms
-    /// - Mobile applications where response time matters
-    /// - Services with moderate security requirements
-    /// - Memory-constrained production environments
-    ///
-    /// **Security:** Good security level, still resistant to most attacks
-    /// while providing reasonable authentication response times.
-    ///
-    /// **Performance:** Moderate speed (~50-100ms), good balance of security and usability.
+    /// - memory: 32 MiB
+    /// - time cost: 2 iterations
+    /// - parallelism: 1 thread
     pub fn interactive() -> Result<Self> {
         Self::from_preset(Argon2Preset::Interactive)
     }

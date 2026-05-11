@@ -3,10 +3,8 @@
 //! This module defines the structured error types used by hashing
 //! implementations and secret verification flows.
 //!
-//! # Overview
-//!
-//! - `HashingError`: category-native error enum for hashing/verification
-//! - `HashingOperation`: operation discriminator used by `HashingError`
+//! [`HashingError`] describes caller-visible hashing failures, and
+//! [`HashingOperation`] identifies which operation failed.
 //!
 //! # Examples
 //!
@@ -64,10 +62,9 @@ impl fmt::Display for HashingOperation {
     }
 }
 
-/// Hashing-domain errors.
+/// Error returned by hashing services and verification flows.
 ///
-/// Use these errors in hashing services, verification flows, and password or
-/// secret update flows.
+/// Use this type when hashing or verification cannot be completed safely.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum HashingError {
@@ -86,11 +83,7 @@ pub enum HashingError {
 }
 
 impl HashingError {
-    /// Constructs a hashing error without algorithm or format context.
-    ///
-    /// # Arguments
-    /// - `operation`: The hashing operation that failed.
-    /// - `message`: A non-sensitive description of the error.
+    /// Creates a hashing error without algorithm or format context.
     ///
     /// # Examples
     /// ```rust
@@ -106,12 +99,7 @@ impl HashingError {
         }
     }
 
-    /// Constructs a hashing error with algorithm context.
-    ///
-    /// # Arguments
-    /// - `operation`: The hashing operation that failed.
-    /// - `message`: A non-sensitive description of the error.
-    /// - `algorithm`: The hashing algorithm (e.g., `argon2id`).
+    /// Creates a hashing error with algorithm context.
     ///
     /// # Examples
     /// ```rust
@@ -131,13 +119,7 @@ impl HashingError {
         }
     }
 
-    /// Constructs a hashing error with full context.
-    ///
-    /// # Arguments
-    /// - `operation`: The hashing operation that failed.
-    /// - `message`: A non-sensitive description of the error.
-    /// - `algorithm`: The hashing algorithm (e.g., `argon2id`), if known.
-    /// - `expected_format`: Expected hash format (sanitized), if relevant.
+    /// Creates a hashing error with full context.
     ///
     /// # Examples
     /// ```rust

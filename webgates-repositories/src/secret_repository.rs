@@ -3,12 +3,10 @@ use webgates_secrets::Secret;
 use std::future::Future;
 use uuid::Uuid;
 
-/// Repository abstraction for persisting authentication [`Secret`] values.
+/// Persists authentication [`Secret`] values.
 ///
-/// Secrets are intentionally stored separately from account metadata to support:
-/// - split persistence such as different databases, schemas, or encryption domains
-/// - principle-of-least-privilege designs where some services only need account profile data
-/// - defense-in-depth if one store is compromised
+/// Secrets are intentionally stored separately from account metadata to support
+/// split persistence, least-privilege designs, and defense-in-depth.
 ///
 /// # Semantics
 ///
@@ -18,23 +16,21 @@ use uuid::Uuid;
 /// | `update_secret`   | `()`                         | —                                              | Backend / persistence failure                 |
 /// | `delete_secret`   | `Some(secret)` = removed     | `None` = no secret for that id                 | Backend / persistence failure                 |
 ///
-/// # Implementation Guidelines
+/// # Behavior
 ///
-/// - `store_secret` SHOULD perform an atomic insert (do not overwrite existing secret).
-/// - `update_secret` SHOULD replace the stored hash (e.g. after password change / rehash).
-/// - `delete_secret` MUST (where possible) remove and return atomically to enable callers
-///   to perform compensating actions if subsequent logic fails.
-/// - All methods should avoid leaking timing that distinguishes “exists vs not” where the
-///   caller relies on indistinguishability (e.g. during login flows with enumeration resistance).
+/// - `store_secret` should perform an atomic insert and avoid overwriting an existing secret.
+/// - `update_secret` should replace the stored hash, for example after a password change or rehash.
+/// - `delete_secret` should remove and return the secret atomically where possible.
+/// - Methods should avoid leaking timing differences between existence and absence when callers rely on indistinguishability.
 ///
-/// # Error vs Absence
+/// # Error vs. absence
 ///
 /// Use:
 /// - `Ok(false)` (only for `store_secret`) to indicate a duplicate attempt.
 /// - `Ok(None)` for expected absence (`delete_secret`).
 /// - `Err(..)` strictly for exceptional conditions (I/O, serialization, constraint violation).
 ///
-/// # Example (rotate secret)
+/// # Examples
 /// ```rust
 /// use webgates_repositories::memory::secret::MemorySecretRepository;
 /// use webgates_repositories::secret_repository::SecretRepository;
@@ -57,14 +53,14 @@ use uuid::Uuid;
 /// rotate_secret(&repo, secret).unwrap();
 /// ```
 ///
-/// # Security Note
+/// # Security notes
 ///
-/// Callers MUST ensure the `Secret` they pass was created using a secure hashing
-/// service (e.g. Argon2 via `Secret::new`). This repository trait does not verify
-/// hash format; it treats the value opaquely.
+/// Callers must ensure the `Secret` they pass was created using a secure
+/// hashing service such as `Secret::new`. This trait treats stored hashes as
+/// opaque values.
 ///
-/// Avoid adding a read/list-all API to this trait; derive any necessary audit logging
-/// at a different layer to minimize accidental exposure of hashed credentials.
+/// This trait intentionally avoids read-all style APIs so higher layers do not
+/// accidentally expose hashed credentials.
 pub trait SecretRepository
 where
     Self: Send + Sync,
@@ -80,11 +76,6 @@ where
     fn bootstrap(&self) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Stores a newly created secret.
-    ///
-    /// Returns:
-    /// - `Ok(true)` if inserted
-    /// - `Ok(false)` if a secret already exists for the associated account (no change)
-    /// - `Err(e)` on backend failure
     fn store_secret(
         &self,
         secret: Secret,
@@ -101,13 +92,8 @@ where
 
     /// Removes and returns a secret by its owning account id.
     ///
-    /// Returns:
-    /// - `Ok(Some(secret))` if a secret existed and was removed
-    /// - `Ok(None)` if no secret existed (idempotent)
-    /// - `Err(e)` on backend failure
-    ///
-    /// SHOULD be atomic (retrieve + delete) to allow callers to retry / rollback
-    /// higher-level operations safely.
+    /// Implementations should make this operation atomic where possible so
+    /// callers can safely apply retry or compensating logic.
     fn delete_secret(
         &self,
         id: &Uuid,

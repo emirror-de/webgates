@@ -1,7 +1,24 @@
-//! JWKS document and ES384 key conversion support.
+//! JWKS document types and ES384 key conversion support.
 //!
 //! This module contains the JWKS-facing types used when you want to expose or
 //! consume public verification keys in a standard JSON Web Key Set format.
+//!
+//! # Examples
+//!
+//! ```rust
+//! use webgates_codecs::jwt::jwks::JwksProvider;
+//!
+//! # const PUBLIC_PEM: &[u8] = br#"-----BEGIN PUBLIC KEY-----
+//! # MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEsjQ/XkOUJO2bXkhDzKRMW1SXp0VsMqGx
+//! # MSTG+tppqd3gOxbM8vLgWy4/B0Qdest0Gy3E8QgaKJXQV3zRczNd9zrk1dmwVl6u
+//! # Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
+//! # -----END PUBLIC KEY-----
+//! # "#;
+//! let provider = JwksProvider::from_es384_public_pem(PUBLIC_PEM)?;
+//! let document = provider.document();
+//! assert_eq!(document.keys.len(), 1);
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
 
 use crate::errors::{JwtError, JwtOperation};
 use crate::{Error, Result};

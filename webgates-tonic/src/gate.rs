@@ -1,7 +1,7 @@
 //! Gate entry point for tonic server-side authentication and authorization.
 //!
-//! Use [`crate::gate::Gate`] as the canonical entry point to construct bearer-token gates
-//! for tonic services.
+//! Use [`crate::gate::Gate`] as the canonical entry point for bearer-token gates
+//! on tonic services.
 
 use std::sync::Arc;
 
@@ -36,7 +36,7 @@ pub mod remote_jwks_bearer;
 pub struct Gate;
 
 impl Gate {
-    /// Creates a bearer-based gate for tonic services.
+    /// Returns a bearer-token gate for tonic services.
     ///
     /// The returned [`bearer::BearerGate`] starts in JWT mode with a deny-all
     /// policy by default. Use builder methods to configure policy or transition

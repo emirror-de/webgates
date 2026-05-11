@@ -5,7 +5,7 @@
 /*!
 # webgates-repositories
 
-User-focused repository contracts and storage backends for the `webgates` ecosystem.
+Repository traits, in-memory implementations, and storage backends for `webgates` applications.
 
 This crate is the persistence layer of the workspace. It provides repository
 traits, in-memory implementations, optional database backends, shared repository
@@ -21,7 +21,7 @@ Use `webgates-repositories` when you want:
 - session repository implementations for `webgates-sessions`
 - repository-level services such as account insert and delete
 
-## How to approach this crate
+## Key modules
 
 Most developers should choose one layer first:
 
@@ -32,7 +32,7 @@ Most developers should choose one layer first:
 
 Use these canonical module paths instead of crate-root shortcuts.
 
-## Quick start
+## Examples
 
 In-memory repositories are the easiest way to get started:
 
@@ -59,27 +59,27 @@ A good reading order is:
 4. [`sea_orm`] or [`surrealdb`] if you need persistent storage
 */
 
-/// Repository trait for account persistence backends.
+/// Account repository traits and contracts.
 pub mod account_repository;
 #[cfg(feature = "audit-logging")]
 pub mod audit;
 #[cfg(feature = "sea-orm")]
 pub mod comma_separated_value;
 pub mod errors;
-/// Repository trait for group persistence backends.
+/// Group repository traits and contracts.
 pub mod group_repository;
 pub mod memory;
-/// Repository traits for permission mapping persistence backends.
+/// Permission-mapping repository traits and contracts.
 pub mod permission_mapping_repository;
 #[cfg(feature = "sea-orm")]
 pub mod sea_orm;
-/// Repository trait for secret persistence backends.
+/// Secret repository traits and contracts.
 pub mod secret_repository;
 pub mod services;
 #[cfg(feature = "surrealdb")]
 pub mod surrealdb;
 
-/// Stable table names used by the storage backends.
+/// Canonical table or collection names shared by storage backends.
 #[cfg(any(feature = "surrealdb", feature = "sea-orm"))]
 #[derive(strum::Display, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[strum(serialize_all = "snake_case")]

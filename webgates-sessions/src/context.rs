@@ -4,16 +4,14 @@
 //! session layer to record who initiated a session change and under which
 //! runtime conditions it happened.
 //!
-//! The initial scaffold intentionally keeps the model small and transport-free.
-//! Additional fields can be added as concrete persistence and audit needs become
-//! clearer during later checklist items.
+//! Adapters can derive this metadata from HTTP requests, RPC metadata, CLI
+//! invocations, or background jobs before passing it into session services.
 
 use std::collections::BTreeMap;
 
-/// Immutable metadata describing the caller and environment for a session
-/// operation.
+/// Immutable metadata describing the caller and environment for a session operation.
 ///
-/// This type is transport agnostic by design. Adapters may derive values from
+/// This type is transport-agnostic by design. Adapters may derive values from
 /// HTTP requests, RPC metadata, CLI invocations, or background jobs before
 /// passing them into session services.
 ///

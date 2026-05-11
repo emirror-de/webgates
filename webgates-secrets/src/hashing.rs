@@ -1,17 +1,17 @@
-//! Password hashing and verification services.
+//! Password hashing and verification APIs.
 //!
 //! This module contains the hashing-facing API of `webgates-secrets`.
 //!
-//! It provides the hashing abstraction, the default Argon2id implementation, and
-//! the `HashedValue` type used for stored hashes.
+//! It provides the hashing abstraction, the default Argon2id implementation,
+//! and the [`HashedValue`] type used for stored hashes.
 //!
-//! # Key Components
+//! # Key types
 //!
-//! - [`hashing_service::HashingService`] - Service for hashing and verifying passwords
-//! - [`HashedValue`] - Represents a hashed password with algorithm metadata
-//! - [`argon2`] - Argon2 algorithm implementation with secure defaults
+//! - [`hashing_service::HashingService`] for hashing and verification
+//! - [`HashedValue`] for persisted hash strings
+//! - [`argon2`] for the default Argon2id implementation
 //!
-//! # Quick Start
+//! # Examples
 //!
 //! ```rust
 //! use webgates_core::verification_result::VerificationResult;
@@ -40,7 +40,7 @@
 //! - [`crate::hashing::errors::HashingOperation`]
 //! - [`crate::hashing::HashedValue`]
 //!
-//! # Security Features
+//! # Security notes
 //!
 //! - **Argon2id algorithm** - Recommended by password hashing competition
 //! - **Configurable parameters** - Memory cost, time cost, and parallelism
@@ -48,7 +48,7 @@
 //! - **Constant-time verification** - Prevents timing attacks
 //! - **Development vs production profiles** - Fast hashing in debug builds, secure in release
 //!
-//! # Performance Considerations
+//! # Usage notes
 //!
 //! The hashing service automatically adjusts parameters based on build configuration:
 //! - **Debug builds**: Fast parameters for development efficiency
@@ -63,13 +63,13 @@ pub mod errors;
 /// to import the hashing trait.
 pub mod hashing_service;
 
-/// A hashed value produced by password hashing algorithms.
+/// Stored hash string produced by a hashing algorithm.
 ///
-/// This is the stored representation returned by hashing implementations.
+/// This is the persisted representation returned by hashing implementations.
 /// It usually contains the algorithm identifier, parameters, salt, and hash in
 /// a standardized format.
 ///
-/// ## Format
+/// # Format
 ///
 /// For Argon2id hashes, the format follows the PHC (Password Hashing Competition) standard:
 /// ```text
@@ -83,14 +83,14 @@ pub mod hashing_service;
 /// - `<salt>` - Base64-encoded random salt
 /// - `<hash>` - Base64-encoded password hash
 ///
-/// ## Security Properties
+/// # Security notes
 ///
 /// - **Self-contained**: Includes all information needed for verification
 /// - **Salt included**: Each hash has a unique random salt to prevent rainbow table attacks
 /// - **Parameter embedded**: Hash contains the parameters used, enabling verification
 /// - **Future-proof**: Format supports algorithm upgrades and parameter changes
 ///
-/// ## Usage
+/// # Examples
 ///
 /// ```rust
 /// use webgates_secrets::hashing::argon2::Argon2Hasher;
@@ -109,7 +109,7 @@ pub mod hashing_service;
 /// assert_eq!(result, VerificationResult::Ok);
 /// ```
 ///
-/// ## Storage Considerations
+/// # Usage notes
 ///
 /// - **Database storage**: Store as TEXT/VARCHAR with sufficient length (≥100 characters recommended)
 /// - **No additional encoding needed**: The string is already in a safe, printable format

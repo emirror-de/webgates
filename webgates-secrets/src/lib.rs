@@ -5,11 +5,10 @@
 /*!
 # webgates-secrets
 
-User-focused secret and hashing primitives for the `webgates` ecosystem.
+Secret and hashing primitives for `webgates` applications.
 
-This crate contains the reusable server-side security building blocks used to
-hash secrets, verify them, and bind stored hashed values to account
-identifiers.
+This crate provides the building blocks used to hash secrets, verify them, and
+bind stored hashed values to account identifiers.
 
 ## When to use this crate
 
@@ -20,9 +19,8 @@ Use `webgates-secrets` when you want:
 - the [`hashing::argon2::Argon2Hasher`] implementation with secure presets
 - structured secret and hashing error types
 
-The crate is intentionally focused on the secret/hashing boundary so repository
-traits and persistence concerns can live elsewhere without creating dependency
-cycles.
+The crate is intentionally focused on the secret and hashing boundary. Storage
+and repository concerns live in sibling crates.
 
 ## Quick start
 
@@ -57,11 +55,10 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use webgates_core::verification_result::VerificationResult;
 
-/// Result alias for secrets and hashing operations.
+/// Convenience result alias for secrets and hashing operations.
 ///
-/// Crate-internal code should prefer concrete, caller-relevant error types at
-/// public boundaries. This alias is mainly a convenience for internal plumbing
-/// and generic implementations.
+/// Use concrete, caller-relevant error types at public boundaries when you need
+/// more specific failure handling.
 pub type Result<T, E = Box<dyn std::error::Error + Send + Sync>> = std::result::Result<T, E>;
 
 pub mod errors;
@@ -73,13 +70,13 @@ pub mod hashing;
 /// representation of a credential. Callers create a value from plaintext with
 /// [`Secret::new`] or reconstruct it from storage with [`Secret::from_hashed`].
 ///
-/// # Security properties
+/// # Security notes
 ///
 /// - Plaintext input is hashed before storage in the returned value.
 /// - Verification is delegated to the configured [`HashingService`] implementation.
 /// - The stored value is self-contained and suitable for persistence.
 ///
-/// # Usage
+/// # Examples
 ///
 /// Secrets are typically created during registration and verified during login:
 ///
@@ -102,7 +99,7 @@ pub mod hashing;
 /// # Ok::<(), String>(())
 /// ```
 ///
-/// # Storage considerations
+/// # Usage notes
 ///
 /// Persist only the hashed value and its associated `account_id`. Plaintext secrets
 /// must never be stored or logged.
@@ -117,18 +114,12 @@ pub struct Secret {
 impl Secret {
     /// Creates a new secret by hashing the provided plaintext input.
     ///
-    /// # Parameters
-    ///
-    /// - `account_id`: account identifier that owns the secret
-    /// - `plain_secret`: plaintext value to hash
-    /// - `hasher`: hashing service implementation used to create the stored hash
-    ///
     /// # Errors
     ///
     /// Returns an error when hashing fails because the configured hashing backend
     /// cannot produce a valid hash.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use webgates_secrets::hashing::argon2::Argon2Hasher;
@@ -166,12 +157,7 @@ impl Secret {
     ///
     /// Use this constructor when loading persisted secrets from storage.
     ///
-    /// # Parameters
-    ///
-    /// - `account_id`: account identifier that owns the secret
-    /// - `hashed_secret`: previously computed hashed value
-    ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use webgates_secrets::hashing::argon2::Argon2Hasher;
@@ -199,22 +185,15 @@ impl Secret {
 
     /// Verifies a plaintext secret against the stored hash.
     ///
-    /// # Parameters
-    ///
-    /// - `plain_secret`: plaintext value to verify
-    /// - `hasher`: hashing service implementation compatible with the stored hash
-    ///
-    /// # Returns
-    ///
-    /// - [`VerificationResult::Ok`] when the plaintext matches the stored hash
-    /// - [`VerificationResult::Unauthorized`] when it does not match
+    /// Returns [`VerificationResult::Ok`] when the plaintext matches the stored
+    /// hash and [`VerificationResult::Unauthorized`] when it does not match.
     ///
     /// # Errors
     ///
     /// Returns an error when the stored hash cannot be parsed or verified by the
     /// provided hashing backend.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use webgates_core::verification_result::VerificationResult;

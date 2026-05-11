@@ -18,7 +18,7 @@ use crate::session::SessionTouch;
 use crate::tokens::RefreshTokenHash;
 use crate::tokens::RefreshTokenHashRef;
 
-/// Result alias used by session persistence contracts.
+/// Result type for session persistence operations.
 pub type RepositoryResult<T> = std::result::Result<T, RepositoryError>;
 
 /// Repository error used by the session contract surface.
@@ -176,6 +176,12 @@ pub enum RevokeSessionScope {
 ///
 /// Implementations are expected to keep lease acquisition, token rotation, and
 /// revocation semantics correct under concurrent access.
+///
+/// # Contract
+///
+/// Implementations should keep refresh-token rotation atomic, treat `Ok(None)`
+/// as an expected not-found result, reserve `Err(..)` for backend or state
+/// failures, and avoid leaking backend-specific details in error messages.
 pub trait SessionRepository: Send + Sync {
     /// Creates a new persisted session and stores its active refresh-token hash.
     fn create_session(

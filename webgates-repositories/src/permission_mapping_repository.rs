@@ -3,25 +3,18 @@ use webgates_core::permissions::permission_id::PermissionId;
 
 use std::future::Future;
 
-/// Repository abstraction for persisting and retrieving [`PermissionMapping`] entities.
+/// Persists and retrieves [`PermissionMapping`] entities.
 ///
-/// This trait enables the optional registry pattern for permission string mappings,
-/// allowing reverse lookup from permission IDs back to their normalized string
-/// representations. This is implemented alongside the existing bitmap-based
-/// permission system without replacing it.
+/// Use this trait when you want an optional registry that maps permission IDs
+/// back to their normalized string representations.
 ///
-/// # Purpose
+/// # Usage notes
 ///
-/// The permission mapping repository provides optional functionality for:
-/// - Debugging and logging with human-readable permission names
-/// - Administrative interfaces showing permission details
-/// - Audit trails with readable permission descriptions
-/// - Permission reporting and analysis
+/// This repository is useful for debugging, logging, administrative tools,
+/// audit trails, and permission reporting when human-readable permission names
+/// need to be recoverable from stored IDs.
 ///
-/// # Usage Pattern
-///
-/// This repository is intended to be used optionally alongside the existing
-/// `Permissions` struct. When permission strings need to be recoverable:
+/// It is intended to be used alongside the existing `Permissions` struct:
 ///
 /// ```rust
 /// # use webgates_core::permissions::mapping::PermissionMapping;
@@ -42,28 +35,19 @@ use std::future::Future;
 /// assert!(matches!(fetched, Some(m) if m.normalized_string() == "read:api"));
 /// ```
 ///
-/// # Consistency Guarantees
+/// # Guarantees
 ///
-/// Implementations SHOULD:
-/// - Enforce uniqueness of both permission IDs and normalized strings
-/// - Validate mapping consistency before storage (use `PermissionMapping::validate()`)
-/// - Handle concurrent access safely
-/// - Provide atomic operations where possible
+/// Implementations should enforce uniqueness of both permission IDs and
+/// normalized strings, validate mapping consistency before storage, handle
+/// concurrent access safely, and provide atomic operations where possible.
 ///
-/// # Performance Considerations
+/// # Errors
 ///
-/// Since this is an optional feature for human-readable lookups:
-/// - Implementations may prioritize consistency over performance
-/// - Caching strategies are encouraged for frequently accessed mappings
-/// - Bulk operations are not required but may be added via extension traits
+/// Return `Err(..)` for exceptional backend failures. Use `Ok(None)` for
+/// expected not-found or no-op outcomes. Validation errors should be caught
+/// early with `PermissionMapping::validate()`.
 ///
-/// # Error Handling
-///
-/// Return `Err` for exceptional backend failures (connectivity, serialization,
-/// constraint violations). Use `Ok(None)` for "not found" / "no-op" outcomes.
-/// Validation errors should be caught early using `PermissionMapping::validate()`.
-///
-/// # Example Implementation Patterns
+/// # Examples
 ///
 /// ```rust
 /// use webgates_core::permissions::mapping::PermissionMapping;
@@ -94,17 +78,13 @@ pub trait PermissionMappingRepository {
     /// Backend-specific error type for repository operations.
     type Error: std::error::Error + Send + Sync + 'static;
 
-    /// Initialize the repository backend.
+    /// Initializes the repository backend.
     ///
-    /// Implementations may use this hook to create tables, indexes, permissions,
-    /// or other backend-specific storage prerequisites if they do not exist yet.
-    ///
-    /// Returns:
-    /// - `Ok(())` if the repository is ready for use
-    /// - `Err(e)` on backend initialization failure
+    /// Implementations may use this hook to create tables, indexes, or other
+    /// backend-specific storage prerequisites.
     fn bootstrap(&self) -> impl Future<Output = Result<(), Self::Error>>;
 
-    /// Store a permission mapping.
+    /// Stores a permission mapping.
     ///
     /// Implementations SHOULD enforce uniqueness of both the permission ID
     /// and the normalized string.
@@ -125,7 +105,7 @@ pub trait PermissionMappingRepository {
         mapping: PermissionMapping,
     ) -> impl Future<Output = Result<Option<PermissionMapping>, Self::Error>>;
 
-    /// Remove a permission mapping by its permission ID.
+    /// Removes a permission mapping by its permission ID.
     ///
     /// Returns:
     /// - `Ok(Some(mapping))` if the mapping existed and was removed
@@ -136,7 +116,7 @@ pub trait PermissionMappingRepository {
         id: PermissionId,
     ) -> impl Future<Output = Result<Option<PermissionMapping>, Self::Error>>;
 
-    /// Remove a permission mapping by its permission string.
+    /// Removes a permission mapping by its permission string.
     ///
     /// The string will be normalized before lookup, so this will match
     /// regardless of case or whitespace differences.
@@ -150,7 +130,7 @@ pub trait PermissionMappingRepository {
         permission: &str,
     ) -> impl Future<Output = Result<Option<PermissionMapping>, Self::Error>>;
 
-    /// Query a permission mapping by its permission ID.
+    /// Queries a permission mapping by its permission ID.
     ///
     /// This is the primary lookup method for reverse resolution of
     /// permission IDs back to their string representations.
@@ -164,7 +144,7 @@ pub trait PermissionMappingRepository {
         id: PermissionId,
     ) -> impl Future<Output = Result<Option<PermissionMapping>, Self::Error>>;
 
-    /// Query a permission mapping by its permission string.
+    /// Queries a permission mapping by its permission string.
     ///
     /// The string will be normalized before lookup, so this will match
     /// regardless of case or whitespace differences.
@@ -178,7 +158,7 @@ pub trait PermissionMappingRepository {
         permission: &str,
     ) -> impl Future<Output = Result<Option<PermissionMapping>, Self::Error>>;
 
-    /// List all stored permission mappings.
+    /// Lists all stored permission mappings.
     ///
     /// This method is useful for administrative interfaces, debugging,
     /// and generating permission reports. For large numbers of mappings,
@@ -191,7 +171,7 @@ pub trait PermissionMappingRepository {
         &self,
     ) -> impl Future<Output = Result<Vec<PermissionMapping>, Self::Error>>;
 
-    /// Check if a mapping exists for the given permission ID.
+    /// Checks whether a mapping exists for the given permission ID.
     ///
     /// This is a convenience method that may be more efficient than
     /// `query_mapping_by_id` when you only need to check existence.
@@ -213,7 +193,7 @@ pub trait PermissionMappingRepository {
         }
     }
 
-    /// Check if a mapping exists for the given permission string.
+    /// Checks whether a mapping exists for the given permission string.
     ///
     /// This is a convenience method that may be more efficient than
     /// `query_mapping_by_string` when you only need to check existence.
@@ -236,12 +216,10 @@ pub trait PermissionMappingRepository {
     }
 }
 
-/// Extension trait for bulk operations on permission mappings.
+/// Optional bulk operations for permission mappings.
 ///
-/// This trait provides optional bulk operations that may be more efficient
-/// for implementations that support batch processing. Implementations are
-/// not required to implement this trait unless they want to provide
-/// optimized bulk operations.
+/// Implement this trait when your backend can batch permission-mapping writes
+/// more efficiently than repeated single-item operations.
 pub trait PermissionMappingRepositoryBulk: PermissionMappingRepository {
     /// Store multiple permission mappings in a single operation.
     ///

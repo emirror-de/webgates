@@ -81,7 +81,7 @@ impl IssuedSession {
     }
 }
 
-/// Service that issues new session state and token pairs.
+/// Issues new session state and token pairs.
 ///
 /// Use this service after successful authentication when you want to create a
 /// session-backed login result.
@@ -205,7 +205,7 @@ where
     }
 }
 
-/// Service that renews existing sessions using refresh-token rotation.
+/// Renews existing sessions using refresh-token rotation.
 ///
 /// Use this service when a client presents a refresh token and you need to
 /// decide whether renewal is needed, coordinate leases, rotate token state, and

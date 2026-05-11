@@ -1,15 +1,14 @@
-//! Login service providing constant-time, enumeration-resistant authentication.
+//! Login services for direct-token and session-backed authentication.
 //!
-//! This module validates credentials, issues JWTs via a provided codec, and
-//! deliberately obscures whether an account exists to reduce username
-//! enumeration risk.
+//! This module validates credentials, issues auth tokens, and deliberately
+//! obscures whether an account exists to reduce username enumeration risk.
 //!
-//! # Security Features
+//! # Security notes
 //!
-//! - Constant-time credential verification using `subtle::Choice` to combine user-exists and hash-match decisions
-//! - Dummy UUID hashing for missing accounts to equalize timing between "user not found" and "wrong password"
-//! - Unified invalid-credentials responses to mitigate user enumeration
-//! - Stateless service; cryptographic operations live in credential verifiers and repositories
+//! - constant-time credential verification combines user-exists and hash-match decisions
+//! - a dummy UUID is used for missing accounts to reduce timing differences
+//! - invalid-credentials results stay unified to avoid leaking account existence
+//! - services remain stateless, while cryptographic operations stay in verifiers and repositories
 use crate::accounts::Account;
 use crate::authz::access_hierarchy::AccessHierarchy;
 use crate::codecs::Codec;
@@ -35,37 +34,38 @@ use webgates_sessions::tokens::{
     AuthTokenIssuer, OpaqueRefreshTokenGenerator, Sha256RefreshTokenHasher, TokenPairIssuer,
 };
 
-/// Result of a login attempt produced by [`LoginService::authenticate`].
+/// Result of a direct login attempt.
 ///
-/// The variants deliberately avoid revealing whether an account exists to
-/// mitigate username enumeration attacks. Both an unknown user and an
-/// incorrect password are collapsed into [`LoginResult::InvalidCredentials`].
+/// This type is returned by [`LoginService::authenticate`]. The variants
+/// deliberately avoid revealing whether an account exists. Both an unknown user
+/// and an incorrect password are collapsed into
+/// [`LoginResult::InvalidCredentials`].
 #[derive(Debug)]
 pub enum LoginResult {
-    /// Authentication succeeded and contains the issued JWT (already UTF‑8).
+    /// Authentication succeeded and returned the issued auth token.
     Success(String),
-    /// Credentials were invalid (unknown user OR wrong password).
+    /// Credentials were invalid, such as an unknown user or wrong password.
     InvalidCredentials {
-        /// User-friendly message
+        /// User-facing message.
         user_message: String,
-        /// Support reference code
+        /// Support reference code.
         support_code: Option<String>,
     },
-    /// An internal / infrastructural error (repository failure, hashing, JWT, etc.).
+    /// An internal or infrastructural error, such as repository, hashing, or token issuance failure.
     InternalError {
-        /// User-friendly message
+        /// User-facing message.
         user_message: String,
-        /// Technical message for developers
+        /// Technical message for developers.
         technical_message: String,
-        /// Support reference code
+        /// Support reference code.
         support_code: Option<String>,
-        /// Whether this error is retryable
+        /// Whether this error is retryable.
         retryable: bool,
     },
 }
 
 impl LoginResult {
-    /// Create an invalid credentials result with user-friendly messaging
+    /// Creates an invalid-credentials result.
     pub fn invalid_credentials(user_message: Option<String>, support_code: Option<String>) -> Self {
         LoginResult::InvalidCredentials {
             user_message: user_message.unwrap_or_else(|| {
@@ -75,7 +75,7 @@ impl LoginResult {
         }
     }
 
-    /// Create an internal error result with comprehensive messaging
+    /// Creates an internal-error result.
     pub fn internal_error(
         user_message: impl Into<String>,
         technical_message: impl Into<String>,
@@ -90,7 +90,7 @@ impl LoginResult {
         }
     }
 
-    /// Get user-friendly message for any result type
+    /// Returns the user-facing message for this result.
     pub fn user_message(&self) -> String {
         match self {
             LoginResult::Success(_) => "Sign-in successful! Welcome back.".to_string(),
@@ -99,7 +99,7 @@ impl LoginResult {
         }
     }
 
-    /// Get support code if available
+    /// Returns the support code, if available.
     pub fn support_code(&self) -> Option<String> {
         match self {
             LoginResult::Success(_) => None,
@@ -108,7 +108,7 @@ impl LoginResult {
         }
     }
 
-    /// Get technical details for developers/logs
+    /// Returns technical details for developers or logs.
     pub fn technical_message(&self) -> Option<String> {
         match self {
             LoginResult::Success(_) => None,
@@ -121,7 +121,7 @@ impl LoginResult {
         }
     }
 
-    /// Whether this result indicates a retryable error
+    /// Returns whether this result indicates a retryable error.
     pub fn is_retryable(&self) -> bool {
         match self {
             LoginResult::Success(_) => false,
@@ -131,7 +131,9 @@ impl LoginResult {
     }
 }
 
-/// Result of a session-backed login attempt produced by
+/// Result of a session-backed login attempt.
+///
+/// This type is returned by
 /// [`SessionLoginService::authenticate_with_sessions`].
 #[derive(Debug)]
 #[cfg(feature = "sessions")]
@@ -226,20 +228,14 @@ impl SessionLoginResult {
     }
 }
 
-/// Stateless service implementing constant‑time, enumeration‑resistant
-/// authentication logic.
+/// Stateless service for constant-time, enumeration-resistant login.
 ///
-/// It always performs:
-/// 1. Account lookup by user identifier.
-/// 2. Credential verification against either the real account UUID or a
-///    fixed dummy UUID when the account is absent.
+/// The service always performs account lookup and credential verification,
+/// using a fixed dummy UUID when the account is absent. This reduces timing
+/// differences between "user not found" and "wrong password" cases.
 ///
-/// This equalises timing characteristics between "user not found" and
-/// "wrong password" cases.
-///
-/// Type Params:
-/// * `R` - Role type implementing [`AccessHierarchy`]
-/// * `G` - Group type
+/// `R` is the role type implementing [`AccessHierarchy`]. `G` is the group
+/// type stored on authenticated accounts.
 pub struct LoginService<R, G>
 where
     R: AccessHierarchy + Eq,
@@ -255,7 +251,7 @@ where
 {
     /// Creates a new stateless `LoginService`.
     ///
-    /// The instance holds no mutable state; it is cheap to clone or recreate.
+    /// The instance holds no mutable state, so it is cheap to recreate.
     pub fn new() -> Self {
         Self {
             _phantom: std::marker::PhantomData,
@@ -264,11 +260,10 @@ where
 }
 
 #[cfg(feature = "sessions")]
-/// Stateless service implementing constant-time, enumeration-resistant
-/// authentication plus session-backed token-pair issuance.
+/// Stateless service for session-backed, enumeration-resistant login.
 ///
 /// This service preserves the same credential-verification behavior as
-/// [`LoginService`] but issues auth and refresh token pairs through
+/// [`LoginService`], but issues auth and refresh token pairs through
 /// `webgates-sessions` after successful authentication.
 pub struct SessionLoginService<R, G>
 where
@@ -286,7 +281,7 @@ where
 {
     /// Creates a new stateless `SessionLoginService`.
     ///
-    /// The instance holds no mutable state; it is cheap to clone or recreate.
+    /// The instance holds no mutable state, so it is cheap to recreate.
     pub fn new() -> Self {
         Self {
             _phantom: std::marker::PhantomData,
@@ -299,22 +294,17 @@ where
     R: AccessHierarchy + Eq,
     G: Eq + Clone,
 {
-    /// Authenticates a user in a timing‑safe, enumeration‑resistant fashion.
+    /// Authenticates a user in a timing-safe, enumeration-resistant way.
     ///
-    /// Steps:
-    /// 1. Query account repository by user identifier.
-    /// 2. Always invoke credential verification using either the real account
-    ///    UUID or a fixed dummy UUID when the user is absent / lookup failed.
-    /// 3. Combine (user_exists AND password_matches) with constant‑time bit logic.
-    /// 4. On success, encode a JWT with the supplied registered claims.
+    /// The method always performs account lookup and credential verification,
+    /// using a fixed dummy UUID when the user is absent or lookup fails. On
+    /// success, it encodes an auth token with the supplied registered claims.
     ///
-    /// Returns:
-    /// * [`LoginResult::Success`] with a JWT string on success.
-    /// * [`LoginResult::InvalidCredentials`] for any auth failure that should not leak detail.
-    /// * [`LoginResult::InternalError`] for infrastructural issues (these should be logged).
-    ///
-    /// Security: Avoids early returns that would create observable timing
-    /// differences between "user not found" and "wrong password".
+    /// Returns [`LoginResult::Success`] with the issued token on success,
+    /// [`LoginResult::InvalidCredentials`] for authentication failures that
+    /// should not leak detail, and [`LoginResult::InternalError`] for
+    /// infrastructural problems that callers should log and translate into safe
+    /// responses.
     pub async fn authenticate<CredVeri, AccRepo, C>(
         &self,
         credentials: Credentials<String>,

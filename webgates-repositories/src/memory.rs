@@ -1,17 +1,18 @@
-//! In-memory storage implementations for development and testing.
+//! In-memory repository implementations for development and testing.
 //!
 //! This module provides repository implementations that keep all data in memory.
-//! These are usually the best starting point for tests, examples, and local
+//! They are usually the best starting point for tests, examples, and local
 //! development because they require no external services.
 //!
-//! # Features
-//! - Zero configuration required
-//! - Fast operations (no I/O)
-//! - Perfect for unit tests and development
-//! - Thread-safe with async support
-//! - Automatic cleanup when dropped
+//! # Usage notes
 //!
-//! # Quick Start
+//! - zero configuration required
+//! - fast operations without I/O
+//! - well suited to unit tests and local development
+//! - thread-safe with async support
+//! - automatic cleanup when dropped
+//!
+//! # Examples
 //!
 //! ```rust
 //! use std::sync::Arc;
