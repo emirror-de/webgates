@@ -36,7 +36,7 @@ Pick only the crates and features you need. Crates are split by concern so that 
 Core-only (domain types, no HTTP dependencies):
 ```toml
 [dependencies]
-webgates = { version = "0.1", default-features = false }
+webgates = { version = "1.0.0", default-features = false }
 ```
 
 Axum integration (recommended when you need middleware and route handlers):
@@ -45,8 +45,8 @@ Axum integration (recommended when you need middleware and route handlers):
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
-webgates = "0.1"
-webgates-axum = "0.1"
+webgates = "1.0.0"
+webgates-axum = "1.0.0"
 ```
 
 Session-backed authentication (short-lived JWTs + refresh-token rotation):
@@ -54,9 +54,9 @@ Session-backed authentication (short-lived JWTs + refresh-token rotation):
 [dependencies]
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
-webgates = { version = "0.1", default-features = false, features = ["authn", "codecs", "cookies", "repositories", "secrets", "sessions"] }
-webgates-axum = "0.1"
-webgates-repositories = { version = "0.1", features = ["sessions"] }
+webgates = { version = "1.0.0", default-features = false, features = ["authn", "codecs", "cookies", "repositories", "secrets", "sessions"] }
+webgates-axum = "1.0.0"
+webgates-repositories = { version = "1.0.0", features = ["sessions"] }
 ```
 
 Repository/backends and optional features:

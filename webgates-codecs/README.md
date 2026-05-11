@@ -35,8 +35,8 @@ Most developers can approach this crate through five concepts:
 
 ```toml
 [dependencies]
-webgates-codecs = "0.1"
-webgates-core = "0.1"
+webgates-codecs = "1.0.0"
+webgates-core = "1.0.0"
 ```
 
 Minimum supported Rust version: `1.91`.

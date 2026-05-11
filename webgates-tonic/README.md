@@ -36,8 +36,8 @@ Most applications should depend on both crates explicitly.
 ```toml
 [dependencies]
 tonic = "0.14"
-webgates = "0.1"
-webgates-tonic = "0.1"
+webgates = "1.0.0"
+webgates-tonic = "1.0.0"
 ```
 
 Minimum supported Rust version: `1.91`.

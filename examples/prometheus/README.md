@@ -125,7 +125,7 @@ In production:
 This example requires the `prometheus` feature:
 
 ```toml
-webgates = { version = "0.1", features = ["prometheus"] }
-webgates-axum = { version = "0.1", features = ["prometheus"] }
+webgates = { version = "1.0.0", features = ["prometheus"] }
+webgates-axum = { version = "1.0.0", features = ["prometheus"] }
 prometheus = "0.14"
 ```

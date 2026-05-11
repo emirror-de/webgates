@@ -48,7 +48,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-webgates-core = "0.1"
+webgates-core = "1.0.0"
 ```
 
 Minimum supported Rust version: `1.91`.

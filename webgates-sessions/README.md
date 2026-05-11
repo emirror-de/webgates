@@ -38,14 +38,14 @@ Add the crate directly if you want the session layer by itself:
 
 ```toml
 [dependencies]
-webgates-sessions = "0.1"
+webgates-sessions = "1.0.0"
 ```
 
 Or use it through the user-facing `webgates` composition crate:
 
 ```toml
 [dependencies]
-webgates = { version = "0.1", default-features = false, features = ["authn", "codecs", "repositories", "secrets", "sessions"] }
+webgates = { version = "1.0.0", default-features = false, features = ["authn", "codecs", "repositories", "secrets", "sessions"] }
 ```
 
 Minimum supported Rust version: `1.91`.

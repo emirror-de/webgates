@@ -33,7 +33,7 @@ Standard dependency declaration:
 
 ```toml
 [dependencies]
-webgates = "0.1"
+webgates = "1.0.0"
 ```
 
 This crate enables no optional features by default. Use `default-features = false`
@@ -44,14 +44,14 @@ Minimal setup with no optional features:
 
 ```toml
 [dependencies]
-webgates = { version = "0.1", default-features = false }
+webgates = { version = "1.0.0", default-features = false }
 ```
 
 Custom setup with only selected capabilities:
 
 ```toml
 [dependencies]
-webgates = { version = "0.1", default-features = false, features = ["codecs", "cookies", "authn"] }
+webgates = { version = "1.0.0", default-features = false, features = ["codecs", "cookies", "authn"] }
 ```
 
 Minimum supported Rust version: `1.91`.
@@ -163,7 +163,7 @@ Typical composition for session-backed login and renewal:
 
 ```toml
 [dependencies]
-webgates = { version = "0.1", default-features = false, features = ["authn", "codecs", "cookies", "repositories", "secrets", "sessions"] }
+webgates = { version = "1.0.0", default-features = false, features = ["authn", "codecs", "cookies", "repositories", "secrets", "sessions"] }
 ```
 
 For HTTP adapters, keep cookie extraction and response mutation in the adapter crate. In the Axum integration, use:

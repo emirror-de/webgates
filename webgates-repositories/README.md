@@ -39,28 +39,28 @@ Pick only the features you need:
 
 ```toml
 [dependencies]
-webgates-repositories = { version = "0.1" }
+webgates-repositories = { version = "1.0.0" }
 ```
 
 Session-backed auth without a persistent backend, useful for tests or local development:
 
 ```toml
 [dependencies]
-webgates-repositories = { version = "0.1", features = ["sessions"] }
+webgates-repositories = { version = "1.0.0", features = ["sessions"] }
 ```
 
 SeaORM backend:
 
 ```toml
 [dependencies]
-webgates-repositories = { version = "0.1", features = ["sea-orm"] }
+webgates-repositories = { version = "1.0.0", features = ["sea-orm"] }
 ```
 
 SurrealDB backend:
 
 ```toml
 [dependencies]
-webgates-repositories = { version = "0.1", features = ["surrealdb"] }
+webgates-repositories = { version = "1.0.0", features = ["surrealdb"] }
 ```
 
 Minimum supported Rust version: `1.91`.
@@ -166,7 +166,7 @@ assert!(account.is_some());
 ### SeaORM backend
 
 ```toml
-webgates-repositories = { version = "0.1", features = ["sea-orm"] }
+webgates-repositories = { version = "1.0.0", features = ["sea-orm"] }
 sea-orm = { version = "2", features = ["sqlx-postgres", "runtime-tokio-rustls"] }
 ```
 
@@ -184,7 +184,7 @@ let repo = SeaOrmRepository::new(&db).unwrap();
 ### SurrealDB backend
 
 ```toml
-webgates-repositories = { version = "0.1", features = ["surrealdb"] }
+webgates-repositories = { version = "1.0.0", features = ["surrealdb"] }
 ```
 
 ```rust
