@@ -1,7 +1,8 @@
 //! Shared crate-local error surface for `webgates-core`.
 //!
-//! This module defines the small root error enum used by core validation and
-//! permission-related flows inside this crate.
+//! This module provides the small root error enum used by fallible helper APIs
+//! in the crate. If you need a single error type for permission validation and
+//! related core workflows, this is usually the right one to return.
 //!
 //! The broader user-facing error contracts and severity taxonomy remain in
 //! [`crate::errors_core`]. This module simply provides a focused wrapper that
@@ -40,8 +41,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 /// Root error enum for `webgates-core`.
 ///
-/// This enum keeps the public error surface small while still allowing callers
-/// to pattern match on domain-relevant failure categories.
+/// This enum keeps the public error surface small while still letting callers
+/// pattern match on meaningful failure categories.
 #[derive(Debug, Error)]
 pub enum Error {
     /// Permission validation and collision errors.

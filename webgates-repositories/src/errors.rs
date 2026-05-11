@@ -1,4 +1,7 @@
 //! Error types and result aliases for repository implementations.
+//!
+//! This module provides the shared error surface for repository traits,
+//! in-memory implementations, backend adapters, and repository-scoped services.
 use std::borrow::Cow;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt;
@@ -8,7 +11,7 @@ use webgates_core::errors_core::UserFriendlyError as CoreUserFriendlyError;
 use webgates_secrets::errors::SecretError;
 use webgates_secrets::hashing::errors::HashingError;
 
-/// Severity levels for categorizing errors.
+/// Severity levels for categorizing repository errors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorSeverity {
     /// Actionable operational error.
@@ -21,7 +24,7 @@ pub enum ErrorSeverity {
     Critical,
 }
 
-/// Trait for multi-level error messaging without coupling to `webgates` core.
+/// Trait for multi-level repository error messaging.
 pub trait UserFriendlyError: fmt::Display + fmt::Debug {
     /// Clear, user-safe message (no internals or secrets).
     fn user_message(&self) -> String;
@@ -37,7 +40,7 @@ pub trait UserFriendlyError: fmt::Display + fmt::Debug {
     fn is_retryable(&self) -> bool;
 }
 
-/// Repository type identifiers for error context.
+/// Repository type identifiers used for structured error context.
 #[derive(Debug, Clone)]
 pub enum RepositoryType {
     /// Account repository
@@ -61,7 +64,7 @@ impl fmt::Display for RepositoryType {
     }
 }
 
-/// Repository operation identifiers for structured reporting.
+/// Repository operation identifiers used for structured reporting.
 #[derive(Debug, Clone)]
 pub enum RepositoryOperation {
     /// Insert/create operation
@@ -85,7 +88,7 @@ impl fmt::Display for RepositoryOperation {
     }
 }
 
-/// Repository-category native errors for storage backends.
+/// Repository-domain errors for storage backends and repository workflows.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum RepositoriesError {
@@ -126,7 +129,7 @@ pub enum RepositoriesError {
 }
 
 impl RepositoriesError {
-    /// Construct an operation failure.
+    /// Constructs an operation failure.
     pub fn operation_failed(
         repository: RepositoryType,
         operation: RepositoryOperation,
@@ -143,7 +146,7 @@ impl RepositoriesError {
         }
     }
 
-    /// Construct a repository operation failure without additional context.
+    /// Constructs a repository operation failure without additional context.
     pub fn for_repository(
         repository: RepositoryType,
         operation: RepositoryOperation,
@@ -152,7 +155,7 @@ impl RepositoriesError {
         Self::operation_failed(repository, operation, message, None, None)
     }
 
-    /// Construct a repository operation failure for a specific key.
+    /// Constructs a repository operation failure for a specific key.
     pub fn for_repository_key(
         repository: RepositoryType,
         operation: RepositoryOperation,
@@ -162,7 +165,7 @@ impl RepositoriesError {
         Self::operation_failed(repository, operation, message, Some(key.into()), None)
     }
 
-    /// Construct a repository operation failure with a key and extra context.
+    /// Constructs a repository operation failure with a key and extra context.
     pub fn for_repository_key_with_context(
         repository: RepositoryType,
         operation: RepositoryOperation,
@@ -179,7 +182,7 @@ impl RepositoriesError {
         )
     }
 
-    /// Construct a validation-style repository failure.
+    /// Constructs a validation-style repository failure.
     pub fn invalid_input(
         repository: RepositoryType,
         operation: RepositoryOperation,
@@ -188,7 +191,7 @@ impl RepositoriesError {
         Self::for_repository(repository, operation, message)
     }
 
-    /// Construct a validation-style repository failure for a specific key.
+    /// Constructs a validation-style repository failure for a specific key.
     pub fn invalid_input_for_key(
         repository: RepositoryType,
         operation: RepositoryOperation,
@@ -198,7 +201,7 @@ impl RepositoriesError {
         Self::for_repository_key(repository, operation, key, message)
     }
 
-    /// Construct a secret repository failure from an internal secret-related error.
+    /// Constructs a secret repository failure from an internal secret-related error.
     pub fn secret_operation_error(
         operation: RepositoryOperation,
         message: impl Into<String>,
@@ -206,7 +209,7 @@ impl RepositoriesError {
         Self::for_repository(RepositoryType::Secret, operation, message)
     }
 
-    /// Construct a secret repository failure for a specific key.
+    /// Constructs a secret repository failure for a specific key.
     pub fn secret_operation_error_for_key(
         operation: RepositoryOperation,
         key: impl Into<String>,
@@ -215,7 +218,7 @@ impl RepositoriesError {
         Self::for_repository_key(RepositoryType::Secret, operation, key, message)
     }
 
-    /// Construct a permission-mapping repository failure from an invalid mapping.
+    /// Constructs a permission-mapping repository failure from an invalid mapping.
     pub fn invalid_permission_mapping(
         operation: RepositoryOperation,
         message: impl Into<Cow<'static, str>>,
@@ -230,17 +233,17 @@ impl RepositoriesError {
         )
     }
 
-    /// Construct a not found error.
+    /// Constructs a not-found error.
     pub fn not_found(repository: RepositoryType, key: Option<String>) -> Self {
         Self::NotFound { repository, key }
     }
 
-    /// Construct a not found error for a specific key.
+    /// Constructs a not-found error for a specific key.
     pub fn not_found_for_key(repository: RepositoryType, key: impl Into<String>) -> Self {
         Self::not_found(repository, Some(key.into()))
     }
 
-    /// Construct a constraint/precondition failure.
+    /// Constructs a constraint or precondition failure.
     pub fn constraint(
         repository: RepositoryType,
         message: impl Into<String>,
@@ -253,7 +256,7 @@ impl RepositoriesError {
         }
     }
 
-    /// Construct a constraint/precondition failure for a specific key.
+    /// Constructs a constraint or precondition failure for a specific key.
     pub fn constraint_for_key(
         repository: RepositoryType,
         key: impl Into<String>,

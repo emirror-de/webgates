@@ -1,6 +1,11 @@
-//! Bearer gate implementation supporting two compile-time distinct modes:
-//! - JWT bearer authentication & authorization (policy-based)
-//! - Static bearer token (boolean authorization)
+//! Axum bearer gate implementation.
+//!
+//! This module provides the bearer-token middleware used by
+//! `webgates_axum::gate::Gate::bearer(...)`.
+//!
+//! It supports two compile-time distinct modes:
+//! - JWT bearer authentication and authorization (policy-based)
+//! - static bearer token authorization (boolean authorization)
 //!
 //! Each mode exposes only the relevant builder methods at compile time:
 //!
@@ -160,7 +165,7 @@ impl std::fmt::Debug for StaticTokenConfig {
     }
 }
 
-/// Generic bearer gate with compile-time mode parameter.
+/// Generic Axum bearer gate with a compile-time mode parameter.
 #[derive(Clone)]
 pub struct BearerGate<C, R, G, M>
 where
@@ -180,7 +185,7 @@ where
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq + Clone,
 {
-    /// Internal constructor (used by `Gate::bearer`).
+    /// Internal constructor used by [`crate::gate::Gate::bearer`].
     pub(crate) fn new_with_codec(issuer: &str, codec: Arc<C>) -> Self {
         Self {
             issuer: issuer.to_string(),
@@ -193,21 +198,22 @@ where
         }
     }
 
-    /// Set access policy (OR semantics between requirements).
+    /// Sets the access policy used for JWT bearer authorization.
     pub fn with_policy(mut self, policy: AccessPolicy<R, G>) -> Self {
         self.mode.policy = policy;
         self
     }
 
-    /// Turn on optional mode (install `Option<Account>`, `Option<RegisteredClaims>`).
+    /// Enables optional mode for JWT bearer authentication.
     pub fn allow_anonymous_with_optional_user(mut self) -> Self {
         self.mode.optional = true;
         self
     }
 
-    /// Configure the gate to allow any authenticated user: the baseline role (least
-    /// privileged) from `Default::default()` and all supervisor roles as defined by
-    /// your `AccessHierarchy`.
+    /// Configures the gate to allow any authenticated user.
+    ///
+    /// This means the baseline role from `Default::default()` plus all of its
+    /// supervisors according to your `AccessHierarchy`.
     ///
     /// Equivalent to `with_policy(AccessPolicy::require_role_or_supervisor(R::default()))`.
     /// Requires `R: Default`.

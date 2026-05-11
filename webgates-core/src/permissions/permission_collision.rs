@@ -1,27 +1,30 @@
-/// A group of permission strings that share the same 64‑bit deterministic hash.
+/// A group of permission strings that share the same 64-bit deterministic ID.
 ///
-/// This can represent:
-/// - Pure duplicates (all strings identical)
-/// - A *true* collision (different strings hashing to the same 64‑bit value; extremely rare)
+/// This can represent either:
+/// - pure duplicates, where all strings are identical
+/// - a true hash collision, where different strings map to the same ID
 ///
-/// Use logic like:
+/// In most applications, true collisions should be treated as critical and
+/// resolved immediately by renaming at least one permission.
+///
+/// Example:
 /// ```rust
 /// # use webgates_core::permissions::validation_report::ValidationReport;
 /// # fn analyze(report: &ValidationReport) {
 /// for group in &report.collisions {
 ///     let all_equal = group.permissions.windows(2).all(|w| w[0] == w[1]);
 ///     if all_equal {
-///         // handle duplicate
+///         // duplicate definition
 ///     } else {
-///         // handle distinct collision (critical)
+///         // distinct collision: fix immediately
 ///     }
 /// }
 /// # }
 /// ```
 #[derive(Debug, Clone)]
 pub struct PermissionCollision {
-    /// The hash ID that has multiple permissions mapping to it (64-bit).
+    /// The 64-bit ID shared by every permission in this collision group.
     pub id: u64,
-    /// List of permission strings that all hash to the same value.
+    /// Permission strings that all map to the same ID.
     pub permissions: Vec<String>,
 }

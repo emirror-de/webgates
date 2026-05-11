@@ -1,7 +1,9 @@
-//! SeaORM repository integration providing account, group, permission-mapping,
-//! and secret persistence with constant-time credential verification.
+//! SeaORM repository integration.
 //!
-//! This backend module centralizes shared SeaORM concerns such as:
+//! This module provides the SeaORM-backed repository implementation for account,
+//! group, permission-mapping, and secret persistence.
+//!
+//! It centralizes shared SeaORM concerns such as:
 //! - repository construction
 //! - consistent database error mapping
 //! - stable table-aware context for adapter failures
@@ -44,7 +46,7 @@ pub struct SeaOrmRepository {
 }
 
 impl SeaOrmRepository {
-    /// Creates a new repository that uses the given database connection as backend.
+    /// Creates a new repository using the given database connection.
     pub fn new(db: &DatabaseConnection) -> Result<Self> {
         let hasher = Argon2Hasher::new_recommended().map_err(|error| {
             Error::Hashing(HashingError::new(
@@ -64,7 +66,7 @@ impl SeaOrmRepository {
         })
     }
 
-    /// Create all repository tables if they do not exist yet.
+    /// Creates all repository tables if they do not exist yet.
     pub async fn bootstrap(&self) -> Result<()> {
         let backend = self.db.get_database_backend();
         let schema = Schema::new(backend);

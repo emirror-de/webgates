@@ -4,13 +4,15 @@ use crate::permissions::errors::PermissionsError;
 use crate::permissions::validation_report::ValidationReport;
 use tracing::info;
 
-/// High-level builder for validating application permission sets at startup.
+/// High-level builder for validating your application's permission list.
 ///
-/// `ApplicationValidator` collects permission strings from multiple sources,
+/// `ApplicationValidator` collects permission strings from one or more sources,
 /// validates them for duplicates and hash collisions, and returns a
 /// [`ValidationReport`].
 ///
-/// Use this type when you want a small, single-use API for startup validation.
+/// This is the easiest API to use at startup or in tests when you want to say:
+/// "here is the full permission surface of my application; make sure it is safe."
+///
 /// If you need reusable post-validation inspection helpers, use
 /// [`PermissionCollisionChecker`] directly.
 ///
@@ -57,14 +59,14 @@ pub struct ApplicationValidator {
 }
 
 impl ApplicationValidator {
-    /// Creates a new application validator.
+    /// Creates a new empty validator.
     pub fn new() -> Self {
         Self {
             permissions: Vec::new(),
         }
     }
 
-    /// Add permissions from an iterator of string-like types.
+    /// Adds permissions from an iterator of string-like values.
     ///
     /// # Arguments
     ///
@@ -79,10 +81,9 @@ impl ApplicationValidator {
         self
     }
 
-    /// Add permissions from a vector of strings.
+    /// Adds permissions from a vector of owned strings.
     ///
-    /// This is a convenience method for adding permissions that are already
-    /// in String format.
+    /// This is a convenience method for callers that already have `Vec<String>`.
     ///
     /// # Arguments
     ///
@@ -92,7 +93,7 @@ impl ApplicationValidator {
         self
     }
 
-    /// Add a single permission string.
+    /// Adds one permission string.
     ///
     /// # Arguments
     ///
@@ -102,11 +103,11 @@ impl ApplicationValidator {
         self
     }
 
-    /// Validate all permissions and return detailed report.
+    /// Validates all collected permissions and returns a detailed report.
     ///
-    /// This method performs validation and logs results automatically.
-    /// It returns a ValidationReport containing all validation details,
-    /// regardless of whether validation passed or failed.
+    /// This method performs validation and logs results automatically. It
+    /// returns a [`ValidationReport`] whether validation succeeds or fails,
+    /// unless the validation process itself encounters an unexpected error.
     ///
     /// # Returns
     ///
@@ -130,7 +131,7 @@ impl ApplicationValidator {
         Ok(report)
     }
 
-    /// Returns the current number of permissions to be validated.
+    /// Returns how many permission strings are currently queued for validation.
     pub fn permission_count(&self) -> usize {
         self.permissions.len()
     }

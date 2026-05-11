@@ -3,11 +3,11 @@ use crate::permissions::permission_id::PermissionId;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// Domain value representing a mapping between permission strings and their IDs.
+/// Mapping between a permission name and its deterministic permission ID.
 ///
-/// This type encapsulates the relationship between:
-/// - The normalized permission string (trimmed and lowercased)
-/// - The computed 64-bit permission ID used in the bitmap storage
+/// This type stores the relationship between:
+/// - the normalized permission string (trimmed and lowercased)
+/// - the computed 64-bit permission ID used in bitmap storage
 ///
 /// # Purpose
 ///
@@ -64,10 +64,10 @@ pub struct PermissionMapping {
 }
 
 impl PermissionMapping {
-    /// Creates a new permission mapping from individual components.
+    /// Creates a new mapping from a permission string and an existing ID.
     ///
-    /// This constructor validates that the permission ID actually corresponds
-    /// to the normalized string to ensure consistency.
+    /// This constructor validates that the provided ID actually corresponds to
+    /// the normalized string so inconsistent state cannot be created by mistake.
     ///
     /// # Arguments
     ///
@@ -114,31 +114,30 @@ impl PermissionMapping {
 
     /// Returns the normalized permission string.
     ///
-    /// The normalized string has been trimmed of whitespace and converted
-    /// to lowercase, and is used for computing the permission ID.
+    /// The normalized form is trimmed and lowercased. This is the exact value
+    /// used to compute the permission ID.
     pub fn normalized_string(&self) -> &str {
         &self.normalized_string
     }
 
     /// Returns the computed permission ID.
     ///
-    /// This is the 64-bit ID that would be stored in the permissions bitmap.
+    /// This is the 64-bit identifier that would be stored in the permissions bitmap.
     pub fn permission_id(&self) -> PermissionId {
         self.permission_id
     }
 
-    /// Returns the permission ID as a raw u64 value.
+    /// Returns the permission ID as a raw `u64` value.
     ///
-    /// This is a convenience method for when you need the raw ID value
-    /// for storage or comparison purposes.
+    /// This is a convenience method for storage, diagnostics, or comparisons.
     pub fn id_as_u64(&self) -> u64 {
         self.permission_id.as_u64()
     }
 
-    /// Checks if this mapping corresponds to the given permission string.
+    /// Checks whether this mapping corresponds to the given permission string.
     ///
-    /// This compares against the normalized form of the provided string,
-    /// so it will match regardless of case or whitespace differences.
+    /// The comparison uses the normalized form of the input, so it ignores case
+    /// and surrounding whitespace differences.
     ///
     /// # Examples
     ///
@@ -155,7 +154,7 @@ impl PermissionMapping {
         self.normalized_string == normalized
     }
 
-    /// Checks if this mapping corresponds to the given permission ID.
+    /// Checks whether this mapping corresponds to the given permission ID.
     ///
     /// # Examples
     ///
@@ -232,7 +231,7 @@ impl From<String> for PermissionMapping {
     }
 }
 
-/// Errors that can occur when working with permission mappings.
+/// Errors that can occur when constructing or validating permission mappings.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum PermissionMappingError {
     /// The provided permission ID doesn't match the normalized string.

@@ -2,11 +2,16 @@ use crate::authz::access_hierarchy::AccessHierarchy;
 
 use tracing::debug;
 
-/// One role requirement within an access policy.
+/// One role requirement inside an access policy.
 ///
-/// An access scope stores the required role together with whether the scope
-/// also accepts higher-privileged roles according to the [`AccessHierarchy`]
-/// ordering contract.
+/// `AccessPolicy` can contain multiple role requirements. Each one is stored as
+/// an `AccessScope`, which tracks:
+///
+/// - the required role
+/// - whether higher-privileged roles are also accepted
+///
+/// Most users interact with this type indirectly through
+/// `AccessPolicy::require_role(...)` and `AccessPolicy::require_role_or_supervisor(...)`.
 #[derive(Debug, Clone)]
 pub struct AccessScope<Role> {
     role: Role,
@@ -18,6 +23,8 @@ where
     Role: AccessHierarchy + Eq + std::fmt::Display,
 {
     /// Creates a scope that requires the exact provided role.
+    ///
+    /// To also allow higher-privileged roles, call [`Self::allow_supervisor`].
     pub fn new(role: Role) -> Self {
         Self {
             role,
@@ -46,6 +53,9 @@ where
     /// A scope only grants supervisor access when
     /// [`Self::allow_supervisor`] has been applied. In that case, the provided
     /// role must be equal to or higher than the required role.
+    ///
+    /// This is what powers policy builders such as
+    /// `AccessPolicy::require_role_or_supervisor(...)`.
     pub fn grants_supervisor(&self, role: &Role) -> bool {
         if !self.allow_supervisor_access {
             debug!(
@@ -71,6 +81,9 @@ where
     }
 
     /// Returns this scope configured to also accept higher-privileged roles.
+    ///
+    /// This enables same-or-supervisor matching according to the
+    /// [`AccessHierarchy`] ordering contract.
     pub fn allow_supervisor(mut self) -> Self {
         self.allow_supervisor_access = true;
         self

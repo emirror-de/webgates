@@ -1,4 +1,15 @@
-//! Framework-agnostic gate entry points that delegate to bearer, cookie, and OAuth2 modules.
+//! Framework-agnostic gate entry points.
+//!
+//! This module is where most application code starts once you move beyond the
+//! raw domain model. A [`Gate`] describes how requests should be authenticated
+//! and authorized, while adapter crates translate that configuration into
+//! framework-specific middleware or handlers.
+//!
+//! Common entry points are:
+//!
+//! - [`Gate::cookie`] for JWTs stored in cookies
+//! - [`Gate::bearer`] for `Authorization: Bearer ...`
+//! - [`Gate::oauth2`] for OAuth2-driven gate configuration when enabled
 
 use std::fmt::Display;
 use std::sync::Arc;
@@ -14,12 +25,19 @@ pub mod cookie;
 #[cfg(feature = "oauth2")]
 pub mod oauth2;
 
-/// Entry point for constructing gate configurations.
+/// Entry point for constructing framework-agnostic gate configurations.
+///
+/// `Gate` itself is just a namespace-like builder entry point. The returned gate
+/// values hold configuration and policy, while adapters or runtimes perform the
+/// actual request evaluation.
 #[derive(Clone, Debug, Default)]
 pub struct Gate;
 
 impl Gate {
-    /// Create a cookie-based gate configuration (deny-all policy by default).
+    /// Creates a cookie-based gate configuration.
+    ///
+    /// The returned gate starts with a deny-all policy until you add a policy or
+    /// call a convenience method such as `require_login()`.
     #[cfg(feature = "cookies")]
     pub fn cookie<C, R, G>(issuer: &str, codec: Arc<C>) -> cookie::CookieGate<C, R, G>
     where
@@ -30,7 +48,10 @@ impl Gate {
         cookie::CookieGate::new_with_codec(issuer, codec)
     }
 
-    /// Create a bearer-based gate configuration (JWT mode, deny-all policy by default).
+    /// Creates a bearer-based gate configuration in JWT mode.
+    ///
+    /// The returned gate starts with a deny-all policy until you add a policy or
+    /// call a convenience method such as `require_login()`.
     pub fn bearer<C, R, G>(
         issuer: &str,
         codec: Arc<C>,
@@ -43,7 +64,7 @@ impl Gate {
         bearer::BearerGate::new_with_codec(issuer, codec)
     }
 
-    /// Create an OAuth2 gate configuration.
+    /// Creates an OAuth2 gate configuration.
     #[cfg(feature = "oauth2")]
     pub fn oauth2<R, G>() -> oauth2::OAuth2Gate<R, G>
     where
@@ -54,12 +75,11 @@ impl Gate {
     }
 }
 
-/// Extension trait for gate types that provides a default `adapt_with`
-/// convenience method.
+/// Extension trait that adds `adapt_with(...)` to gate types.
 ///
-/// Implement this trait for concrete gate types (the trait has a default
-/// implementation so the impl bodies are intentionally empty). The default
-/// forwards to the provided `GateAdapter<G>`.
+/// Concrete gate types implement this trait so application or integration code
+/// can hand them to a framework-specific adapter without each gate needing its
+/// own duplicated convenience method.
 ///
 /// Example:
 /// ```ignore
@@ -67,10 +87,10 @@ impl Gate {
 /// let runtime = gate.adapt_with(MyAdapter);
 /// ```
 pub trait GateExt: Sized {
-    /// Adapt this gate into a framework-specific artifact using `adapter`.
+    /// Adapts this gate into a framework-specific artifact using `adapter`.
     ///
-    /// The adapter type must implement `GateAdapter<Self>`. This default method
-    /// simply calls `adapter.adapt(self)`.
+    /// The adapter type must implement [`GateAdapter<Self>`]. This default
+    /// method simply forwards to `adapter.adapt(self)`.
     fn adapt_with<A>(self, adapter: A) -> A::Output
     where
         A: GateAdapter<Self>,

@@ -1,8 +1,7 @@
 //! Renewal orchestration models for session auto-renewal.
 //!
 //! This module defines framework-agnostic renewal inputs, typed auth-token
-//! state, deterministic decision logic, and high-level renewal outcomes. The
-//! actual repository-backed orchestration remains outside this file for now.
+//! state, deterministic decision logic, and high-level renewal outcomes.
 
 use std::time::{Duration, SystemTime};
 

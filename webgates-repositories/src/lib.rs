@@ -5,39 +5,36 @@
 /*!
 # webgates-repositories
 
-Repository implementations and storage backends for the `webgates` authentication
-and authorization domain. Use this crate when you need persistence for accounts,
-credentials, permission mappings, or groups.
+User-focused repository contracts and storage backends for the `webgates` ecosystem.
 
-## Public API
+This crate is the persistence layer of the workspace. It provides repository
+traits, in-memory implementations, optional database backends, shared repository
+errors, and repository-scoped workflows for common account operations.
 
-This crate exposes repository contracts and backend modules through explicit module
-paths:
+## When to use this crate
 
-- [`account_repository`] — account persistence trait
-- [`group_repository`] — group persistence trait
-- [`permission_mapping_repository`] — permission mapping persistence traits
-- [`secret_repository`] — secret persistence trait
-- [`memory`] — zero-configuration, in-memory stores for development and testing; includes
-  [`memory::session`] when the `sessions` feature is enabled
-- [`surrealdb`] *(feature: `surrealdb`)* — SurrealDB-backed repositories
-- [`sea_orm`] *(feature: `sea-orm`)* — SQL-backed repositories via SeaORM
-- [`services`] — repository-level account workflows
-- session backend modules under `memory`, `surrealdb`, and `sea_orm` for `webgates-sessions` integration
+Use `webgates-repositories` when you want:
+
+- persistence contracts for accounts, secrets, groups, and permission mappings
+- in-memory repositories for tests or local development
+- SeaORM or SurrealDB storage backends
+- session repository implementations for `webgates-sessions`
+- repository-level services such as account insert and delete
+
+## How to approach this crate
+
+Most developers should choose one layer first:
+
+- start with [`account_repository`], [`secret_repository`], or the other trait modules when defining a persistence boundary
+- start with [`memory`] when you want zero-configuration repositories for tests or local development
+- move to [`services`] when you want repository-scoped account workflows
+- enable [`surrealdb`] or [`sea_orm`] only when you are ready to connect a real backend
 
 Use these canonical module paths instead of crate-root shortcuts.
 
-## Feature flags
-
-- `sessions`: enable `webgates-sessions` integration and expose
-  [`memory::session::MemorySessionRepository`] for zero-config in-process session storage.
-- `surrealdb`: enable SurrealDB repositories. Add `sessions` to also include the SurrealDB session backend.
-- `sea-orm`: enable SeaORM repositories. Add `sessions` to also include the SeaORM session backend.
-- `audit-logging`: enable structured audit events for repository workflows.
-
 ## Quick start
 
-In-memory (no feature flags required):
+In-memory repositories are the easiest way to get started:
 
 ```rust
 use std::sync::Arc;
@@ -48,36 +45,18 @@ use webgates_repositories::memory::secret::MemorySecretRepository;
 
 let accounts = Arc::new(MemoryAccountRepository::<Role, Group>::default());
 let secrets = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
+
+let _ = (accounts, secrets);
 ```
 
-SeaORM (SQL) — requires `sea-orm`:
+## Getting started on docs.rs
 
-```rust
-# #[cfg(feature = "sea-orm")]
-# async fn example(db: sea_orm::DatabaseConnection) -> Result<(), Box<dyn std::error::Error>> {
-use std::sync::Arc;
-use webgates_repositories::sea_orm::SeaOrmRepository;
+A good reading order is:
 
-let repo = Arc::new(SeaOrmRepository::new(&db)?);
-# Ok(())
-# }
-```
-
-SurrealDB — requires `surrealdb`:
-
-```rust
-# #[cfg(feature = "surrealdb")]
-# async fn example() -> Result<(), Box<dyn std::error::Error>> {
-use std::sync::Arc;
-use surrealdb::engine::local::Mem;
-use surrealdb::Surreal;
-use webgates_repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
-
-let db = Surreal::new::<Mem>(()).await?;
-let repo = Arc::new(SurrealDbRepository::new(db, DatabaseScope::default())?);
-# Ok(())
-# }
-```
+1. [`account_repository`] and [`secret_repository`]
+2. [`memory`]
+3. [`services`]
+4. [`sea_orm`] or [`surrealdb`] if you need persistent storage
 */
 
 /// Repository trait for account persistence backends.

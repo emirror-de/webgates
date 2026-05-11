@@ -1,7 +1,11 @@
 //! Deterministic permission identifiers, sets, and validation utilities.
 //!
-//! This module is the canonical public entry point for permission-related types in
+//! This module is the main entry point for fine-grained permission handling in
 //! `webgates-core`.
+//!
+//! If roles are too broad for your use case, permissions let you model specific
+//! capabilities such as `"projects:read"`, `"billing:refund"`, or
+//! `"admin:users:delete"`.
 //!
 //! It exposes:
 //! - [`permission_id::PermissionId`] for stable 64-bit permission identifiers
@@ -109,7 +113,7 @@ use std::fmt;
 pub mod application_validator;
 /// Trait for application-defined permission enums that produce a name string.
 ///
-/// See `as_permission_name::AsPermissionName`.
+/// See [`as_permission_name::AsPermissionName`].
 pub mod as_permission_name;
 /// Low-level collision checker for runtime permission validation and analysis.
 pub mod collision_checker;
@@ -131,12 +135,15 @@ pub mod validate_permissions;
 /// See [`validation_report::ValidationReport`].
 pub mod validation_report;
 
-/// A collection of granted permissions.
+/// A set of granted permissions.
 ///
 /// Internally this type stores permission IDs in a compressed bitmap for compact
 /// storage and fast membership checks. The public API accepts permission names
-/// or precomputed [`PermissionId`] values and keeps the bitmap representation
-/// internal to the type.
+/// or precomputed [`PermissionId`] values while keeping the bitmap representation
+/// internal.
+///
+/// In day-to-day application code, this is the type you use to grant, revoke,
+/// and check fine-grained capabilities.
 ///
 /// # Examples
 ///
@@ -190,7 +197,7 @@ impl Permissions {
         }
     }
 
-    /// Grants a permission to this permission set.
+    /// Grants a permission to this set.
     ///
     /// Returns a mutable reference to self for method chaining.
     ///
@@ -217,7 +224,7 @@ impl Permissions {
         self
     }
 
-    /// Revokes a permission from this permission set.
+    /// Revokes a permission from this set.
     ///
     /// Returns a mutable reference to self for method chaining.
     ///
@@ -242,7 +249,7 @@ impl Permissions {
         self
     }
 
-    /// Checks if a specific permission is granted.
+    /// Returns `true` when a specific permission is granted.
     ///
     /// # Examples
     ///
@@ -264,7 +271,7 @@ impl Permissions {
         self.bitmap.contains(permission_id.as_u64())
     }
 
-    /// Checks if all of the specified permissions are granted.
+    /// Returns `true` when all specified permissions are granted.
     ///
     /// # Examples
     ///
@@ -290,7 +297,7 @@ impl Permissions {
         permissions.into_iter().all(|p| self.has(p))
     }
 
-    /// Checks if any of the specified permissions are granted.
+    /// Returns `true` when any of the specified permissions are granted.
     ///
     /// # Examples
     ///
@@ -312,7 +319,7 @@ impl Permissions {
         permissions.into_iter().any(|p| self.has(p))
     }
 
-    /// Returns the number of permissions in this set.
+    /// Returns the number of granted permissions in this set.
     ///
     /// # Examples
     ///
@@ -326,7 +333,7 @@ impl Permissions {
         self.bitmap.len() as usize
     }
 
-    /// Returns `true` if the permission set contains no permissions.
+    /// Returns `true` if the set contains no permissions.
     ///
     /// # Examples
     ///
@@ -361,9 +368,9 @@ impl Permissions {
         self.bitmap.clear();
     }
 
-    /// Computes the union of this permission set with another.
+    /// Merges another permission set into this one.
     ///
-    /// This grants all permissions that exist in either set.
+    /// After this call, the set contains every permission that exists in either set.
     ///
     /// # Examples
     ///
@@ -383,9 +390,9 @@ impl Permissions {
         self
     }
 
-    /// Computes the intersection of this permission set with another.
+    /// Intersects this set with another permission set.
     ///
-    /// This keeps only permissions that exist in both sets.
+    /// After this call, only permissions present in both sets remain.
     ///
     /// # Examples
     ///
@@ -406,9 +413,7 @@ impl Permissions {
         self
     }
 
-    /// Computes the difference of this permission set with another.
-    ///
-    /// This removes all permissions that exist in the other set.
+    /// Removes from this set any permissions that also exist in another set.
     ///
     /// # Examples
     ///
@@ -428,11 +433,9 @@ impl Permissions {
         self
     }
 
-    /// Builder method for granting a permission (immutable version).
+    /// Builder-style variant of [`Self::grant`].
     ///
-    /// Use this when building permissions in a functional style or when you need
-    /// to create permissions without mutable access. Prefer `grant()` for
-    /// performance-critical code where you're modifying existing permission sets.
+    /// Use this when constructing a permission set fluently without mutable access.
     ///
     /// # Examples
     ///
@@ -456,11 +459,9 @@ impl Permissions {
         self
     }
 
-    /// Finalizes the builder pattern.
+    /// Finalizes the fluent builder pattern.
     ///
-    /// This method returns self unchanged, providing a clean conclusion to
-    /// the builder pattern. Use this when you want to clearly signal the
-    /// end of permission configuration.
+    /// This returns `self` unchanged and mostly serves readability in builder-style code.
     ///
     /// # Examples
     ///
@@ -476,10 +477,10 @@ impl Permissions {
         self
     }
 
-    /// Returns an iterator over the permission IDs in this collection.
+    /// Returns an iterator over the raw permission IDs in this set.
     ///
-    /// Use this when you need to examine all granted permissions or integrate
-    /// with external systems that work with permission IDs directly.
+    /// Use this when you need to inspect all granted permissions or integrate
+    /// with lower-level systems that work with permission IDs directly.
     ///
     /// # Examples
     ///
@@ -529,7 +530,7 @@ impl<P> std::iter::FromIterator<P> for Permissions
 where
     P: Into<PermissionId>,
 {
-    /// Creates a permission set from an iterator of permission names.
+    /// Creates a permission set from an iterator of permission values.
     ///
     /// # Examples
     ///

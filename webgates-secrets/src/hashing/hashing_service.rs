@@ -2,10 +2,11 @@ use super::HashedValue;
 use crate::hashing::errors::HashingError;
 use webgates_core::verification_result::VerificationResult;
 
-/// Abstraction over password / secret hashing and verification.
+/// Abstraction over password and secret hashing plus verification.
 ///
-/// Implement this trait to plug in alternative hashing algorithms or services
-/// (e.g. Argon2 variants, bcrypt, scrypt, external KMS / HSM, remote API).
+/// Implement this trait to plug in alternative hashing algorithms or services,
+/// such as Argon2 variants, bcrypt, scrypt, external KMS/HSM integrations, or
+/// remote verification APIs.
 ///
 /// # Requirements
 /// Implementations SHOULD:
@@ -25,14 +26,14 @@ use webgates_core::verification_result::VerificationResult;
 ///
 /// See [`Argon2Hasher`](crate::hashing::argon2::Argon2Hasher) for a production‑ready implementation.
 pub trait HashingService {
-    /// Hash a plaintext secret into an opaque, self‑contained representation.
+    /// Hashes a plaintext secret into an opaque, self-contained representation.
     ///
     /// Expectations:
     /// - MUST NOT return the plaintext
     /// - SHOULD generate a cryptographically secure random salt per invocation
     /// - SHOULD embed algorithm parameters allowing future verification / upgrades
     fn hash_value(&self, plain_value: &str) -> Result<HashedValue, HashingError>;
-    /// Verify a plaintext input against a previously produced hash.
+    /// Verifies a plaintext input against a previously produced hash.
     ///
     /// Returns:
     /// - `Ok(VerificationResult::Ok)` if the value matches

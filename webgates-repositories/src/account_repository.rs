@@ -4,12 +4,14 @@ use uuid::Uuid;
 use webgates_core::accounts::Account;
 use webgates_core::authz::access_hierarchy::AccessHierarchy;
 
-/// Repository abstraction for persisting and retrieving `Account` entities.
+/// Repository abstraction for persisting and retrieving [`Account`] entities.
 ///
-/// This trait is intentionally small and focused on the basic operations required
-/// by the rest of the application: create, update, delete and lookups by either
-/// the logical login identifier (`user_id`) or the stable internal identifier
-/// (`account_id`).
+/// This trait defines the core persistence contract for accounts. Higher-level
+/// crates use it to create, update, delete, and query accounts without depending
+/// on a specific storage backend.
+///
+/// It is intentionally small and focused on the operations required by the rest
+/// of the stack.
 ///
 /// Key design points:
 /// - `user_id` is treated as the logical login identifier (email / username).
@@ -38,7 +40,7 @@ where
     /// Backend-specific error type for repository operations.
     type Error: std::error::Error + Send + Sync + 'static;
 
-    /// Prepare the repository backend for use.
+    /// Prepares the repository backend for use.
     ///
     /// Implementations may use this hook to create tables, indexes, or other
     /// storage-specific structures required for subsequent repository operations.
@@ -48,7 +50,7 @@ where
     /// - `Err(e)` on backend setup failure
     fn bootstrap(&self) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
-    /// Persist a new account.
+    /// Persists a new account.
     ///
     /// Implementations MUST enforce uniqueness of both `account_id` and
     /// `user_id`. Returning `Ok(Some(account))` indicates success. Returning
@@ -59,7 +61,7 @@ where
         account: Account<R, G>,
     ) -> impl Future<Output = Result<Option<Account<R, G>>, Self::Error>> + Send;
 
-    /// Delete an account identified by its stable `account_id` (UUID).
+    /// Deletes an account identified by its stable `account_id` (UUID).
     ///
     /// Returns:
     /// - `Ok(Some(account))` if the account existed and was removed
@@ -70,7 +72,7 @@ where
         account_id: &Uuid,
     ) -> impl Future<Output = Result<Option<Account<R, G>>, Self::Error>> + Send;
 
-    /// Update an existing account.
+    /// Updates an existing account.
     ///
     /// Implementations may perform either full replacement or partial persistence
     /// depending on backend capabilities (document non-standard behavior).
@@ -83,7 +85,7 @@ where
         account: Account<R, G>,
     ) -> impl Future<Output = Result<Option<Account<R, G>>, Self::Error>> + Send;
 
-    /// Fetch an account by its logical user identifier (`user_id`).
+    /// Fetches an account by its logical user identifier (`user_id`).
     ///
     /// This lookup is commonly used during authentication flows. Implementations
     /// SHOULD take care to avoid leaking timing differences that could be used
@@ -93,7 +95,7 @@ where
         user_id: &str,
     ) -> impl Future<Output = Result<Option<Account<R, G>>, Self::Error>> + Send;
 
-    /// Fetch an account by its stable internal identifier (`account_id` / UUID).
+    /// Fetches an account by its stable internal identifier (`account_id` / UUID).
     ///
     /// This is the recommended lookup form for operations that must operate on
     /// the canonical, immutable account identifier (deletions, secret operations,
@@ -103,7 +105,7 @@ where
         account_id: &Uuid,
     ) -> impl Future<Output = Result<Option<Account<R, G>>, Self::Error>> + Send;
 
-    /// Query all accounts in the repository.
+    /// Queries all accounts in the repository.
     ///
     /// Implementations SHOULD document ordering semantics if any. For large
     /// datasets consider offering a paginated variant rather than returning all

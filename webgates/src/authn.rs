@@ -1,7 +1,11 @@
 //! Authentication services and workflows.
 //!
-//! This module provides core authentication services for both cookie-only JWT
-//! login flows and session-backed auth plus refresh-token flows.
+//! This module contains the higher-level login and logout orchestration for
+//! `webgates`.
+//!
+//! Use it when you want more than just gate configuration: these services help
+//! you verify credentials, load accounts, issue tokens, and coordinate logout or
+//! session revocation flows.
 //!
 //! The services in this module keep authentication orchestration framework
 //! agnostic:
@@ -41,8 +45,8 @@
 //!
 //! # Usage
 //!
-//! These services are typically called by adapter crates, but they can also be
-//! used directly in custom application flows.
+//! These services are often called by adapter crates, but they can also be used
+//! directly in custom application flows.
 //!
 //! Direct auth-token login example:
 //!
@@ -94,5 +98,5 @@
 
 pub mod errors;
 pub mod login;
-/// Authentication logout services.
+/// Logout services for direct-token and session-backed authentication flows.
 pub mod logout;

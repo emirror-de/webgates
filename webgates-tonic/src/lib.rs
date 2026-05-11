@@ -5,40 +5,35 @@
 /*!
 # webgates-tonic
 
-Tonic server-side integration layer for the `webgates` core.
+User-focused tonic server-side integration for the `webgates` stack.
 
-This crate exposes a small, `webgates-axum`-style public API for authenticating
-and authorizing incoming gRPC requests on tonic servers. It is **server-side
-only** and intentionally does not provide cookie transport, browser-redirect
-OAuth2 flows, or any client-side tonic utilities.
+This crate is the tonic-facing transport adapter for `webgates`. It applies
+bearer-token authentication and authorization to incoming gRPC requests while
+keeping the core auth and policy logic in the framework-agnostic `webgates`
+crate.
 
-## Non-goals
+It is **server-side only** and intentionally does not provide cookie transport,
+browser-redirect OAuth2 flows, or tonic client utilities.
 
-- Client-side tonic authentication (token injection for outgoing calls).
-- Cookie-based authentication.
-- Browser-redirect or OAuth2 authorization code flows.
-- Any feature that is not required for server-side bearer token validation.
+## When to use this crate
 
-## Public API
+Use `webgates-tonic` when you want:
 
-| Module | Purpose |
-|---|---|
-| [`gate`] | Entry point for building bearer gate middleware. |
-| [`gate::Gate`] | Canonical builder for tonic bearer gates. |
-| [`gate::bearer`] | Bearer gate types and handler-visible extension types. |
-| [`context`] | Typed request-extension models for handlers. |
-| [`errors`] | `errors::AuthError` and its mapping to [`tonic::Status`]. |
+- tonic middleware for bearer-token authentication
+- `webgates` authorization policy enforcement on gRPC services
+- typed auth context in tonic request extensions
+- optional JWT auth context for mixed public/authenticated methods
+- static-token service-to-service authentication
 
-## Feature flags
+## How to approach this crate
 
-| Feature | Description |
-|---|---|
-| `audit-logging` | Enables audit logging via `webgates/audit-logging`. |
-| `prometheus` | Installs Prometheus metrics; depends on `audit-logging`. |
+Most tonic applications can learn this crate in three steps:
+
+1. start with [`gate`] to understand how bearer auth is enforced in middleware
+2. move to [`context`] to see what handler-visible auth state becomes available
+3. read [`errors`] if you need to understand or customize auth failure behavior
 
 ## Quick start
-
-### Strict JWT bearer gate
 
 ```rust,no_run
 use std::sync::Arc;
@@ -53,66 +48,18 @@ let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default())
 let layer = Gate::bearer("my-svc", codec)
     .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));
 
-// Wrap a tonic server with `.layer(layer)` before adding to a Router.
+let _ = layer;
 ```
 
-### Optional JWT bearer gate
+## Getting started on docs.rs
 
-```rust,no_run
-use std::sync::Arc;
-use webgates::accounts::Account;
-use webgates::roles::Role;
-use webgates::groups::Group;
-use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
-use webgates_tonic::gate::Gate;
+A good reading order is:
 
-let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-let layer = Gate::bearer("my-svc", codec)
-    .allow_anonymous_with_optional_user();
-// Handlers retrieve `webgates_tonic::context::OptionalJwtAuthContext<Role, Group>`
-// from request extensions.
-```
-
-### Static-token bearer gate
-
-```rust,no_run
-use std::sync::Arc;
-use webgates::accounts::Account;
-use webgates::roles::Role;
-use webgates::groups::Group;
-use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
-use webgates_tonic::gate::Gate;
-
-let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-let layer = Gate::bearer("my-svc", codec)
-    .with_static_token("internal-static-token");
-// Handlers retrieve `webgates_tonic::context::StaticTokenAuthorized`
-// from request extensions.
-```
-
-## Handler-side extension access
-
-In strict JWT mode, retrieve the auth context from request extensions:
-
-```rust,no_run
-use webgates_tonic::context::JwtAuthContext;
-use webgates::roles::Role;
-use webgates::groups::Group;
-use tonic::{Request, Response, Status};
-
-struct MyRequest {}
-struct MyResponse {}
-
-async fn my_handler(
-    req: Request<MyRequest>,
-) -> Result<Response<MyResponse>, Status> {
-    let ctx = req.extensions().get::<JwtAuthContext<Role, Group>>()
-        .ok_or_else(|| Status::unauthenticated("missing auth context"))?;
-    let account = ctx.account();
-    // ...
-    todo!()
-}
-```
+1. [`gate`]
+2. [`context`]
+3. [`errors`]
+4. [`gate::bearer`]
+5. [`gate::remote_jwks_bearer`] if you need remote JWKS-backed verification
 */
 
 /// Gate builders and tower middleware for tonic services.
@@ -126,6 +73,4 @@ pub mod gate;
 pub mod context;
 
 /// Authentication error types and their mapping to [`tonic::Status`] codes.
-///
-/// See `crate::errors::AuthError`.
 pub mod errors;

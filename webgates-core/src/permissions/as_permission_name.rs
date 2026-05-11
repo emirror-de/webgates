@@ -1,12 +1,15 @@
-//! Trait for converting custom types to permission names.
+//! Trait for mapping custom types to permission names.
 //!
-//! This module provides the `AsPermissionName` trait, which enables custom types
-//! (especially enums) to define their string representation for use with the
-//! permission system. This is useful for structured permission definitions.
+//! This module provides [`crate::permissions::as_permission_name::AsPermissionName`], which is especially useful when
+//! your application defines permissions as enums instead of raw string literals.
 //!
-//! The canonical public path is `webgates_core::permissions::as_permission_name::AsPermissionName`.
+//! By implementing this trait, you can keep permission definitions structured in
+//! your domain model while still using the `webgates-core` permission system.
 //!
-//! # Usage
+//! The canonical public path is
+//! `webgates_core::permissions::as_permission_name::AsPermissionName`.
+//!
+//! # Example
 //!
 //! ```rust
 //! use webgates_core::permissions::as_permission_name::AsPermissionName;
@@ -34,19 +37,26 @@
 //!     }
 //! }
 //!
-//! // Usage - convert to string representations first
-//! let permissions: Permissions = [
-//!     Permission::Api(ApiPermission::Read).as_permission_name(),
-//!     Permission::System("health".to_string()).as_permission_name(),
-//! ].into_iter().collect();
+//! let mut permissions = Permissions::new();
+//! let read = Permission::Api(ApiPermission::Read);
+//! let health = Permission::System("health".to_string());
+//!
+//! permissions.grant(&read);
+//! permissions.grant(&health);
+//!
+//! assert!(permissions.has(&read));
+//! assert!(permissions.has("system:health"));
 //! ```
 
-/// Trait for types that can be converted to permission names.
+/// Trait for types that can be converted to stable permission names.
 ///
-/// This trait allows permission enums to define their string representation
-/// for use with PermissionId. Typically implemented by nested permission enums
-/// that provide structured permission definitions.
+/// Implement this trait for your own permission enums when you want strongly
+/// typed permission definitions in application code while still interoperating
+/// with [`crate::permissions::permission_id::PermissionId`] and
+/// [`crate::permissions::Permissions`].
 pub trait AsPermissionName {
-    /// Convert the permission to its string representation.
+    /// Converts the permission into its canonical string representation.
+    ///
+    /// Return a stable name such as `"projects:read"` or `"admin:users:write"`.
     fn as_permission_name(&self) -> String;
 }

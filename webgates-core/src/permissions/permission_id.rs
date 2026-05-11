@@ -5,9 +5,13 @@ use serde::{Deserialize, Serialize};
 
 /// A deterministic 64-bit permission identifier derived from a normalized permission name.
 ///
-/// `PermissionId` is the compact representation used by the permission bitmap and
-/// policy APIs. Callers typically construct it from a stable permission name such
-/// as `"read:file"` or `"admin:system"`.
+/// `PermissionId` is the compact internal representation used by permission sets
+/// and access policies. In normal application code, you often do not need to
+/// construct it manually because APIs also accept permission strings directly.
+///
+/// Reach for `PermissionId` when you need a stable, comparable identifier for a
+/// permission, or when you are integrating with lower-level storage and mapping
+/// code.
 ///
 /// # Normalization rules
 ///
@@ -51,6 +55,9 @@ impl std::fmt::Display for PermissionId {
 
 impl PermissionId {
     /// Returns the raw 64-bit value used by bitmap-based permission storage.
+    ///
+    /// This is mostly useful for serialization, diagnostics, and low-level
+    /// integrations.
     pub fn as_u64(self) -> u64 {
         self.0
     }

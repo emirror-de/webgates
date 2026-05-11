@@ -1,16 +1,15 @@
-//! Authorization-category native errors.
+//! Authorization-related error values.
 //!
-//! This module defines category-native errors for authorization (authz) concerns,
-//! focused on permission hash collisions. Import `AuthzError` from the
-//! canonical public path `webgates_core::authz::errors::AuthzError`.
+//! In `webgates-core`, most day-to-day authorization decisions are simple `bool`
+//! outcomes returned by [`crate::authz::authorization_service::AuthorizationService`].
+//! This module exists for exceptional authorization-domain problems, such as a
+//! permission collision that makes access decisions unsafe or ambiguous.
 //!
-//! # Overview
-//! - `AuthzError`: category-native error enum for authorization
-//! - Convenience constructors: `collision`
+//! Import `AuthzError` from the canonical public path
+//! `webgates_core::authz::errors::AuthzError`.
 //!
-//! # Examples
+//! # Example
 //!
-//! Detect a permission hash collision:
 //! ```rust
 //! use webgates_core::authz::errors::AuthzError;
 //! use webgates_core::errors_core::{ErrorSeverity, UserFriendlyError};
@@ -23,9 +22,12 @@
 use crate::errors_core::{ErrorSeverity, UserFriendlyError};
 use thiserror::Error;
 
-/// Authorization-category native errors.
+/// Authorization-domain errors.
 ///
-/// Use these errors in authorization flows to model permission hash collisions.
+/// Use these errors when the authorization system itself encounters a problem,
+/// rather than when a user simply lacks access. A typical example is a
+/// permission collision that should be treated as a configuration or integrity
+/// issue.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum AuthzError {
@@ -42,9 +44,9 @@ pub enum AuthzError {
 }
 
 impl AuthzError {
-    /// Create a permission collision error with collision details.
+    /// Creates a permission collision error from the colliding permission names.
     ///
-    /// This constructor calculates the `collision_count` from the provided list.
+    /// The constructor derives `collision_count` from the provided list.
     pub fn collision(hash_id: u64, permissions: Vec<String>) -> Self {
         AuthzError::PermissionCollision {
             collision_count: permissions.len(),

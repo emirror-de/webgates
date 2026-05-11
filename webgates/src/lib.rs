@@ -5,40 +5,96 @@
 /*!
 # webgates
 
-`webgates` extends `webgates-core` with optional authentication, codec, cookie,
-OAuth2, audit, and secret-management capabilities.
+User-focused composition crate for building a practical `webgates` application stack.
 
-This crate is not the workspace grab bag. The canonical domain and
-authorization API lives in `webgates-core`. This crate keeps those core modules
-available and adds only the higher-level capabilities that build on top of
-them.
+`webgates` builds on `webgates-core` and adds optional higher-level capabilities
+such as authentication workflows, framework-agnostic gate builders, cookie
+configuration, JWT support, sessions, secrets, OAuth2, and observability.
 
-Framework adapters remain in sibling crates such as `webgates-axum`.
-Persistence backends remain in `webgates-repositories`.
+Most application developers should start here rather than wiring multiple
+workspace crates together manually.
+
+## When to use this crate
+
+Use `webgates` when you want:
+
+- one crate as the main dependency for application code
+- the core domain model plus higher-level authentication and authorization tools
+- framework-agnostic gate configuration for cookies, bearer tokens, or OAuth2
+- optional login/logout orchestration
+- optional session-backed authentication and renewal
+- optional audit logging and metrics hooks
+
+If you only need the domain model and authorization primitives, use
+`webgates-core` directly.
 
 ## What this crate adds
 
 Compared with `webgates-core`, this crate adds optional modules for:
 
-- authentication workflows via `authn`
-- cookie templates via `cookie_template`
-- framework-agnostic gate builders via `gate`
-- audit logging via `audit`
+- authentication workflows via [`authn`]
+- cookie configuration via [`cookie_template`]
+- framework-agnostic gate builders via [`gate`]
+- audit logging via [`audit`] when the `audit-logging` feature is enabled
 
-Optional integration crates are exposed only when their corresponding feature is
-enabled:
+Additional sibling crates are re-exported behind features:
 
 - `codecs` enables `webgates-codecs`
 - `secrets` enables `webgates-secrets`
 - `sessions` enables `webgates-sessions`
-- `sessions` enables `webgates-sessions`
+
+Framework adapters remain in sibling crates such as `webgates-axum`.
+Persistence backends remain in `webgates-repositories`.
+
+## Quick mental model
+
+A common application flow looks like this:
+
+1. use the re-exported core domain model such as [`accounts::Account`] and
+   [`authz::access_policy::AccessPolicy`]
+2. define protected access with a [`gate::Gate`]
+3. translate the gate into framework behavior using an adapter crate such as
+   `webgates-axum`
+4. optionally add login/logout, cookies, sessions, secrets, and observability
+   through feature flags
+
+## Quick start
+
+The canonical domain types come from the same paths as in `webgates-core`:
+
+```rust
+use webgates::accounts::Account;
+use webgates::authz::access_policy::AccessPolicy;
+use webgates::groups::Group;
+use webgates::roles::Role;
+```
+
+A common cookie-based gate setup looks like this:
+
+```rust
+use std::sync::Arc;
+use webgates::accounts::Account;
+use webgates::authz::access_policy::AccessPolicy;
+use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
+use webgates::gate::Gate;
+use webgates::groups::Group;
+use webgates::roles::Role;
+
+type AppClaims = JwtClaims<Account<Role, Group>>;
+let codec = Arc::new(JsonWebToken::<AppClaims>::default());
+
+let gate = Gate::cookie::<_, Role, Group>("my-app", Arc::clone(&codec))
+    .require_login()
+    .with_policy(AccessPolicy::<Role, Group>::require_permission("admin:read"));
+
+let _ = gate;
+```
 
 ## Feature model
 
-This crate defaults to the smallest possible surface and enables no optional
-features automatically.
+This crate enables no optional features by default.
 
-Available features:
+Main features:
 
 - `authn` — authentication services; depends on `codecs`, `repositories`, and `secrets`
 - `codecs` — re-export `webgates-codecs`
@@ -49,45 +105,19 @@ Available features:
 - `repositories` — repository contracts used by higher-level workflows
 - `audit-logging` — structured audit events
 - `prometheus` — Prometheus metrics for audit logging
+- `full` — the standard composed stack
 
-Use `webgates-core` directly if you only need the base domain and authorization
-types.
+## Getting started on docs.rs
 
-Use `webgates` when you want the core API plus the optional higher-level
-capabilities defined above.
+If you are reading this crate on docs.rs, this is a good order to follow:
 
-## Quick start
-
-Core types come from the same canonical module paths as in `webgates-core`:
-
-```rust
-use webgates::accounts::Account;
-use webgates::authz::access_policy::AccessPolicy;
-use webgates::groups::Group;
-use webgates::roles::Role;
-```
-
-Optional capabilities are enabled explicitly:
-
-```rust
-#[cfg(all(feature = "codecs", feature = "cookies"))]
-{
-    use std::sync::Arc;
-    use webgates::accounts::Account;
-    use webgates::authz::access_policy::AccessPolicy;
-    use webgates::gate::Gate;
-    use webgates::groups::Group;
-    use webgates::roles::Role;
-    use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
-
-    type AppClaims = JwtClaims<Account<Role, Group>>;
-    let codec = Arc::new(JsonWebToken::<AppClaims>::default());
-
-    let _gate = Gate::cookie::<_, Role, Group>("my-app", Arc::clone(&codec))
-        .require_login()
-        .with_policy(AccessPolicy::require_permission("admin:read"));
-}
-```
+1. Start with the re-exported core model in [`accounts`], [`roles`], [`groups`],
+   and [`permissions`].
+2. Read [`gate`] to understand the main higher-level abstraction.
+3. Read [`cookie_template`] if you use browser cookies.
+4. Read [`authn`] if you are implementing login/logout workflows.
+5. Explore feature-gated re-exports such as `codecs`, `secrets`, and `sessions`
+   based on your application needs.
 
 ## Design notes
 

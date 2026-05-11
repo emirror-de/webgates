@@ -3,6 +3,10 @@ use tracing::{info, warn};
 
 /// Validation outcome for a set of permission strings.
 ///
+/// This is the main result type returned by permission validation APIs. It tells
+/// you whether the permission set is safe to use and, if not, what needs to be
+/// fixed.
+///
 /// Produced by:
 /// - [`collision_checker::PermissionCollisionChecker::validate`](super::collision_checker::PermissionCollisionChecker::validate)
 /// - [`application_validator::ApplicationValidator::validate`](super::application_validator::ApplicationValidator::validate)
@@ -74,16 +78,16 @@ pub struct ValidationReport {
 }
 
 impl ValidationReport {
-    /// Returns true if validation passed without any issues.
+    /// Returns `true` when validation passed without any issues.
     ///
-    /// A validation is considered successful if there are no hash collisions.
+    /// A report is valid when there are no duplicate groups and no true hash collisions.
     pub fn is_valid(&self) -> bool {
         self.collisions.is_empty()
     }
 
-    /// Returns duplicate permission strings found.
+    /// Returns duplicate permission strings found in the report.
     ///
-    /// Duplicates are derived from collisions where all permissions are identical.
+    /// Duplicates are collision groups where all permission strings are identical.
     pub fn duplicates(&self) -> Vec<String> {
         self.collisions
             .iter()
@@ -95,10 +99,10 @@ impl ValidationReport {
             .collect()
     }
 
-    /// Returns a human-readable summary of validation results.
+    /// Returns a human-readable summary of the validation result.
     ///
-    /// For successful validations, returns a success message.
-    /// For failed validations, provides details about what issues were found.
+    /// For successful validation, this returns a success message. For failed
+    /// validation, it summarizes duplicates and true hash collisions.
     pub fn summary(&self) -> String {
         if self.is_valid() {
             return "All permissions are valid and collision-free".to_string();
@@ -142,10 +146,9 @@ impl ValidationReport {
         parts.join(", ")
     }
 
-    /// Logs validation results using the tracing crate.
+    /// Logs validation results using `tracing`.
     ///
-    /// This method will log at INFO level for successful validations
-    /// and WARN level for any issues found.
+    /// Successful validation logs at `INFO`. Any duplicates or collisions log at `WARN`.
     pub fn log_results(&self) {
         if self.is_valid() {
             info!("Permission validation passed: all permissions are valid");
@@ -169,10 +172,7 @@ impl ValidationReport {
         }
     }
 
-    /// Returns detailed information about all issues found.
-    ///
-    /// This method provides comprehensive details suitable for debugging
-    /// or detailed error reporting.
+    /// Returns detailed issue strings for debugging or reporting.
     pub fn detailed_errors(&self) -> Vec<String> {
         let mut errors = Vec::new();
         let duplicates = self.duplicates();
@@ -197,7 +197,7 @@ impl ValidationReport {
         errors
     }
 
-    /// Returns the total number of issues found.
+    /// Returns the number of collision groups recorded in the report.
     pub fn total_issues(&self) -> usize {
         self.collisions.len()
     }

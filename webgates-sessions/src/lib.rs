@@ -5,30 +5,40 @@
 /*!
 # webgates-sessions
 
-Framework-agnostic session lifecycle building blocks for the `webgates`
-ecosystem.
+User-focused session lifecycle building blocks for the `webgates` ecosystem.
 
-This crate defines the core types and contracts needed to issue, renew, and
-revoke session-backed authentication without depending on HTTP adapters,
+This crate defines the core types and contracts needed to issue, renew, rotate,
+and revoke session-backed authentication without depending on HTTP adapters,
 cookies, or any specific web framework.
 
-## Public API
+## When to use this crate
 
-The crate is organized around explicit domain modules:
+Use `webgates-sessions` when you want:
 
-- [`config`] - typed session configuration
-- [`context`] - request and session context inputs
-- [`errors`] - session-layer error types
-- [`lease`] - renewal lease coordination types
-- [`logout`] - logout and revocation intent types
-- [`renewal`] - renewal flow inputs and outcomes
-- [`repository`] - persistence contracts for session storage
-- [`services`] - session issuance, renewal, and revocation workflows
-- [`session`] - session and session-family domain types
-- [`tokens`] - auth and refresh token primitives
+- framework-agnostic session issuance and renewal
+- refresh-token rotation and replay handling
+- repository contracts for persisted session state
+- lease coordination for concurrent renewal attempts
+- transport-independent session services
+
+## How the crate is organized
+
+The crate is split by responsibility so you can learn it in layers:
+
+- [`session`] and [`tokens`] define the core domain and token types
+- [`config`] and [`context`] define issuance and renewal inputs
+- [`renewal`], [`lease`], and [`logout`] define lifecycle transitions and coordination rules
+- [`repository`] defines the persistence contract
+- [`services`] wires the pieces together into issue, renew, and revoke workflows
+- [`errors`] defines the session-layer failure model
 
 These modules keep transport concerns in adapter crates such as
 `webgates-axum`.
+
+## Quick start
+
+A good first path is to read [`session`], [`tokens`], and [`services`] together.
+That gives you the main domain model, token model, and workflow layer in order.
 */
 
 /// Typed session configuration.

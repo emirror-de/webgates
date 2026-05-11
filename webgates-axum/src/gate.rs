@@ -2,12 +2,11 @@
 #![deny(unsafe_code)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
-//! Axum gate entry points bridging core gate configuration to axum adapters.
+//! Axum gate entry points.
 //!
-//! The core crate owns framework-agnostic gate configuration. This module
-//! adapts those builders into axum-specific middleware by translating the
-//! core configuration into the axum gate implementations (`cookie`, `bearer`,
-//! `oauth2`).
+//! This module is the main middleware-facing entry point for `webgates-axum`.
+//! It adapts the framework-agnostic gate builders from `webgates` into Axum
+//! middleware layers and wrappers.
 
 use std::sync::Arc;
 
@@ -22,12 +21,15 @@ pub mod cookie;
 pub mod oauth2;
 pub mod remote_jwks_cookie;
 
-/// Axum-facing Gate entry point.
+/// Axum-facing gate entry point.
+///
+/// Use this type when you want to protect Axum routes with cookie, bearer, or
+/// OAuth2 gate behavior.
 #[derive(Clone, Debug, Default)]
 pub struct Gate;
 
 impl Gate {
-    /// Create a cookie-based gate as an axum layer using the core configuration.
+    /// Creates a cookie-based Axum gate layer using the core configuration model.
     pub fn cookie<C, R, G>(issuer: &str, codec: Arc<C>) -> cookie::CookieGate<C, R, G>
     where
         C: Codec<Payload = JwtClaims<Account<R, G>>>,
@@ -38,7 +40,7 @@ impl Gate {
         core.adapt_with(CookieAdapter)
     }
 
-    /// Create a bearer-based gate as an axum layer using the core configuration.
+    /// Creates a bearer-based Axum gate layer using the core configuration model.
     pub fn bearer<C, R, G>(issuer: &str, codec: Arc<C>) -> bearer::BearerGate<C, R, G, impl Clone>
     where
         C: Codec,
@@ -49,7 +51,7 @@ impl Gate {
         core.adapt_with(BearerAdapter)
     }
 
-    /// OAuth2 gate builder adapted from the core gate using the axum adapter.
+    /// Creates an Axum OAuth2 gate builder adapted from the core OAuth2 configuration.
     pub fn oauth2<R, G>() -> oauth2::OAuth2Gate<R, G>
     where
         R: AccessHierarchy + Eq + std::fmt::Display + Send + Sync + 'static,
@@ -60,7 +62,7 @@ impl Gate {
     }
 }
 
-/// Adapter converting core cookie gate configuration into the axum cookie layer.
+/// Adapter converting core cookie gate configuration into the Axum cookie layer.
 #[derive(Clone, Debug, Default)]
 struct CookieAdapter;
 
@@ -84,7 +86,7 @@ where
     }
 }
 
-/// Adapter converting core bearer gate configuration into the axum bearer layer.
+/// Adapter converting core bearer gate configuration into the Axum bearer layer.
 #[derive(Clone, Debug, Default)]
 struct BearerAdapter;
 

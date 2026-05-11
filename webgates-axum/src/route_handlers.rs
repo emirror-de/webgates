@@ -1,8 +1,11 @@
-//! Axum route handlers for login and logout flows.
+//! Axum route handlers for login, logout, and JWKS flows.
 //!
-//! This module exposes two public submodules that contain handler functions and
-//! their required input types for both cookie-only and session-backed
-//! authentication flows.
+//! This module groups the ready-made HTTP handlers that `webgates-axum`
+//! provides.
+//!
+//! Use these handlers when you want to keep your authentication logic in
+//! `webgates` but avoid rewriting the same Axum request extraction and cookie
+//! response code yourself.
 //!
 //! The handlers are thin Axum adapters around the framework-agnostic services in
 //! `webgates`. They do not implement authentication logic themselves. Credential
@@ -29,7 +32,8 @@
 //! # Typical usage
 //!
 //! Mount your own HTTP routes and call these handlers from your Axum handlers so
-//! you can keep request parsing, state extraction, and response mapping explicit.
+//! request parsing, state extraction, and response mapping stay explicit in your
+//! application.
 //!
 //! ```rust
 //! use std::sync::Arc;
@@ -105,8 +109,7 @@
 //! enumeration resistance, and JWT issuance is provided by the underlying
 //! `webgates` services and repositories. This module is only the HTTP adapter.
 
-/// Login handlers and required input types for cookie-only and session-backed
-/// authentication flows.
+/// Login handlers and input types for cookie-only and session-backed authentication flows.
 ///
 /// This submodule contains `login`, `login_with_sessions`,
 /// `SessionLoginRequest`, and `SessionLoginDependencies`.

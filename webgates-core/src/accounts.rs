@@ -1,8 +1,17 @@
-//! Account management and user data structures.
+//! Account types for representing the current user in authorization flows.
 //!
-//! This module provides the core [`Account`] type for account metadata.
+//! This module provides [`Account`], the central domain type used throughout
+//! `webgates-core`.
 //!
-//! # Quick Start
+//! If you are onboarding to the crate, this is usually the first type to learn.
+//! An account brings together the data that authorization decisions care about:
+//!
+//! - your application-level user identifier
+//! - assigned roles
+//! - group membership
+//! - directly granted permissions
+//!
+//! # Quick start
 //!
 //! ```rust
 //! use webgates_core::accounts::Account;
@@ -21,10 +30,15 @@ use crate::permissions::permission_id::PermissionId;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// An account contains authorization information about a user.
+/// Authorization-relevant information about a user or principal.
 ///
-/// Accounts store user identification, roles, groups, and permissions. They are the
-/// core entity for authorization decisions in webgates.
+/// `Account` is the main input to authorization checks in `webgates-core`.
+/// It stores the user identity plus the roles, groups, and direct permissions
+/// that a policy may evaluate.
+///
+/// In most applications, you create or load an account during authentication,
+/// then pass it into an authorization service when a protected operation is
+/// requested.
 ///
 /// # Creating Accounts
 ///
@@ -66,32 +80,32 @@ where
     R: AccessHierarchy + Eq,
     G: Eq + Clone,
 {
-    /// The unique identifier of the account generated during registration.
+    /// Stable unique identifier for the account.
     ///
-    /// This UUID links the account to its corresponding authentication secret
-    /// in the secret repository. The separation of account data from secrets
-    /// enhances security by allowing different storage backends and access controls.
+    /// This UUID is generated when the account is created. Applications can use
+    /// it as the durable internal identifier that links account state to other
+    /// records such as credentials, profiles, or repository entries.
     pub account_id: Uuid,
-    /// The user identifier for this account (e.g., email, username).
+    /// Application-level user identifier, such as an email address or username.
     ///
-    /// This should be unique within your application and is typically what users
-    /// provide during login. It's used to look up accounts in the repository.
+    /// This is typically the identifier a person uses to log in and the one your
+    /// application uses to look up the account.
     pub user_id: String,
     /// Roles assigned to this account.
     ///
-    /// Roles determine what actions a user can perform. If your roles implement
-    /// `AccessHierarchy`, supervisor roles automatically inherit subordinate permissions.
+    /// Roles usually represent broad privilege levels such as user, moderator,
+    /// or admin. When the role type implements [`AccessHierarchy`], higher roles
+    /// can satisfy lower-role requirements when a policy allows supervisor access.
     pub roles: Vec<R>,
     /// Groups this account belongs to.
     ///
-    /// Groups provide another dimension of access control, allowing you to grant
-    /// permissions based on team membership, department, or other organizational units.
+    /// Groups model exact membership such as departments, tenants, project teams,
+    /// or support rotations.
     pub groups: Vec<G>,
-    /// Custom permissions granted to this account.
+    /// Directly granted permissions for this account.
     ///
-    /// Uses a compressed bitmap for efficient storage and fast permission checks.
-    /// Permissions are automatically available when referenced by name using
-    /// deterministic hashing - no coordination between nodes required.
+    /// Use direct permissions when roles or groups are too broad and you need
+    /// feature-level or action-level access control.
     pub permissions: Permissions,
 }
 
@@ -100,13 +114,16 @@ where
     R: AccessHierarchy + Eq + Clone + Default,
     G: Eq + Clone,
 {
-    /// Creates a new account with the specified user ID.
+    /// Creates a new account for the given user identifier.
     ///
-    /// A random UUID is automatically generated for the account ID. The account
-    /// starts with a single default role, no groups, and no permissions. Use
-    /// [`Default`] on your role type to define the initial role assigned by this
-    /// constructor. Use direct field mutation or struct update patterns after
-    /// construction when you need to customize roles or groups.
+    /// A fresh UUID is generated automatically. The new account starts with:
+    ///
+    /// - the default role for `R`
+    /// - no groups
+    /// - no direct permissions
+    ///
+    /// With the built-in [`crate::roles::Role`] type, the default role is
+    /// `Role::User`.
     ///
     /// # Parameters
     /// - `user_id`: Unique identifier for the user, such as an email or username.
@@ -133,10 +150,10 @@ where
         }
     }
 
-    /// Consumes this account and returns it with the specified roles.
+    /// Returns this account with the provided roles.
     ///
-    /// This is useful when building accounts that need explicit roles instead of
-    /// the single default role assigned by [`Self::new`].
+    /// This is useful when building an account that should not keep the single
+    /// default role assigned by [`Self::new`].
     ///
     /// # Example
     /// ```rust
@@ -154,9 +171,9 @@ where
         Self { roles, ..self }
     }
 
-    /// Consumes this account and returns it with the specified groups.
+    /// Returns this account with the provided groups.
     ///
-    /// This is useful when building accounts with initial group membership.
+    /// This is useful when building an account with initial group membership.
     ///
     /// # Example
     /// ```rust
@@ -174,9 +191,10 @@ where
         Self { groups, ..self }
     }
 
-    /// Consumes this account and returns it with the specified permissions.
+    /// Returns this account with the provided direct permissions.
     ///
-    /// This is useful when building accounts with specific permission sets.
+    /// This is useful when building an account that starts with a known
+    /// permission set.
     ///
     /// # Example
     /// ```rust
@@ -196,7 +214,7 @@ where
         }
     }
 
-    /// Grants a permission to this account.
+    /// Grants a direct permission to this account.
     ///
     /// # Example
     /// ```rust
@@ -216,7 +234,7 @@ where
         self.permissions.grant(permission);
     }
 
-    /// Revokes a permission from this account.
+    /// Revokes a direct permission from this account.
     ///
     /// # Example
     /// ```rust
@@ -236,7 +254,7 @@ where
         self.permissions.revoke(permission);
     }
 
-    /// Returns true if this account has the given role.
+    /// Returns `true` when this account has the given role.
     ///
     /// # Example
     ///
@@ -254,7 +272,7 @@ where
         self.roles.contains(role)
     }
 
-    /// Returns true if this account is a member of the given group.
+    /// Returns `true` when this account belongs to the given group.
     ///
     /// # Example
     ///
@@ -273,9 +291,10 @@ where
         self.groups.contains(group)
     }
 
-    /// Returns true if this account has the specified permission.
+    /// Returns `true` when this account has the specified direct permission.
     ///
-    /// Accepts any type that converts into `PermissionId` (e.g., `&str`, `PermissionId`).
+    /// Accepts any type that converts into [`PermissionId`], such as `&str` or
+    /// `PermissionId` itself.
     ///
     /// # Example
     ///

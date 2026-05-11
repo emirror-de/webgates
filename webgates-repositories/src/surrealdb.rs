@@ -1,7 +1,9 @@
-//! SurrealDB-backed repositories for account, group, permission-mapping, and
-//! secret persistence with constant-time credential verification.
+//! SurrealDB-backed repositories.
 //!
-//! This backend module centralizes shared SurrealDB concerns such as:
+//! This module provides the SurrealDB-backed repository implementation for
+//! accounts, groups, permission mappings, and secrets.
+//!
+//! It centralizes shared SurrealDB concerns such as:
 //! - repository construction
 //! - namespace and database selection
 //! - stable table-aware error mapping
@@ -25,10 +27,10 @@ pub mod secret;
 #[cfg(feature = "sessions")]
 pub mod session;
 
-/// Scope configuration (namespace, database, table names) used by `SurrealDbRepository`.
+/// Scope configuration used by [`SurrealDbRepository`].
 ///
-/// Most users can rely on `DatabaseScope::default()`. Override fields only if you
-/// need custom namespace / database names or different table naming.
+/// Most users can rely on [`DatabaseScope::default()`]. Override fields only if
+/// you need custom namespace, database, or table names.
 #[derive(Clone, Debug)]
 pub struct DatabaseScope {
     /// Accounts table (stores user id, groups, roles).
@@ -78,7 +80,7 @@ impl<S> SurrealDbRepository<S>
 where
     S: Connection,
 {
-    /// Creates a new repository that uses the given database connection limited by the given scope.
+    /// Creates a new repository using the given database connection and scope.
     pub fn new(db: Surreal<S>, scope_settings: DatabaseScope) -> Result<Self> {
         let hasher = Argon2Hasher::new_recommended().map_err(|error| {
             Error::Hashing(HashingError::new(

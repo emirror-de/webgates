@@ -5,11 +5,11 @@ use crate::authz::access_policy::AccessPolicy;
 use std::collections::HashSet;
 use tracing::debug;
 
-/// Domain service for authorization decisions.
+/// Service that evaluates an [`AccessPolicy`] against an [`Account`].
 ///
-/// This service evaluates an [`AccessPolicy`] against an [`Account`] and keeps
-/// the authorization logic isolated from transport, storage, and framework
-/// concerns.
+/// This is the runtime piece of the authorization model in `webgates-core`.
+/// You define the rule with [`AccessPolicy`], then ask `AuthorizationService`
+/// whether a specific account satisfies it.
 #[derive(Debug, Clone)]
 pub struct AuthorizationService<R, G>
 where
@@ -24,15 +24,14 @@ where
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq + Clone,
 {
-    /// Creates an authorization service for the provided access policy.
+    /// Creates a new authorization service for the provided policy.
     pub fn new(policy: AccessPolicy<R, G>) -> Self {
         Self { policy }
     }
 
-    /// Returns `true` when the account satisfies any configured policy
-    /// requirement.
+    /// Returns `true` when the account satisfies the policy.
     ///
-    /// The policy uses OR semantics across requirement categories:
+    /// Policies use OR semantics across requirement categories:
     /// - exact role matches
     /// - role hierarchy matches
     /// - group membership matches
@@ -89,11 +88,13 @@ where
     }
 
     /// Returns `true` when the configured policy has no requirements.
+    ///
+    /// Such a policy denies all access.
     pub fn policy_denies_all_access(&self) -> bool {
         self.policy.denies_all()
     }
 
-    /// Returns a clone of the configured access policy.
+    /// Returns a clone of the configured policy.
     pub fn clone_policy(&self) -> AccessPolicy<R, G> {
         self.policy.clone()
     }

@@ -1,4 +1,7 @@
 //! JWKS document and ES384 key conversion support.
+//!
+//! This module contains the JWKS-facing types used when you want to expose or
+//! consume public verification keys in a standard JSON Web Key Set format.
 
 use crate::errors::{JwtError, JwtOperation};
 use crate::{Error, Result};
@@ -16,6 +19,8 @@ use p384::pkcs8::DecodePublicKey;
 use serde::{Deserialize, Serialize};
 
 /// Canonical JWKS document shape for ES384 public verification keys.
+///
+/// Use this when you want to publish or transport a set of verification keys.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JwksDocument {
     /// Public key list.
@@ -36,6 +41,9 @@ impl JwksDocument {
 }
 
 /// Framework-agnostic provider for publishing JWKS documents.
+///
+/// This is a small helper for auth authorities that need to expose a stable
+/// public JWKS document.
 #[derive(Clone, Debug)]
 pub struct JwksProvider {
     document: JwksDocument,
@@ -80,6 +88,8 @@ impl JwksProvider {
 }
 
 /// Canonical ES384 public JWK entry.
+///
+/// This type models one ES384 verification key in JWKS-compatible form.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EcP384Jwk {
     /// Stable key identifier used in JWT `kid` headers.
@@ -245,7 +255,7 @@ impl EcP384Jwk {
     }
 }
 
-/// Build a deterministic key identifier for a PEM-encoded ES384 public key.
+/// Builds a deterministic key identifier for a PEM-encoded ES384 public key.
 ///
 /// The resulting value is stable for the same public key bytes.
 ///

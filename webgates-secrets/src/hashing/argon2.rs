@@ -33,7 +33,7 @@ use argon2::password_hash::{PasswordHasher, SaltString, rand_core::OsRng};
 use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordVerifier, Version};
 use webgates_core::verification_result::VerificationResult;
 
-/// Argon2 parameter configuration (memory in KiB).
+/// Argon2 parameter configuration.
 #[derive(Debug, Clone, Copy)]
 pub struct Argon2Config {
     /// Memory usage in KiB for the Argon2 algorithm.
@@ -45,7 +45,7 @@ pub struct Argon2Config {
 }
 
 impl Argon2Config {
-    /// High security configuration for production environments.
+    /// High-security configuration for production environments.
     ///
     /// Uses 64 MiB memory, 3 iterations, and 1 thread for maximum security.
     pub fn high_security() -> Self {
@@ -108,6 +108,8 @@ impl Argon2Preset {
 }
 
 /// Configurable Argon2id hasher.
+///
+/// This is the default hashing implementation provided by the crate.
 #[derive(Clone)]
 pub struct Argon2Hasher {
     config: Argon2Config,
@@ -119,7 +121,7 @@ impl Argon2Hasher {
     pub fn new_recommended() -> Result<Self> {
         Self::high_security()
     }
-    /// Create from explicit configuration.
+    /// Creates a hasher from explicit configuration.
     pub fn from_config(config: Argon2Config) -> Result<Self> {
         let params = Params::new(
             config.memory_kib,
@@ -131,17 +133,17 @@ impl Argon2Hasher {
         Ok(Self { config, engine })
     }
 
-    /// Create from a preset.
+    /// Creates a hasher from a preset.
     pub fn from_preset(preset: Argon2Preset) -> Result<Self> {
         Self::from_config(preset.to_config())
     }
 
-    /// Return current configuration.
+    /// Returns the current configuration.
     pub fn config(&self) -> &Argon2Config {
         &self.config
     }
 
-    /// Maximum security hasher for production environments.
+    /// Maximum-security hasher for production environments.
     ///
     /// **Parameters:**
     /// - Memory: 64 MiB (65,536 KiB)

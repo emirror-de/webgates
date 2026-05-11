@@ -1,8 +1,9 @@
 //! Bearer gate implementation for tonic services.
 //!
 //! This module provides the compile-time-typed [`BearerGate`] builder and the
-//! tower [`Layer`] implementations that the builder produces. Two compile-time
-//! modes are available:
+//! tower [`Layer`] implementations it produces.
+//!
+//! Two compile-time modes are available:
 //!
 //! - **JWT mode** (`BearerGate<C, R, G, JwtConfig<R, G>>`): validates
 //!   `Authorization: Bearer <jwt>` metadata, decodes the token, enforces an
@@ -69,12 +70,11 @@ use webgates::codecs::jwt::JwtClaims;
 use crate::context::{JwtAuthContext, OptionalJwtAuthContext, StaticTokenAuthorized};
 use crate::errors::AuthError;
 
-/// JWT mode configuration (compile-time type parameter for [`BearerGate`]).
+/// JWT mode configuration for [`BearerGate`].
 ///
-/// This type is not directly constructible by users; it is produced as the
-/// mode parameter by [`crate::gate::Gate::bearer`] and consumed by the builder
-/// methods on
-/// [`BearerGate`].
+/// This type is not directly constructed by users. It is produced internally by
+/// [`crate::gate::Gate::bearer`] and used as the compile-time mode parameter for
+/// JWT bearer behavior.
 #[derive(Clone)]
 pub struct JwtConfig<R, G>
 where
@@ -97,9 +97,9 @@ where
     }
 }
 
-/// Static token mode configuration (compile-time type parameter for [`BearerGate`]).
+/// Static-token mode configuration for [`BearerGate`].
 ///
-/// This type is not directly constructible by users; it is produced by
+/// This type is not directly constructed by users. It is produced by
 /// [`BearerGate::with_static_token`] as a compile-time mode transition.
 #[derive(Clone)]
 pub struct StaticTokenConfig {
@@ -119,8 +119,7 @@ impl std::fmt::Debug for StaticTokenConfig {
 /// Tonic bearer gate with a compile-time mode parameter.
 ///
 /// Constructed via [`crate::gate::Gate::bearer`]. Use the builder methods to
-/// configure the gate before calling `.layer(inner_service)` to produce a
-/// tower [`Layer`].
+/// configure the gate before applying it as a tower layer.
 #[derive(Clone)]
 pub struct BearerGate<C, R, G, M>
 where
@@ -181,13 +180,13 @@ where
         }
     }
 
-    /// Set the access policy (OR semantics between policy requirements).
+    /// Sets the access policy for JWT bearer authorization.
     pub fn with_policy(mut self, policy: AccessPolicy<R, G>) -> Self {
         self.mode.policy = policy;
         self
     }
 
-    /// Allow any authenticated user (baseline role plus all supervisors).
+    /// Allows any authenticated user (baseline role plus all supervisors).
     ///
     /// Equivalent to `with_policy(AccessPolicy::require_role_or_supervisor(R::default()))`.
     /// Requires `R: Default`.
@@ -200,7 +199,7 @@ where
         self
     }
 
-    /// Allow unauthenticated requests; insert [`OptionalJwtAuthContext`] for every request.
+    /// Allows unauthenticated requests and inserts [`OptionalJwtAuthContext`] for every request.
     ///
     /// The gate does not enforce the access policy in optional mode. Handlers
     /// must perform any required authorization checks themselves.
@@ -209,7 +208,7 @@ where
         self
     }
 
-    /// Transition to static token mode at compile time.
+    /// Transitions to static-token mode at compile time.
     ///
     /// All previously configured JWT policies are dropped in favor of exact
     /// bearer-token matching. The returned gate is in static token mode and
@@ -236,7 +235,7 @@ where
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq + Clone,
 {
-    /// Allow unauthenticated requests; insert [`StaticTokenAuthorized`] for every request.
+    /// Allows unauthenticated requests and inserts [`StaticTokenAuthorized`] for every request.
     ///
     /// In optional mode the gate always forwards the request. The inserted
     /// [`StaticTokenAuthorized`] marker reports whether the provided token matched.

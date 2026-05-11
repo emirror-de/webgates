@@ -1,10 +1,10 @@
-//! Error types and tonic status mapping for webgates-tonic.
+//! Error types and tonic status mapping for `webgates-tonic`.
 //!
-//! This module provides `AuthError`, a typed error enum that represents
-//! every authentication and authorization failure that can occur inside the
-//! bearer gate middleware. Each variant maps to a specific [`tonic::Status`]
-//! code so that callers receive safe, opaque gRPC status responses without
-//! any internal detail being leaked.
+//! This module provides [`crate::errors::AuthError`], the typed error enum used by bearer gate
+//! middleware when authentication or authorization fails.
+//!
+//! Each variant maps to a specific [`tonic::Status`] code so callers receive
+//! safe, opaque gRPC status responses without internal detail being leaked.
 //!
 //! # Status mapping
 //!
@@ -21,8 +21,7 @@
 use thiserror::Error;
 use tonic::Status;
 
-/// All authentication and authorization failures that the bearer gate can
-/// produce.
+/// All authentication and authorization failures that the bearer gate can produce.
 ///
 /// Call [`AuthError::into_status`] to convert a failure into the appropriate
 /// [`tonic::Status`] for returning from a gRPC handler.
@@ -63,7 +62,7 @@ pub enum AuthError {
 }
 
 impl AuthError {
-    /// Convert this error into the appropriate [`tonic::Status`].
+    /// Converts this error into the appropriate [`tonic::Status`].
     ///
     /// Token-level and metadata-level failures map to `UNAUTHENTICATED`.
     /// Policy denial after successful authentication maps to

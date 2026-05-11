@@ -1,9 +1,18 @@
-//! Verification result value objects for core authentication flows.
+//! Verification result values for core authentication flows.
+//!
+//! This module is intentionally small. It gives you a simple success-or-
+//! unauthorized outcome for credential verification while keeping infrastructural
+//! failures separate in your `Result` error type.
 
 /// Result of a credential or secret verification step.
 ///
-/// Use this enum when verification can only succeed or fail as unauthorized,
-/// while infrastructure failures are reported separately.
+/// Use this enum when verification has two logical outcomes:
+///
+/// - the supplied secret is valid
+/// - the supplied secret is not authorized
+///
+/// Infrastructure failures such as storage outages or backend errors should be
+/// reported separately in your surrounding `Result` type.
 ///
 /// # Conversions
 /// - `VerificationResult::from(true)` returns [`VerificationResult::Ok`]

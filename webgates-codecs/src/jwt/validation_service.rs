@@ -3,6 +3,9 @@
 //! This submodule contains [`JwtValidationService`], which validates raw token
 //! strings using a configured codec and checks issuer expectations.
 //!
+//! Use this when a boundary in your system receives a raw token string and you
+//! want a clear, typed validation step before handing claims to higher layers.
+//!
 //! The service keeps validation behavior narrow and explicit:
 //! - decode the token with the configured codec
 //! - reject tokens that fail codec-level validation
@@ -23,8 +26,7 @@ use webgates_core::authz::access_hierarchy::AccessHierarchy;
 
 /// Service responsible for validating raw JWT token strings.
 ///
-/// This service applies application-level validation on top of the configured
-/// codec:
+/// This service adds application-level checks on top of the configured codec:
 /// - decode the token into typed claims
 /// - verify the expected issuer
 ///
@@ -36,7 +38,7 @@ pub struct JwtValidationService<C> {
     expected_issuer: String,
 }
 
-/// Verifier contract used by JWT gate runtimes.
+/// Verifier contract used by JWT-consuming runtimes and adapters.
 pub trait JwtClaimsVerifier<T>: Clone {
     /// Verifies a raw token and returns decoded claims on success.
     fn verify_token(&self, token_value: &str) -> std::result::Result<T, JwtError>;

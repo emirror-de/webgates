@@ -1,10 +1,10 @@
-//! Login handlers and required input types for cookie-only and session-backed
-//! authentication flows.
+//! Login handlers and input types for cookie-only and session-backed authentication flows.
 //!
-//! The two handlers in this module are thin Axum adapters around the
-//! framework-agnostic services in `webgates`. They do not own authentication
-//! logic. Credential verification, account lookup, and token issuance are
-//! delegated to the core crates.
+//! This module contains the main login HTTP adapters for `webgates-axum`.
+//!
+//! The handlers here stay intentionally thin: they extract HTTP inputs, call the
+//! framework-agnostic `webgates` services, and map the results back into Axum
+//! responses and cookies.
 //!
 //! # Available handlers
 //!
@@ -44,11 +44,11 @@ use axum::http::StatusCode;
 use axum_extra::extract::CookieJar;
 use tracing::error;
 
-/// Authenticates user credentials and creates a JWT authentication cookie.
+/// Authenticates submitted credentials and writes a JWT authentication cookie.
 ///
-/// This handler validates the provided credentials against the secret repository,
-/// retrieves the corresponding account from the account repository, and creates
-/// a signed JWT cookie containing the user's authentication information.
+/// This is the cookie-only login handler. It validates credentials, loads the
+/// corresponding account, creates a signed auth token, and adds the auth cookie
+/// to the returned [`CookieJar`].
 ///
 /// # Arguments
 /// * `cookie_jar` - The incoming cookie jar to add the auth cookie to
@@ -178,8 +178,8 @@ where
 
 /// Dependencies required for session-backed login.
 ///
-/// This groups the inner-layer services and repositories so the HTTP adapter
-/// can pass one explicit dependency object instead of a long argument list.
+/// This groups the inner-layer services and repositories so the HTTP adapter can
+/// pass one explicit dependency object instead of a long argument list.
 pub struct SessionLoginDependencies<CredVeri, AccRepo, SessRepo, A> {
     /// Repository used to verify submitted credentials.
     pub secret_verifier: Arc<CredVeri>,
@@ -191,10 +191,10 @@ pub struct SessionLoginDependencies<CredVeri, AccRepo, SessRepo, A> {
     pub auth_token_issuer: A,
 }
 
-/// Session-backed login configuration for cookie issuance.
+/// Session-backed login request configuration.
 ///
-/// This keeps deterministic issuance inputs and cookie templates together at the
-/// HTTP boundary.
+/// This groups the deterministic issuance inputs and cookie templates needed at
+/// the HTTP boundary.
 pub struct SessionLoginRequest {
     /// User credentials submitted for authentication.
     pub credentials: Credentials<String>,
@@ -208,12 +208,11 @@ pub struct SessionLoginRequest {
     pub now: SystemTime,
 }
 
-/// Authenticates user credentials and creates auth and refresh-token cookies.
+/// Authenticates submitted credentials and writes auth and refresh-token cookies.
 ///
-/// This handler is the session-backed variant of [`login`]. It validates the
-/// provided credentials against the secret repository, loads the account from
-/// the account repository, issues a session-backed auth and refresh token pair,
-/// and writes both cookies in the HTTP adapter layer.
+/// This is the session-backed variant of [`login`]. It validates credentials,
+/// loads the account, issues a session-backed auth and refresh-token pair, and
+/// writes both cookies in the HTTP adapter layer.
 ///
 /// # Arguments
 /// * `cookie_jar` - The incoming cookie jar to add cookies to

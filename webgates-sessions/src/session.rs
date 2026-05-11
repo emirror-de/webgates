@@ -1,6 +1,6 @@
 //! Session domain types.
 //!
-//! This module owns the framework-agnostic session model used by issuance,
+//! This module contains the framework-agnostic session model used by issuance,
 //! renewal, revocation, and repository orchestration.
 
 use std::time::SystemTime;

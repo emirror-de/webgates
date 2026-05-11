@@ -1,228 +1,364 @@
 # webgates-core
 
-Framework-agnostic domain types and authorization primitives for the `webgates` ecosystem.
+User-focused Rust building blocks for authentication and authorization.
 
-`webgates-core` provides the foundational building blocks for authentication and authorization without depending on any specific web framework, HTTP implementation, or runtime.
+`webgates-core` is the smallest crate in the `webgates` ecosystem. It gives you the domain model and authorization primitives without pulling in HTTP, cookies, JWT handling, sessions, database adapters, or framework integrations.
 
-## What this crate provides
+If you want to understand how `webgates` works at its foundation, or you want to build your own adapter around another framework, this is the crate to start with.
 
-- **Account, role, and group domain types** for representing users and their capabilities
-- **Authorization policies and evaluation services** for access control decisions
-- **Credential boundary types and verification contracts** for authentication workflows
-- **Deterministic permission identifiers, sets, and validation helpers** for fine-grained access control
-- **Shared error traits and verification result types** for consistent error handling
+## Who this crate is for
 
-## When to use this crate
+Use `webgates-core` when you want to:
 
-Use `webgates-core` when you:
+- model users as accounts with roles, groups, and direct permissions
+- make authorization decisions in pure Rust domain code
+- build your own authentication or authorization services on top of the core types
+- integrate with a framework that does not yet have a `webgates` adapter
+- keep dependencies minimal and avoid transport-specific concerns
 
-- Need only the core domain types without HTTP dependencies
-- Want to build custom integrations with frameworks not yet supported
-- Are implementing authorization logic in non-web contexts
-- Want the smallest possible dependency footprint
+If you are building a typical web application and want batteries included, you will usually want `webgates` instead.
 
-For web applications, consider using `webgates` (which re-exports this crate) or framework-specific integrations like `webgates-axum`.
+## What you learn in this crate
 
-## Installation
+Most developers only need to internalize a small core loop:
 
-Add to your `Cargo.toml`:
+- `Account` represents the current user and their assigned capabilities
+- `AccessPolicy` expresses what a protected action requires
+- `AuthorizationService` evaluates whether the account satisfies that policy
+- `Permissions` add fine-grained capability checks when roles or groups are too broad
+- `Credentials` and `CredentialsVerifier` define the authentication boundary without committing you to one transport or backend
+
+## What this crate does not do
+
+This crate intentionally does **not** include:
+
+- HTTP middleware
+- framework integrations
+- JWT encoding or decoding
+- cookies
+- session issuance or renewal
+- password hashing implementations
+- repository implementations
+
+Those concerns live in sibling crates such as `webgates`, `webgates-axum`, `webgates-codecs`, `webgates-repositories`, `webgates-secrets`, and `webgates-sessions`.
+
+## Install
+
+Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
 webgates-core = "0.1"
 ```
 
-Minimum supported Rust version: 1.91
+Minimum supported Rust version: `1.91`.
+
+## The mental model
+
+If you are onboarding to the crate, this is the simplest way to think about it:
+
+1. You represent the current user as an `Account`.
+2. You express access requirements as an `AccessPolicy`.
+3. You ask `AuthorizationService` whether the account satisfies that policy.
+4. You optionally use `Credentials` and `CredentialsVerifier` to plug in your own login flow.
+
+That is the core loop.
+
+## Quick start
+
+This example shows the main flow you will use in application code.
+
+```rust
+use webgates_core::accounts::Account;
+use webgates_core::authz::access_policy::AccessPolicy;
+use webgates_core::authz::authorization_service::AuthorizationService;
+use webgates_core::groups::Group;
+use webgates_core::roles::Role;
+
+let account = Account::<Role, Group>::new("user-123")
+    .with_roles(vec![Role::Admin])
+    .with_groups(vec![Group::new("engineering")]);
+
+let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin)
+    .or_require_group(Group::new("support-override"));
+
+let authz = AuthorizationService::new(policy);
+
+assert!(authz.is_authorized(&account));
+```
 
 ## Core concepts
 
-### Accounts
+### 1. Accounts represent the current user
 
-Accounts represent users with roles, groups, and individual permissions:
+`Account<R, G>` is the central domain type. It stores:
 
-```rust
-use webgates_core::prelude::*;
+- a generated `account_id`
+- your application-level `user_id`
+- assigned roles
+- assigned groups
+- direct permissions
 
-// Create an account (default role is applied automatically)
-let account = Account::<Role, Group>::new("user123");
-
-// Create an account with explicit roles and groups
-let account = Account::<Role, Group>::new("user123")
-    .with_roles(vec![Role::Admin])
-    .with_groups(vec![Group::new("developers".to_string())]);
-
-// Grant individual permissions
-let mut account = Account::<Role, Group>::new("user123");
-account.grant_permission("api:read");
-assert!(account.has_permission(&PermissionId::from("api:read")));
-```
-
-### Authorization policies
-
-Define access requirements declaratively:
+Example:
 
 ```rust
-use webgates_core::authz::AccessPolicy;
-use webgates_core::prelude::*;
+use webgates_core::accounts::Account;
+use webgates_core::groups::Group;
+use webgates_core::permissions::Permissions;
+use webgates_core::roles::Role;
 
-// Require admin role exactly
-let policy = AccessPolicy::require_role(Role::Admin);
+let permissions: Permissions = ["projects:read", "projects:write"].into_iter().collect();
 
-// Require admin role or any role that supervises it in the hierarchy
-let policy = AccessPolicy::require_role_or_supervisor(Role::Admin);
+let account = Account::<Role, Group>::new("alice@example.com")
+    .with_roles(vec![Role::Moderator])
+    .with_groups(vec![Group::new("engineering")])
+    .with_permissions(permissions);
 
-// Require specific permission
-let policy = AccessPolicy::require_permission("admin:users:delete");
-
-// Require group membership
-let policy = AccessPolicy::require_group(Group::new("approvers".to_string()));
-
-// Combine multiple requirements (any match grants access)
-let policy = AccessPolicy::require_role(Role::Admin)
-    .or_require_permission("special:access");
+assert_eq!(account.user_id, "alice@example.com");
+assert!(account.has_role(&Role::Moderator));
+assert!(account.is_member_of(&Group::new("engineering")));
 ```
 
-### Authorization service
+A useful onboarding detail: `Account::new(...)` automatically assigns the default role for your role type. With the built-in `Role` enum, that default is `Role::User`.
 
-Evaluate policies against accounts:
+### 2. Roles model hierarchical privilege
+
+The built-in `Role` type is ordered from least privileged to most privileged:
+
+- `Role::User`
+- `Role::Reporter`
+- `Role::Moderator`
+- `Role::Admin`
+
+That ordering matters when you use `require_role_or_supervisor(...)`.
+
+Example:
 
 ```rust
-use webgates_core::authz::{AccessPolicy, AuthorizationService};
-use webgates_core::prelude::*;
+use webgates_core::authz::access_policy::AccessPolicy;
+use webgates_core::groups::Group;
+use webgates_core::roles::Role;
 
-let account = Account::<Role, Group>::new("user123")
-    .with_roles(vec![Role::Admin]);
+let exact = AccessPolicy::<Role, Group>::require_role(Role::Moderator);
+let hierarchical = AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::Moderator);
 
-let policy = AccessPolicy::require_role(Role::Admin);
-let auth_service = AuthorizationService::new(policy);
-
-assert!(auth_service.is_authorized(&account));
+assert!(exact.has_requirements());
+assert!(hierarchical.has_requirements());
 ```
 
-### Permissions
+If your application needs its own role hierarchy, define your own enum in least-to-most privileged order and implement `AccessHierarchy` for it.
 
-Work with deterministic permission identifiers:
+### 3. Groups model exact membership
+
+Groups are useful for non-hierarchical membership such as departments, tenants, teams, or project assignments.
 
 ```rust
-use webgates_core::prelude::*;
+use webgates_core::groups::Group;
 
-// Create permission from string
-let perm_id = PermissionId::from("api:users:read");
+let engineering = Group::new("engineering");
+let billing = Group::new("billing");
 
-// Create permission set
-let mut perms = Permissions::new();
-perms.grant("api:users:read");
-perms.grant("api:users:write");
-
-// Check permissions
-assert!(perms.has(&PermissionId::from("api:users:read")));
-assert!(perms.has_all(&["api:users:read", "api:users:write"]));
-
-// Set operations
-let other_perms = Permissions::from_iter(["api:posts:read"]);
-let combined = perms.union(&other_perms);
+assert_eq!(engineering.name(), "engineering");
+assert_eq!(billing.name(), "billing");
 ```
 
-### Permission validation
+Use groups when access depends on *belonging to something*, not on privilege level.
 
-Validate permission definitions at build or test time:
+### 4. Permissions model fine-grained capabilities
+
+Permissions are string-based capabilities such as `projects:read` or `admin:users:delete`.
+
+`webgates-core` converts them into deterministic `PermissionId` values internally, so you can do fast checks without maintaining a central numeric registry.
+
+```rust
+use webgates_core::permissions::Permissions;
+use webgates_core::permissions::permission_id::PermissionId;
+
+let mut permissions = Permissions::new();
+permissions
+    .grant("projects:read")
+    .grant(PermissionId::from("projects:write"));
+
+assert!(permissions.has("projects:read"));
+assert!(permissions.has_all(["projects:read", "projects:write"]));
+assert!(!permissions.has("projects:delete"));
+```
+
+Use permissions when a role is too broad and you need feature-level control.
+
+### 5. Policies declare what access requires
+
+`AccessPolicy<R, G>` is how you describe who should be allowed through.
+
+Important onboarding note: policy requirements use **OR semantics**.
+If any configured role, group, or permission requirement matches, authorization succeeds.
+
+```rust
+use webgates_core::authz::access_policy::AccessPolicy;
+use webgates_core::groups::Group;
+use webgates_core::roles::Role;
+
+let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin)
+    .or_require_role_or_supervisor(Role::Moderator)
+    .or_require_group(Group::new("security"))
+    .or_require_permission("audit:read");
+
+assert!(policy.has_requirements());
+```
+
+This is a good fit for rules like:
+
+- admins may enter
+- moderators and above may enter
+- members of a specific emergency group may enter
+- anybody with a dedicated override permission may enter
+
+### 6. The authorization service evaluates the policy
+
+`AuthorizationService` turns the policy into an authorization decision for a specific account.
+
+```rust
+use webgates_core::accounts::Account;
+use webgates_core::authz::access_policy::AccessPolicy;
+use webgates_core::authz::authorization_service::AuthorizationService;
+use webgates_core::groups::Group;
+use webgates_core::roles::Role;
+
+let account = Account::<Role, Group>::new("bob")
+    .with_roles(vec![Role::Reporter]);
+
+let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin)
+    .or_require_role(Role::Reporter);
+
+let service = AuthorizationService::new(policy);
+assert!(service.is_authorized(&account));
+```
+
+## A practical onboarding example
+
+This example shows a realistic setup for an internal admin page.
+
+```rust
+use webgates_core::accounts::Account;
+use webgates_core::authz::access_policy::AccessPolicy;
+use webgates_core::authz::authorization_service::AuthorizationService;
+use webgates_core::groups::Group;
+use webgates_core::roles::Role;
+
+let mut account = Account::<Role, Group>::new("carol@example.com")
+    .with_roles(vec![Role::User])
+    .with_groups(vec![Group::new("support")]);
+
+account.grant_permission("tickets:read");
+account.grant_permission("tickets:escalate");
+
+let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin)
+    .or_require_group(Group::new("support"))
+    .or_require_permission("tickets:escalate");
+
+let authz = AuthorizationService::new(policy);
+
+assert!(authz.is_authorized(&account));
+```
+
+Here access succeeds even though the user is not an admin, because the policy accepts **any** matching requirement and the account belongs to the `support` group.
+
+## Authentication boundary: credentials and verification
+
+`webgates-core` does not implement password hashing or login services for you. Instead, it gives you a clean boundary:
+
+- `Credentials<Id>` holds user-supplied identifier + plaintext secret
+- `CredentialsVerifier` is the trait you implement to check those credentials against your own backend
+
+```rust
+use webgates_core::credentials::Credentials;
+
+let credentials = Credentials::new(&"alice@example.com".to_string(), "correct horse battery staple");
+
+assert_eq!(credentials.id, "alice@example.com");
+```
+
+This separation is useful because it keeps your domain model independent from:
+
+- which database you use
+- how you hash passwords
+- which framework handles the request
+- whether login happens over HTTP, gRPC, CLI, or background jobs
+
+## Validate permissions during tests
+
+If your application defines many permission strings, validate them in tests so collisions or duplicate definitions are caught early.
 
 ```rust
 use webgates_core::validate_permissions;
 
 validate_permissions![
-    "api:users:read",
-    "api:users:write",
-    "api:posts:read",
+    "projects:read",
+    "projects:write",
+    "projects:delete",
+    "admin:users:read",
+    "admin:users:write",
+    "admin:users:delete",
 ];
 ```
 
-Implement `AsPermissionName` on your own permission enum to map structured types to string names:
+This is especially helpful when your permission surface grows over time or is shared across multiple modules.
 
-```rust
-use webgates_core::permissions::{AsPermissionName, Permissions};
+## Recommended onboarding path
 
-enum AppPermission {
-    UsersRead,
-    UsersWrite,
-}
+If you are new to the crate, I recommend learning it in this order:
 
-impl AsPermissionName for AppPermission {
-    fn as_permission_name(&self) -> String {
-        match self {
-            AppPermission::UsersRead => "api:users:read".to_string(),
-            AppPermission::UsersWrite => "api:users:write".to_string(),
-        }
-    }
-}
-```
+1. `accounts::Account`
+2. `roles::Role` and `groups::Group`
+3. `permissions::Permissions`
+4. `authz::access_policy::AccessPolicy`
+5. `authz::authorization_service::AuthorizationService`
+6. `credentials::Credentials` and `credentials_verifier::CredentialsVerifier`
 
-### Credentials
+That sequence mirrors how most applications adopt the crate.
 
-Handle authentication boundaries:
+## Which crate should you use?
 
-```rust
-use webgates_core::credentials::Credentials;
+Choose based on how much infrastructure you want out of the box:
 
-// Create credentials for verification
-let creds = Credentials::new("username", "password");
+- use `webgates-core` when you only want domain types and authorization primitives
+- use `webgates` when you want the main user-facing composition crate
+- use `webgates-axum` when you want Axum integration
+- use `webgates-sessions` when you want framework-agnostic session lifecycle primitives
+- use `webgates-codecs` when you need JWT and codec support
+- use `webgates-repositories` when you want repository contracts and storage integrations
+- use `webgates-secrets` when you need hashing and secret handling helpers
 
-// In your authentication service, implement CredentialsVerifier
-// to handle the actual verification logic
-```
+## Design goals
 
-## Features
+This crate is intentionally designed to be:
 
-This crate has no optional features and minimal dependencies. It provides only the core types and authorization logic.
+- framework-agnostic
+- transport-agnostic
+- easy to test
+- small in dependency footprint
+- usable in server and WASM contexts
+- explicit about authorization behavior
 
-For additional capabilities like JWT codecs, HTTP cookie handling, or framework integration, use:
+## Security notes
 
-- `webgates` - adds JWT, cookies, sessions, and higher-level services
-- `webgates-axum` - Axum framework integration
-- `webgates-repositories` - persistence layer implementations
-- `webgates-sessions` - session management primitives
+A few important things to keep in mind:
 
-## Error handling
-
-The crate uses structured error types for different failure modes:
-
-```rust
-use webgates_core::errors::Result;
-use webgates_core::authz::AuthzError;
-
-// Authorization errors provide context about access failures
-fn check_access() -> Result<(), AuthzError> {
-    // Your authorization logic here
-    Ok(())
-}
-```
-
-## WASM compatibility
-
-This crate supports WebAssembly targets. The minimal dependency set and framework-agnostic design make it suitable for client-side authorization logic.
-
-## Testing
-
-```rust
-use webgates_core::prelude::*;
-
-#[test]
-fn account_permissions() {
-    let mut account = Account::<Role, Group>::new("test");
-    account.grant_permission("test:permission");
-
-    assert!(account.has_permission(&PermissionId::from("test:permission")));
-}
-```
+- `Credentials` contains plaintext secrets and should be short-lived
+- do not log secrets, tokens, or raw credential data
+- use secure transport when credentials cross a process or network boundary
+- treat permission names as application API and keep them stable once adopted
+- validate your permission set in CI if your app depends heavily on string permissions
 
 ## Related crates
 
-- `webgates` - user-facing composition crate with optional features
-- `webgates-axum` - Axum framework integration
-- `webgates-repositories` - persistence implementations
-- `webgates-sessions` - session lifecycle management
-- `webgates-codecs` - JWT and other codec implementations
-- `webgates-secrets` - secret handling and hashing utilities
+- `webgates` - the main composition crate for most applications
+- `webgates-axum` - Axum integration
+- `webgates-codecs` - JWT and codec support
+- `webgates-repositories` - repository traits and backends
+- `webgates-secrets` - secret and hashing helpers
+- `webgates-sessions` - session lifecycle and renewal primitives
+- `webgates-tonic` - tonic integration
 
 ## License
 

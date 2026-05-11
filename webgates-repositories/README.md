@@ -1,98 +1,116 @@
 # webgates-repositories
 
-Repository implementations and repository-facing services for the `webgates` authentication and authorization domain.
+User-focused repository contracts and storage backends for the `webgates` ecosystem.
+
+`webgates-repositories` is the persistence layer of the workspace. It provides repository traits, in-memory implementations, backend integrations, and repository-scoped services for accounts, secrets, permission mappings, groups, and optional session storage.
+
+If `webgates-core` defines the domain model, `webgates-repositories` defines how that model is stored and retrieved.
+
+## Who this crate is for
+
+Use `webgates-repositories` when you want to:
+
+- persist accounts and hashed secrets
+- load accounts during authentication flows
+- store permission mappings or groups
+- use in-memory repositories for tests or local development
+- add SeaORM or SurrealDB persistence backends
+- back `webgates-sessions` with repository implementations
+- use repository-level account insert and delete workflows
+
+If you only need domain types, use `webgates-core`.
+If you want higher-level auth orchestration, use `webgates`.
+If you want transport integration, use `webgates-axum` or `webgates-tonic`.
+
+## What this crate provides
 
 This crate exposes:
+
 - repository traits in dedicated trait modules
-- in-memory implementations under concrete module paths
-- in-memory session repository support for tests and local session-backed auth flows
+- in-memory implementations under `memory`
 - optional SeaORM and SurrealDB backends behind feature flags
-- session repository backends for `webgates-sessions`
+- optional session repository backends for `webgates-sessions`
 - repository-scoped services for account insertion and deletion
-- shared repository error types
+- shared repository error types and result aliases
 
 ## Install
 
-Pick only the backend features you need:
+Pick only the features you need:
 
 ```toml
 [dependencies]
 webgates-repositories = { version = "0.1" }
-# or — session-backed auth without a persistent backend (e.g. tests, local dev)
+```
+
+Session-backed auth without a persistent backend, useful for tests or local development:
+
+```toml
+[dependencies]
 webgates-repositories = { version = "0.1", features = ["sessions"] }
-# or
+```
+
+SeaORM backend:
+
+```toml
+[dependencies]
 webgates-repositories = { version = "0.1", features = ["sea-orm"] }
-# or
+```
+
+SurrealDB backend:
+
+```toml
+[dependencies]
 webgates-repositories = { version = "0.1", features = ["surrealdb"] }
 ```
 
-MSRV: 1.91
+Minimum supported Rust version: `1.91`.
 
-## Canonical public API
+## The mental model
 
-The public API is module-oriented.
+The easiest way to think about this crate is:
 
-### Repository traits
+1. repository traits define the persistence contracts
+2. in-memory or database-backed implementations satisfy those contracts
+3. higher-level crates depend on the contracts rather than concrete storage
+4. repository-scoped services coordinate common workflows like account insert and delete
+5. optional session repository implementations let persistence back `webgates-sessions`
 
-Import traits from their defining modules:
+## How to approach this crate
 
-```rust
-use webgates_repositories::account_repository::AccountRepository;
-use webgates_repositories::group_repository::GroupRepository;
-use webgates_repositories::permission_mapping_repository::PermissionMappingRepository;
-use webgates_repositories::secret_repository::SecretRepository;
-```
+The easiest way to work with this crate is to choose one layer first:
 
-Session-backed authentication uses the framework-agnostic
-`webgates_sessions::repository::SessionRepository` contract, with concrete
-backends provided by this crate.
+### Start with repository traits
 
-### In-memory implementations
+If you are defining your own persistence backend, start with the trait modules such as:
 
-Import concrete in-memory types from their concrete child modules:
+- `account_repository`
+- `secret_repository`
+- `group_repository`
+- `permission_mapping_repository`
 
-```rust
-use webgates_repositories::memory::account::MemoryAccountRepository;
-use webgates_repositories::memory::group::MemoryGroupRepository;
-use webgates_repositories::memory::permission_mapping::MemoryPermissionMappingRepository;
-use webgates_repositories::memory::secret::MemorySecretRepository;
-```
+Session-backed authentication uses the framework-agnostic `webgates_sessions::repository::SessionRepository` contract, with concrete backends provided by this crate.
 
-### Services
+### Start with in-memory implementations
 
-Import repository services from their defining modules:
+If you want something runnable for tests or local development, start with the `memory` module and its concrete repository types.
 
-```rust
-use webgates_repositories::services::account_delete::AccountDeleteService;
-use webgates_repositories::services::account_insert::AccountInsertService;
-```
+### Move to services when you want repository-scoped workflows
 
-### Session repositories
+Use `services::account_insert::AccountInsertService` or `services::account_delete::AccountDeleteService` when you want the repository layer to coordinate common account workflows.
 
-For session-backed login, logout, and transparent renewal, use:
+### Enable backend modules only when needed
 
-- `webgates_repositories::memory::session::MemorySessionRepository` when the `sessions` feature is enabled
-- `webgates_repositories::surrealdb::session::SurrealDbSessionRepository` when the `surrealdb` feature is enabled
-
-These backends implement `webgates_sessions::repository::SessionRepository`
-for session creation, refresh-token lookup, lease acquisition, atomic rotation,
-session revocation, family revocation, and session touch updates.
-
-### Optional backends
-
-- `webgates_repositories::sea_orm::SeaOrmRepository`
-- `webgates_repositories::surrealdb::{DatabaseScope, SurrealDbRepository}`
+Reach for `sea_orm` or `surrealdb` only when you are ready to connect a real persistence backend.
 
 ## Feature flags
 
 - `default = []`
-- `sessions`: enables the `webgates-sessions` integration and exposes
-  `memory::session::MemorySessionRepository` for zero-config in-process session storage
+- `sessions`: enables `webgates-sessions` integration and exposes in-memory session storage
 - `surrealdb`: enables the SurrealDB backend; combine with `sessions` to also include the SurrealDB session backend
 - `sea-orm`: enables the SeaORM backend; combine with `sessions` to also include the SeaORM session backend
 - `audit-logging`: enables repository audit events
 
-Enable only the features you need to keep dependency scope smaller.
+Enable only the features you need to keep the dependency scope smaller.
 
 ## Quick starts
 
@@ -100,12 +118,15 @@ Enable only the features you need to keep dependency scope smaller.
 
 ```rust
 use std::sync::Arc;
-use webgates_core::prelude::{Group, Role};
+use webgates_core::groups::Group;
+use webgates_core::roles::Role;
 use webgates_repositories::memory::account::MemoryAccountRepository;
 use webgates_repositories::memory::secret::MemorySecretRepository;
 
 let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
 let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher()?);
+# let _ = (account_repo, secret_repo);
+# Ok::<(), webgates_repositories::errors::Error>(())
 ```
 
 ### In-memory permission mapping repository
@@ -114,28 +135,35 @@ let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher()?);
 use webgates_repositories::memory::permission_mapping::MemoryPermissionMappingRepository;
 
 let mapping_repo = MemoryPermissionMappingRepository::default();
+# let _ = mapping_repo;
 ```
 
 ### Account insert service
 
 ```rust
 use std::sync::Arc;
-use webgates_core::prelude::{Group, Role};
+use webgates_core::groups::Group;
+use webgates_core::roles::Role;
 use webgates_repositories::memory::account::MemoryAccountRepository;
 use webgates_repositories::memory::secret::MemorySecretRepository;
 use webgates_repositories::services::account_insert::AccountInsertService;
 
+# tokio_test::block_on(async {
 let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher()?);
+let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
 
 let account = AccountInsertService::insert("user@example.com", "password")
     .with_roles(vec![Role::User])
     .with_groups(vec![Group::new("engineering")])
     .into_repositories(account_repo, secret_repo)
-    .await?;
+    .await
+    .unwrap();
+
+assert!(account.is_some());
+# });
 ```
 
-### SeaORM
+### SeaORM backend
 
 ```toml
 webgates-repositories = { version = "0.1", features = ["sea-orm"] }
@@ -146,11 +174,14 @@ sea-orm = { version = "2", features = ["sqlx-postgres", "runtime-tokio-rustls"] 
 use sea_orm::Database;
 use webgates_repositories::sea_orm::SeaOrmRepository;
 
-let db = Database::connect("postgres://...").await?;
-let repo = SeaOrmRepository::new(&db)?;
+# tokio_test::block_on(async {
+let db = Database::connect("postgres://...").await.unwrap();
+let repo = SeaOrmRepository::new(&db).unwrap();
+# let _ = repo;
+# });
 ```
 
-### SurrealDB
+### SurrealDB backend
 
 ```toml
 webgates-repositories = { version = "0.1", features = ["surrealdb"] }
@@ -161,13 +192,24 @@ use surrealdb::engine::local::Mem;
 use surrealdb::Surreal;
 use webgates_repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 
-let db = Surreal::new::<Mem>(()).await?;
-let repo = SurrealDbRepository::new(db, DatabaseScope::default())?;
+# tokio_test::block_on(async {
+let db = Surreal::new::<Mem>(()).await.unwrap();
+let repo = SurrealDbRepository::new(db, DatabaseScope::default()).unwrap();
+# let _ = repo;
+# });
 ```
 
-Combine the `surrealdb` and `sessions` features together to also enable the SurrealDB
-session repository backend for `webgates-sessions`, so the same database integration
-can back persistent session issuance, renewal, replay detection, and revocation flows.
+Combine the `surrealdb` and `sessions` features together to also enable the SurrealDB session repository backend for `webgates-sessions`.
+
+## Session repositories
+
+For session-backed login, logout, and renewal, use:
+
+- `webgates_repositories::memory::session::MemorySessionRepository` when the `sessions` feature is enabled
+- `webgates_repositories::surrealdb::session::SurrealDbSessionRepository` when the `surrealdb` feature is enabled
+- `webgates_repositories::sea_orm::session::*` when the `sea-orm` feature is enabled
+
+These backends implement `webgates_sessions::repository::SessionRepository` and support session creation, refresh-token lookup, leases, rotation, revocation, family revocation, and session touch updates.
 
 ## Errors
 
@@ -178,18 +220,20 @@ use webgates_repositories::errors::{Error, Result};
 ```
 
 The module also exposes backend-oriented error types such as:
+
 - `DatabaseError`
 - `RepositoriesError`
 - `ErrorSeverity`
 - `UserFriendlyError`
 
-Errors should be mapped at application boundaries without exposing internal storage details to clients.
+Map these errors at application boundaries without exposing internal storage details to clients.
 
 ## Services
 
 `AccountInsertService` and `AccountDeleteService` stay at the repository boundary and coordinate repository traits without introducing an application-layer dependency.
 
 Canonical service paths:
+
 - `webgates_repositories::services::account_insert::AccountInsertService`
 - `webgates_repositories::services::account_delete::AccountDeleteService`
 
@@ -197,19 +241,21 @@ Canonical service paths:
 
 Enable `audit-logging` to emit tracing events for repository workflows. Keep logs free of secrets and personal data, and prefer correlation IDs in surrounding application code.
 
+## Recommended onboarding path
+
+If you are new to this crate, I recommend this order:
+
+1. repository traits such as `AccountRepository` and `SecretRepository`
+2. `memory` implementations
+3. `services`
+4. backend modules such as `sea_orm` or `surrealdb`
+5. optional session repository integrations
+
 ## Examples
 
 - `examples/sea-orm`
 - `examples/surrealdb`
 - workspace examples under `../examples`
-
-Session-backed integrations are typically composed with:
-
-- `webgates::authn::SessionLoginService`
-- `webgates::authn::SessionLogoutService`
-- `webgates_axum::route_handlers::login_with_sessions`
-- `webgates_axum::route_handlers::logout_with_sessions`
-- `webgates_axum::session::CookieSessionLayer`
 
 ## License and notices
 

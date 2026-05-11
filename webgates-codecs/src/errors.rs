@@ -1,7 +1,7 @@
-//! Codec-category native errors.
+//! Error types for codec and JWT processing.
 //!
-//! This module defines category-native errors for codecs and JWT processing
-//! used directly in token encoding/decoding flows.
+//! This module contains the structured error types used when encoding, decoding,
+//! and validating tokens in `webgates-codecs`.
 
 use std::collections::hash_map::DefaultHasher;
 use std::fmt;
@@ -10,7 +10,7 @@ use std::hash::{Hash, Hasher};
 use thiserror::Error;
 use webgates_core::errors_core::{ErrorSeverity, UserFriendlyError};
 
-/// Codec operation types.
+/// High-level codec operation kinds.
 #[derive(Debug, Clone)]
 pub enum CodecOperation {
     /// Encode operation.
@@ -28,7 +28,7 @@ impl fmt::Display for CodecOperation {
     }
 }
 
-/// JWT operation types.
+/// High-level JWT operation kinds.
 #[derive(Debug, Clone)]
 pub enum JwtOperation {
     /// JWT encode operation.
@@ -49,7 +49,7 @@ impl fmt::Display for JwtOperation {
     }
 }
 
-/// Codec-category native error type.
+/// Error type for codec-category failures.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum CodecsError {
@@ -68,7 +68,7 @@ pub enum CodecsError {
 }
 
 impl CodecsError {
-    /// Create a codec error.
+    /// Creates a codec error.
     pub fn codec(operation: CodecOperation, message: impl Into<String>) -> Self {
         Self::Codec {
             operation,
@@ -78,7 +78,7 @@ impl CodecsError {
         }
     }
 
-    /// Create a codec error with additional format context.
+    /// Creates a codec error with additional format context.
     pub fn codec_with_format(
         operation: CodecOperation,
         message: impl Into<String>,
@@ -180,7 +180,7 @@ impl UserFriendlyError for CodecsError {
     }
 }
 
-/// JWT-category native error type.
+/// Error type for JWT-category failures.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum JwtError {
@@ -197,7 +197,7 @@ pub enum JwtError {
 }
 
 impl JwtError {
-    /// Create a JWT processing error.
+    /// Creates a JWT processing error.
     pub fn processing(operation: JwtOperation, message: impl Into<String>) -> Self {
         Self::Processing {
             operation,
@@ -206,7 +206,7 @@ impl JwtError {
         }
     }
 
-    /// Create a JWT processing error with token preview.
+    /// Creates a JWT processing error with an optional token preview.
     pub fn processing_with_preview(
         operation: JwtOperation,
         message: impl Into<String>,

@@ -1,8 +1,8 @@
 //! In-memory storage implementations for development and testing.
 //!
-//! This module provides repository implementations that store all data in memory.
-//! These are ideal for development, testing, and small applications that don't
-//! require persistent storage.
+//! This module provides repository implementations that keep all data in memory.
+//! These are usually the best starting point for tests, examples, and local
+//! development because they require no external services.
 //!
 //! # Features
 //! - Zero configuration required

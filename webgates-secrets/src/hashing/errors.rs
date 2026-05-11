@@ -1,8 +1,7 @@
-//! Hashing-category native errors.
+//! Error types for hashing and verification.
 //!
-//! This module defines category-native error types for hashing and verification,
-//! used directly in handlers, services, and middleware for hashing,
-//! password verification, and secret management flows.
+//! This module defines the structured error types used by hashing
+//! implementations and secret verification flows.
 //!
 //! # Overview
 //!
@@ -65,9 +64,10 @@ impl fmt::Display for HashingOperation {
     }
 }
 
-/// Hashing-category native errors (hashing and verification).
+/// Hashing-domain errors.
 ///
-/// Use these errors in hashing services, verification flows, and password/secret updates.
+/// Use these errors in hashing services, verification flows, and password or
+/// secret update flows.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum HashingError {
@@ -86,7 +86,7 @@ pub enum HashingError {
 }
 
 impl HashingError {
-    /// Construct a hashing error without algorithm/format context.
+    /// Constructs a hashing error without algorithm or format context.
     ///
     /// # Arguments
     /// - `operation`: The hashing operation that failed.
@@ -106,7 +106,7 @@ impl HashingError {
         }
     }
 
-    /// Construct a hashing error with algorithm context.
+    /// Constructs a hashing error with algorithm context.
     ///
     /// # Arguments
     /// - `operation`: The hashing operation that failed.
@@ -131,7 +131,7 @@ impl HashingError {
         }
     }
 
-    /// Construct a hashing error with full context.
+    /// Constructs a hashing error with full context.
     ///
     /// # Arguments
     /// - `operation`: The hashing operation that failed.

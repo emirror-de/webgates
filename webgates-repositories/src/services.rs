@@ -1,7 +1,7 @@
 //! Repository-level services for common account workflows.
 //!
-//! These services stay at the repository boundary and coordinate repository traits
-//! without introducing a broader application layer dependency.
+//! These services coordinate repository traits for common persistence workflows
+//! without introducing a broader application-layer dependency.
 //!
 //! # Features
 //! - Works with any `AccountRepository` / `SecretRepository` implementation.

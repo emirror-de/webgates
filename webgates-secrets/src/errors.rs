@@ -1,7 +1,7 @@
-//! Secret-category native errors.
+//! Error types for secret-related operations.
 //!
-//! Category-native error type for secret hashing and verification concerns.
-//! Use these errors directly in handlers, services, and secret-management flows.
+//! This module contains the structured error type used when secret construction
+//! or verification fails in `webgates-secrets`.
 //!
 //! # Overview
 //! - `SecretError`: category-native error enum for hashing flows
@@ -27,9 +27,10 @@ use std::hash::{Hash, Hasher};
 use thiserror::Error;
 use webgates_core::errors_core::{ErrorSeverity, UserFriendlyError};
 
-/// Secret-category native errors.
+/// Secret-related errors.
 ///
-/// Use for secret repository and hashing/verification flows.
+/// Use this error type when secret creation or verification fails at the secret
+/// value-object boundary.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum SecretError {
@@ -48,7 +49,7 @@ pub enum SecretError {
 }
 
 impl SecretError {
-    /// Construct a hashing error with algorithm context.
+    /// Constructs a hashing error with algorithm context.
     pub fn hashing_with_algorithm(
         operation: HashingOperation,
         message: impl Into<String>,
@@ -62,7 +63,7 @@ impl SecretError {
         }
     }
 
-    /// Construct a hashing error with full context.
+    /// Constructs a hashing error with full context.
     pub fn hashing_with_context(
         operation: HashingOperation,
         message: impl Into<String>,

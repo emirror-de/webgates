@@ -1,7 +1,9 @@
-//! Convenience re-export module.
+//! Compatibility prelude module.
 //!
-//! This module is retained for compatibility but no longer re-exports
-//! crate-defined items. Import from the owning modules directly:
+//! This module is kept for compatibility, but it intentionally does not re-export
+//! the crate's public types anymore.
+//!
+//! For the clearest developer experience, import from the owning modules directly:
 //!
 //! - [`crate::accounts::Account`]
 //! - [`crate::credentials::Credentials`]

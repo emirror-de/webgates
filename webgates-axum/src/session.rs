@@ -4,9 +4,10 @@
 #![deny(clippy::expect_used)]
 //! Cookie-backed session middleware for Axum.
 //!
-//! This module provides `cookie_session_layer::CookieSessionLayer`, an outer
-//! middleware layer that
-//! performs transparent session renewal for cookie-based authentication flows.
+//! This module provides the Axum middleware used for transparent session renewal
+//! in cookie-backed authentication flows.
+//!
+//! If you use session-backed auth in Axum, this is the main middleware module to read.
 //!
 //! The intended composition is:
 //! 1. apply `cookie_session_layer::CookieSessionLayer` as the outer layer

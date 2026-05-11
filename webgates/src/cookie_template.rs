@@ -1,7 +1,11 @@
 //! Secure cookie template builder for authentication cookies.
 //!
-//! This module provides [`CookieTemplate`] for creating secure authentication
-//! cookies with sensible secure defaults.
+//! This module provides [`CookieTemplate`] for configuring authentication
+//! cookies with secure defaults.
+//!
+//! If you use browser-based JWT or session cookies, this is the main type to
+//! read after learning about `gate::Gate`.
+//!
 //! The builder keeps transport safety on by default and requires an explicit
 //! opt-in for insecure local development.
 //!
@@ -34,6 +38,9 @@ use std::borrow::Cow;
 pub const DEFAULT_COOKIE_NAME: &str = "webgates";
 
 /// Builder for secure authentication cookies used by `Gate`.
+///
+/// This type is designed to make the safe path the easy path. By default it
+/// produces a secure, HTTP-only, same-site-strict session cookie.
 ///
 /// Provides secure defaults independent of build configuration:
 /// - **All builds**: Secure=true, HttpOnly=true, SameSite=Strict, session cookie
@@ -122,52 +129,55 @@ impl Default for CookieTemplate {
 }
 
 impl CookieTemplate {
-    /// Secure recommended defaults.
+    /// Returns the recommended secure defaults.
     #[must_use]
     pub fn recommended() -> Self {
         Self::default()
     }
 
-    /// Set / override the cookie name.
+    /// Sets the cookie name.
     ///
-    /// Keep names short and avoid sensitive info.
+    /// Keep names short and avoid embedding sensitive information.
     #[must_use]
     pub fn name(mut self, name: impl Into<Cow<'static, str>>) -> Self {
         self.name = name.into();
         self
     }
 
-    /// Provide an initial value (normally left empty – the login code will
-    /// insert the JWT).
+    /// Sets an initial cookie value.
+    ///
+    /// In most authentication flows this is left empty because login code will
+    /// insert the token value.
     #[must_use]
     pub fn value(mut self, value: impl Into<Cow<'static, str>>) -> Self {
         self.value = value.into();
         self
     }
 
-    /// Set the cookie path (default `/`).
+    /// Sets the cookie path. The default is `/`.
     #[must_use]
     pub fn path(mut self, path: impl Into<Cow<'static, str>>) -> Self {
         self.path = path.into();
         self
     }
 
-    /// Set the cookie domain. Avoid setting for single‑domain apps
-    /// to retain host-only semantics (slightly tighter).
+    /// Sets the cookie domain.
+    ///
+    /// Avoid setting this for single-domain apps when host-only cookies are sufficient.
     #[must_use]
     pub fn domain(mut self, domain: impl Into<Cow<'static, str>>) -> Self {
         self.domain = Some(domain.into());
         self
     }
 
-    /// Unset the previously configured domain (host-only cookie).
+    /// Clears a previously configured domain and returns to host-only cookie behavior.
     #[must_use]
     pub fn clear_domain(mut self) -> Self {
         self.domain = None;
         self
     }
 
-    /// Explicitly mark the cookie as secure (HTTPS only).
+    /// Sets whether the cookie requires HTTPS transport.
     #[must_use]
     pub fn secure(mut self, flag: bool) -> Self {
         self.secure = flag;
@@ -186,14 +196,14 @@ impl CookieTemplate {
         self
     }
 
-    /// Set / unset HttpOnly flag.
+    /// Sets whether the cookie is HTTP-only.
     #[must_use]
     pub fn http_only(mut self, flag: bool) -> Self {
         self.http_only = flag;
         self
     }
 
-    /// Set the SameSite attribute (default `Strict`).
+    /// Sets the `SameSite` attribute. The default is `Strict`.
     ///
     /// Consider `Lax` for some OAuth / cross-site redirect flows. Only use
     /// `None` when you understand the CSRF implications and the need for
@@ -204,27 +214,27 @@ impl CookieTemplate {
         self
     }
 
-    /// Make persistent with a specific `Max-Age`.
+    /// Makes the cookie persistent with a specific `Max-Age`.
     #[must_use]
     pub fn max_age(mut self, max_age: Duration) -> Self {
         self.max_age = Some(max_age);
         self
     }
 
-    /// Remove persistence (session cookie again).
+    /// Removes persistence so the cookie becomes a session cookie again.
     #[must_use]
     pub fn clear_max_age(mut self) -> Self {
         self.max_age = None;
         self
     }
 
-    /// Convenience for setting a persistent cookie lifetime.
+    /// Convenience method for configuring a persistent lifetime.
     #[must_use]
     pub fn persistent(self, duration: Duration) -> Self {
         self.max_age(duration)
     }
 
-    /// Use a short-lived cookie (e.g. 15 minutes) – explicit for readability.
+    /// Configures a short-lived cookie, currently 15 minutes.
     #[must_use]
     pub fn short_lived(self) -> Self {
         self.max_age(Duration::minutes(15))

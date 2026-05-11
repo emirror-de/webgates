@@ -1,8 +1,10 @@
 //! Session repository contracts.
 //!
 //! This module defines the framework-agnostic persistence boundary used by
-//! `webgates-sessions` services. The repository owns the correctness boundary
-//! for persisted session state, renewal lease coordination, and revocation.
+//! `webgates-sessions` services.
+//!
+//! If you implement session storage for a new backend, this is the main module
+//! you will work with.
 
 use crate::lease::LeaseAcquisition;
 use crate::lease::RenewalLease;
@@ -16,7 +18,7 @@ use crate::session::SessionTouch;
 use crate::tokens::RefreshTokenHash;
 use crate::tokens::RefreshTokenHashRef;
 
-/// Result type used by session persistence contracts.
+/// Result alias used by session persistence contracts.
 pub type RepositoryResult<T> = std::result::Result<T, RepositoryError>;
 
 /// Repository error used by the session contract surface.

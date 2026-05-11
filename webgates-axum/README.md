@@ -1,18 +1,33 @@
 # webgates-axum
 
-Axum integration for the `webgates` core.
+User-focused Axum integration for the `webgates` stack.
 
-This crate is the Axum-facing adapter layer for `webgates`. It exposes a small public API:
+`webgates-axum` is the crate you use when your application runs on Axum and you want to connect `webgates` authentication and authorization to real routes, middleware, cookies, login endpoints, logout endpoints, JWKS publishing, and session renewal.
 
-- `webgates_axum::gate::Gate` as the canonical entry point for cookie, bearer, and OAuth2 integration
-- `webgates_axum::route_handlers::login::login` and `webgates_axum::route_handlers::logout::logout` for ready-made auth cookie handlers
-- `webgates_axum::route_handlers::jwks::jwks` for canonical JWKS publication on auth authorities
-- `webgates_axum::route_handlers::login::login_with_sessions` and `webgates_axum::route_handlers::logout::logout_with_sessions` for session-backed auth and refresh-cookie handlers
-- `webgates_axum::route_handlers::login::SessionLoginRequest` and `webgates_axum::route_handlers::login::SessionLoginDependencies` as the constructible input types for the session-backed login handler
-- `webgates_axum::session::CookieSessionLayer` for transparent cookie-backed session renewal
-- `webgates_axum::gate::bearer::StaticTokenAuthorized` for optional static-token routes
+`webgates` owns the framework-agnostic logic. `webgates-axum` is the transport adapter that makes that logic feel native inside an Axum application.
 
-It does not replace `webgates`. You still depend on `webgates` for domain types, codecs, policies, claims, cookie templates, and repository contracts.
+## Who this crate is for
+
+Use `webgates-axum` when you want to:
+
+- protect Axum routes with `webgates` gates
+- use cookie-based or bearer-token authentication in Axum middleware
+- mount ready-made login and logout handlers for browser auth flows
+- publish JWKS from an Axum auth authority
+- add transparent session renewal middleware for cookie-backed session flows
+- keep your authentication logic in `webgates` while keeping HTTP integration in Axum
+
+You still depend on `webgates` for domain types, policies, codecs, cookie templates, authentication services, repository contracts, and sessions.
+
+## What this crate helps you build
+
+Use this crate when you want one or more of these Axum-facing workflows:
+
+- route protection with cookie, bearer, or OAuth2-based gates
+- ready-made login and logout handlers for browser-facing auth flows
+- session-backed login/logout plus transparent renewal middleware
+- JWKS publication from an auth authority
+- typed handler access to transport-level auth state such as static-token authorization
 
 ## Install
 
@@ -27,68 +42,30 @@ webgates = "0.1"
 webgates-axum = "0.1"
 ```
 
-If you want a narrower `webgates` dependency set, disable its defaults and enable only the required features there.
+If you want a narrower `webgates` dependency set, disable its defaults and enable only the required features there:
 
 ```toml
 [dependencies]
 axum = "0.8"
-webgates = { version = "0.1", default-features = false, features = ["authn", "codecs", "cookies", "oauth2", "repositories", "secrets"] }
+webgates = { version = "0.1", default-features = false, features = ["authn", "codecs", "cookies", "oauth2", "repositories", "secrets", "sessions"] }
 webgates-axum = "0.1"
 ```
 
-MSRV: 1.91
+Minimum supported Rust version: `1.91`.
 
-## Public API
+## The mental model
 
-The canonical public API of this crate is intentionally small.
+The easiest way to understand `webgates-axum` is:
 
-### Gate entry point
+1. define auth and authorization rules in `webgates`
+2. adapt them into Axum layers with `webgates_axum::gate::Gate`
+3. use `route_handlers` when you want ready-made HTTP endpoints for login/logout/JWKS
+4. use `CookieSessionLayer` when you want transparent cookie-backed session renewal
 
-Use `webgates_axum::gate::Gate` to build middleware:
+This keeps responsibilities separate:
 
-- `Gate::cookie(...)`
-- `Gate::bearer(...)`
-- `Gate::oauth2(...)`
-
-These builders are the intended integration surface for Axum applications.
-
-### Route handlers
-
-Use `webgates_axum::route_handlers::login::login` and `webgates_axum::route_handlers::logout::logout` when you want simple cookie-based login/logout endpoints that plug into the `webgates` core services.
-
-Use `webgates_axum::route_handlers::login::login_with_sessions` and `webgates_axum::route_handlers::logout::logout_with_sessions` when you want session-backed auth and refresh cookies with framework-agnostic session issuance and revocation handled by `webgates::sessions`.
-
-The session-backed login handler requires two input structs that are also publicly reachable from the `login` submodule:
-
-- `webgates_axum::route_handlers::login::SessionLoginRequest` --- carries credentials, session configuration, cookie templates, and the issuance timestamp.
-- `webgates_axum::route_handlers::login::SessionLoginDependencies` --- carries the credential verifier, account repository, session repository, and auth-token issuer.
-
-### Optional static-token extraction
-
-If you use optional static bearer token mode, handlers can read:
-
-- `webgates_axum::gate::bearer::StaticTokenAuthorized`
-
-This is the only bearer-mode extension helper intended for direct handler use.
-
-### What to import directly
-
-Prefer direct imports from stable module paths:
-
-```rust
-use webgates_axum::gate::Gate;
-use webgates_axum::route_handlers::login::login;
-use webgates_axum::route_handlers::login::login_with_sessions;
-use webgates_axum::route_handlers::login::SessionLoginRequest;
-use webgates_axum::route_handlers::login::SessionLoginDependencies;
-use webgates_axum::route_handlers::jwks::jwks;
-use webgates_axum::route_handlers::logout::logout;
-use webgates_axum::route_handlers::logout::logout_with_sessions;
-use webgates_axum::session::CookieSessionLayer;
-use webgates_axum::gate::bearer::StaticTokenAuthorized;
-```
-
-Do not rely on convenience prelude-style imports. Prefer the explicit paths above.
+- `webgates` owns domain logic and session/authentication orchestration
+- `webgates-axum` owns request extraction, response mapping, cookies, and middleware behavior
 
 ## Quick start
 
@@ -99,9 +76,10 @@ use std::sync::Arc;
 
 use axum::{routing::get, Router};
 use webgates::accounts::Account;
-use webgates::authz::AccessPolicy;
+use webgates::authz::access_policy::AccessPolicy;
 use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
-use webgates::prelude::{Group, Role};
+use webgates::groups::Group;
+use webgates::roles::Role;
 use webgates_axum::gate::Gate;
 
 type Claims = JwtClaims<Account<Role, Group>>;
@@ -123,9 +101,10 @@ use std::sync::Arc;
 
 use axum::{routing::get, Router};
 use webgates::accounts::Account;
-use webgates::authz::AccessPolicy;
+use webgates::authz::access_policy::AccessPolicy;
 use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
-use webgates::prelude::{Group, Role};
+use webgates::groups::Group;
+use webgates::roles::Role;
 use webgates_axum::gate::Gate;
 
 type Claims = JwtClaims<Account<Role, Group>>;
@@ -140,33 +119,50 @@ let app = Router::new()
     );
 ```
 
-### Optional authentication
+## Core concepts
 
-Both cookie and JWT bearer gates support optional mode:
+### 1. Axum `Gate` is your main middleware entry point
 
-- `allow_anonymous_with_optional_user()` forwards all requests
-- cookie mode inserts `Option<Account<_, _>>` and `Option<RegisteredClaims>`
-- JWT bearer mode inserts `Option<Account<_, _>>` and `Option<RegisteredClaims>`
+Use `webgates_axum::gate::Gate` when you want to turn framework-agnostic `webgates` gate configuration into Axum middleware.
 
-Use this only for routes where the handler intentionally performs any required access checks.
+Common entry points are:
 
-### Require any authenticated user
+- `Gate::cookie(...)`
+- `Gate::bearer(...)`
+- `Gate::oauth2(...)`
 
-Use `require_login()` when you want the baseline role plus all of its supervisors according to your `AccessHierarchy`.
+These are the intended integration surface for Axum applications.
 
-### Cookie template alignment
+### 2. Route handlers are thin Axum adapters
 
-Use `with_cookie_template(...)` or `configure_cookie_template(...)` to keep the auth cookie configuration aligned between:
+The login, logout, and JWKS handlers do not implement core auth logic themselves. They adapt HTTP requests and responses around `webgates` services.
 
-- your login cookie writer
-- your cookie gate
-- your OAuth2 callback cookie writer, if used
+That means:
 
-## Login / logout handlers
+- credential verification stays in `webgates`
+- account lookup stays in repository contracts
+- token issuance stays in codecs or session issuers
+- Axum handlers focus on request extraction, cookie writing, and response mapping
 
-`webgates_axum::route_handlers::login::login` and `webgates_axum::route_handlers::logout::logout` are thin HTTP adapters around the core `webgates` authentication services.
+### 3. Session renewal is a separate middleware concern
 
-`webgates_axum::route_handlers::login::login_with_sessions` and `webgates_axum::route_handlers::logout::logout_with_sessions` are the session-backed variants. They issue and revoke auth and refresh cookies while leaving session-state orchestration in `webgates::sessions`.
+Use `webgates_axum::session::CookieSessionLayer` when you want transparent renewal for cookie-backed session authentication.
+
+The intended composition is:
+
+1. outer layer: `CookieSessionLayer`
+2. inner layer: `Gate::cookie(...)`
+
+That separation keeps refresh-token logic and auth-token validation from getting mixed together.
+
+## Login and logout handlers
+
+### Cookie-only login/logout
+
+Use these when you want a direct JWT auth-cookie flow:
+
+- `webgates_axum::route_handlers::login::login`
+- `webgates_axum::route_handlers::logout::logout`
 
 `login(...)`:
 
@@ -179,21 +175,45 @@ Use `with_cookie_template(...)` or `configure_cookie_template(...)` to keep the 
 
 - removes the auth cookie using the supplied `CookieTemplate`
 
-The cookie template and issuer must match the rest of your authentication setup.
+### Session-backed login/logout
 
-`login_with_sessions(...)`:
+Use these when you want short-lived auth tokens and long-lived refresh-token-backed sessions:
 
-- verifies submitted credentials
-- loads the matching account
-- issues a session-backed auth token plus opaque refresh token
-- writes both cookies into the returned `CookieJar`
+- `webgates_axum::route_handlers::login::login_with_sessions`
+- `webgates_axum::route_handlers::logout::logout_with_sessions`
 
-`logout_with_sessions(...)`:
+The session-backed login handler uses two named input structs:
 
-- revokes either the current session or the full session family
-- removes both auth and refresh cookies from the returned `CookieJar`
+- `SessionLoginRequest`
+- `SessionLoginDependencies`
 
-For transparent renewal, compose `webgates_axum::session::CookieSessionLayer` outside `Gate::cookie(...)`. The session layer handles refresh-cookie extraction, proactive near-expiry renewal, expired-token renewal requirements, and response `Set-Cookie` updates, while the inner cookie gate remains focused on auth-token validation and authorization.
+These make the session-backed API easier to pass around and easier to document explicitly.
+
+## Optional authentication
+
+Both cookie and JWT bearer gates support optional mode:
+
+- `allow_anonymous_with_optional_user()` forwards all requests
+- cookie mode inserts `Option<Account<_, _>>` and `Option<RegisteredClaims>`
+- JWT bearer mode inserts `Option<Account<_, _>>` and `Option<RegisteredClaims>`
+
+Use this only for routes where the handler intentionally decides what to do with anonymous vs authenticated context.
+
+## Require any authenticated user
+
+Use `require_login()` when you want the baseline role plus all of its supervisors according to your `AccessHierarchy`.
+
+## Cookie template alignment
+
+Keep your cookie template configuration aligned between:
+
+- login handlers that write cookies
+- logout handlers that remove cookies
+- cookie gates that read cookies
+- OAuth2 callback flows, if used
+- session renewal middleware, if used
+
+Use `with_cookie_template(...)` or `configure_cookie_template(...)` to keep this explicit and consistent.
 
 ## OAuth2
 
@@ -211,15 +231,14 @@ Typical configuration includes:
 - optional account repository/inserter
 - optional first-party JWT codec for session issuance
 
-When using OAuth2 with JWT issuance, prefer short-lived access tokens
-(for example, `JWT_TTL_SECS=900`) and keep signing in the auth authority only.
-
 The resulting router exposes:
 
 - `/login`
 - `/callback`
 
 mounted under the base path you pass to `into_router(...)`.
+
+When using OAuth2 with JWT issuance, prefer short-lived access tokens and keep signing in the auth authority only.
 
 ## JWKS publication endpoint
 
@@ -251,45 +270,44 @@ let app = Router::new().route(
 
 Use `webgates-repositories` when you need persistence.
 
-Backend features are opt-in:
+Backend features are opt-in, including:
 
-- in-memory for tests and examples
+- in-memory backends for tests and examples
 - SeaORM for relational databases
 - SurrealDB for SurrealDB-backed storage
 
 SurrealDB support is optional and subject to SurrealDB’s BUSL-1.1 licensing. Review that license before enabling it in production.
 
+## Recommended onboarding path
+
+If you are new to this crate, I recommend this order:
+
+1. `webgates` gate and auth concepts
+2. `webgates_axum::gate::Gate`
+3. `route_handlers`
+4. `session::CookieSessionLayer`
+5. feature-specific areas like OAuth2 or Prometheus integration
+
 ## Security checklist
 
-- Keep the issuer identical between token minting and gate validation.
-- Keep cookie names and templates aligned across login, logout, cookie gates, and OAuth2 callback flows.
-- Use secure cookie settings appropriate for production.
-- Use persistent signing keys in production and rotate them deliberately.
-- Apply rate limits and timeout policy to login and OAuth2 endpoints.
-- Validate all request input at the HTTP boundary.
-- Avoid logging secrets, raw tokens, or sensitive payloads.
-- Prefer short-lived JWTs and explicit observability.
+- keep the issuer identical between token minting and gate validation
+- keep cookie names and templates aligned across login, logout, cookie gates, and OAuth2 callback flows
+- use secure cookie settings appropriate for production
+- use persistent signing keys in production and rotate them deliberately
+- apply rate limits and timeout policy to login and OAuth2 endpoints
+- validate all request input at the HTTP boundary
+- avoid logging secrets, raw tokens, or sensitive payloads
+- prefer short-lived JWTs and explicit observability
 
 ## Examples
 
-- `examples/simple-usage`
 - `examples/oauth2-github`
 - `examples/permission-registry`
 - `examples/prometheus`
-- `examples/rate-limiting`
 - `webgates-repositories/examples/sea-orm`
 - `webgates-repositories/examples/surrealdb`
 
-For the canonical distributed authority/resource operations model, key handling,
-and rollout guidance, see `docs/distributed-sessions.md` in the repository
-root.
-
-Session-backed Axum integrations typically combine:
-
-- `webgates::authn::SessionLoginService` and `webgates::authn::SessionLogoutService` in the core layer
-- `webgates_axum::route_handlers::login::login_with_sessions` and `webgates_axum::route_handlers::logout::logout_with_sessions` at the HTTP boundary
-- `webgates_axum::session::CookieSessionLayer` as the outer middleware around `Gate::cookie(...)`
-- a `webgates::sessions::repository::SessionRepository` implementation such as the in-memory backend for tests or the SurrealDB backend from `webgates-repositories`
+For the canonical distributed authority/resource operations model, key handling, and rollout guidance, see `docs/distributed-sessions.md` in the repository root.
 
 ## License
 

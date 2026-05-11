@@ -1,9 +1,11 @@
 //! Typed request-extension models for handler-visible authentication context.
 //!
 //! These types are inserted into [`tonic::Request`] extensions by the bearer
-//! gate middleware and retrieved by gRPC handlers. Each type represents a
-//! specific authentication state so that handlers can use Rust's type system
-//! to distinguish between authenticated, optional, and static-token flows.
+//! gate middleware and later read by gRPC handlers.
+//!
+//! Each type represents a specific authentication state so that handlers can use
+//! Rust's type system to distinguish between strict JWT, optional JWT, and
+//! static-token flows.
 //!
 //! # Strict JWT mode
 //!
@@ -65,7 +67,7 @@ where
     R: AccessHierarchy + Eq + std::fmt::Display + Clone,
     G: Eq + Clone,
 {
-    /// Create a new auth context from a decoded account and its registered claims.
+    /// Creates a new auth context from a decoded account and its registered claims.
     pub fn new(account: Account<R, G>, registered_claims: RegisteredClaims) -> Self {
         Self {
             account,
@@ -73,12 +75,12 @@ where
         }
     }
 
-    /// Return a reference to the authenticated account.
+    /// Returns a reference to the authenticated account.
     pub fn account(&self) -> &Account<R, G> {
         &self.account
     }
 
-    /// Return a reference to the registered JWT claims.
+    /// Returns a reference to the registered JWT claims.
     pub fn registered_claims(&self) -> &RegisteredClaims {
         &self.registered_claims
     }
@@ -109,7 +111,7 @@ where
     R: AccessHierarchy + Eq + std::fmt::Display + Clone,
     G: Eq + Clone,
 {
-    /// Create a context for an authenticated request.
+    /// Creates a context for an authenticated request.
     pub fn authenticated(account: Account<R, G>, registered_claims: RegisteredClaims) -> Self {
         Self {
             account: Some(account),
@@ -117,7 +119,7 @@ where
         }
     }
 
-    /// Create a context for an unauthenticated (anonymous) request.
+    /// Creates a context for an unauthenticated (anonymous) request.
     pub fn anonymous() -> Self {
         Self {
             account: None,
@@ -125,18 +127,17 @@ where
         }
     }
 
-    /// Return a reference to the account if the request is authenticated.
+    /// Returns a reference to the account if the request is authenticated.
     pub fn account(&self) -> Option<&Account<R, G>> {
         self.account.as_ref()
     }
 
-    /// Return a reference to the registered claims if the request is
-    /// authenticated.
+    /// Returns a reference to the registered claims if the request is authenticated.
     pub fn registered_claims(&self) -> Option<&RegisteredClaims> {
         self.registered_claims.as_ref()
     }
 
-    /// Return `true` if the request was authenticated with a valid JWT.
+    /// Returns `true` if the request was authenticated with a valid JWT.
     pub fn is_authenticated(&self) -> bool {
         self.account.is_some()
     }
@@ -153,12 +154,12 @@ where
 pub struct StaticTokenAuthorized(bool);
 
 impl StaticTokenAuthorized {
-    /// Create a new instance with the given authorization state.
+    /// Creates a new instance with the given authorization state.
     pub fn new(authorized: bool) -> Self {
         Self(authorized)
     }
 
-    /// Return `true` if the request token matched the configured static token.
+    /// Returns `true` if the request token matched the configured static token.
     pub fn is_authorized(&self) -> bool {
         self.0
     }

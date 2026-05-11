@@ -1,8 +1,10 @@
 //! Unified, category-based error types exposed by this crate.
 //!
-//! This module defines only `Error` (the root enum) and `Result<T>` (the
-//! convenience alias). All category error types have a single canonical path
-//! in their owning module:
+//! This module gives application and integration code one shared error surface
+//! for `webgates`.
+//!
+//! It defines only [`enum@Error`] (the root enum) and [`Result<T>`] (the convenience
+//! alias). Category-specific error types still live in their owning modules:
 //!
 //! - `webgates::errors_core::{ErrorSeverity, UserFriendlyError}`
 //! - `webgates::authn::errors::{AuthnError, AuthenticationError}`
@@ -84,10 +86,10 @@ use crate::secrets::errors::SecretError;
 #[cfg(feature = "secrets")]
 use crate::secrets::hashing::errors::HashingError;
 
-/// Result type alias using our comprehensive Error type.
+/// Result alias using [`enum@Error`] as the crate-wide error type.
 ///
-/// This provides a convenient way to return results from functions that can fail
-/// with any of the layer-specific errors defined in this module.
+/// Use this when a function can fail with any of the high-level error
+/// categories represented by this crate.
 ///
 /// # Examples
 ///
@@ -107,14 +109,13 @@ use crate::secrets::hashing::errors::HashingError;
 /// ```
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// Root error type for the webgates library.
+/// Root error type for the `webgates` crate.
 ///
-/// This enum represents all possible errors that can occur across different
-/// architectural layers, providing a unified error handling interface while
-/// maintaining clear separation of concerns.
+/// This enum unifies the major error categories that can surface from optional
+/// authentication, authorization, codec, JWT, hashing, and secret workflows.
 ///
-/// Each error variant implements `UserFriendlyError` to provide appropriate
-/// messaging for different audiences while maintaining security and consistency.
+/// Each variant implements [`UserFriendlyError`] so callers can present
+/// appropriate messages to users, developers, and support tooling.
 #[derive(Debug, Error)]
 pub enum Error {
     /// Authentication category errors

@@ -13,6 +13,7 @@
 //! ```rust
 //! use webgates_codecs::jwt::authority::JwtAuthority;
 //! use webgates_codecs::jwt::JwtClaims;
+//! use webgates_codecs::jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER as JWT_CRYPTO_PROVIDER;
 //!
 //! # const PRIVATE_PEM: &[u8] = br#"-----BEGIN PRIVATE KEY-----
 //! # MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCFT7MfRqWZfNgVX/cH
@@ -27,6 +28,7 @@
 //! # Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
 //! # -----END PUBLIC KEY-----
 //! # "#;
+//! let _ = JWT_CRYPTO_PROVIDER.install_default();
 //! let authority = JwtAuthority::<JwtClaims<()>>::from_es384_pem(PRIVATE_PEM, PUBLIC_PEM)
 //!     .expect("valid ES384 key pair");
 //!

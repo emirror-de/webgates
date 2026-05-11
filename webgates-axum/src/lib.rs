@@ -5,30 +5,39 @@
 /*!
 # webgates-axum
 
-Axum integration layer for the `webgates` core.
+User-focused Axum integration for the `webgates` stack.
 
-This crate exposes the Axum-specific boundary for `webgates`:
-- `gate` contains Axum middleware builders for cookie, bearer, and OAuth2 flows
-- `route_handlers` contains ready-made login and logout handlers
+This crate is the Axum-facing transport adapter for `webgates`. It takes the
+framework-agnostic authentication and authorization model from `webgates` and
+connects it to real Axum routers, middleware layers, cookies, login/logout
+handlers, JWKS routes, and session renewal flows.
+
+## When to use this crate
+
+Use `webgates-axum` when you want:
+
+- Axum middleware for cookie, bearer, or OAuth2 gate flows
+- ready-made login/logout HTTP handlers
+- JWKS publication from an Axum auth authority
+- transparent cookie-backed session renewal middleware
+- a clean separation between transport concerns and core auth logic
 
 The core domain types, authentication logic, repositories, codecs, and
-framework-agnostic gate configuration live in the sibling `webgates` crate.
+framework-agnostic gate configuration still live in the sibling `webgates`
+crate.
 
-## Public API
+## How to approach this crate
 
-The intended public entry points are:
-- `gate::Gate`
-- `gate::cookie`
-- `gate::bearer`
-- `gate::oauth2`
-- `route_handlers`
-- `route_handlers::login` --- login handlers and session-login input types
-- `route_handlers::logout` --- logout handlers
+Most applications can learn this crate in three steps:
+
+- start with [`gate::Gate`] when you want route protection or auth middleware
+- move to [`route_handlers`] when you want ready-made login, logout, or JWKS endpoints
+- add [`session`] when you want transparent cookie-backed session renewal
 
 This crate does not provide a convenience prelude and does not re-export Axum.
 Use Axum directly from your own dependency list.
 
-## Basic usage
+## Quick start
 
 ```rust
 use axum::{routing::get, Router};
@@ -48,7 +57,19 @@ let app = Router::<()>::new()
         Gate::cookie("my-app", jwt)
             .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin)),
     );
+
+let _ = app;
 ```
+
+## Getting started on docs.rs
+
+A good reading order is:
+
+1. [`gate`] for route protection and middleware
+2. [`route_handlers`] for login/logout/JWKS endpoints
+3. [`session`] for transparent session renewal middleware
+
+That path mirrors how most Axum applications adopt the crate.
 */
 
 /// Gate builders and middleware for Axum.

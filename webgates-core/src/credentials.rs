@@ -1,6 +1,10 @@
 //! User credential types and verification abstractions.
 //!
-//! This module exposes the credential boundary used by `webgates-core`:
+//! This module defines the authentication boundary for `webgates-core`.
+//! It intentionally stays small: the crate represents user-supplied credentials,
+//! but leaves verification strategy and storage details to higher-level code.
+//!
+//! This module exposes:
 //!
 //! - [`Credentials`] stores a caller-provided identifier and plaintext secret
 //! - [`credentials_verifier::CredentialsVerifier`] defines the async verification contract used by
@@ -24,11 +28,11 @@
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
-//! # Verification Boundary
+//! # Verification boundary
 //!
-//! Concrete verifier implementations belong in higher-level crates. This crate
-//! only defines the shared types and the verification trait that those crates
-//! implement.
+//! Concrete verifier implementations belong in higher-level crates or in your
+//! application code. `webgates-core` only defines the shared types and the
+//! verification trait that those layers implement.
 //!
 //! # Security Considerations
 //!
@@ -44,9 +48,9 @@ pub mod credentials_verifier;
 
 /// Authentication credentials containing a user identifier and plaintext secret.
 ///
-/// This type represents user input at the authentication boundary. It stores
-/// the caller-provided identifier together with a plaintext secret so a
-/// verifier can compare it against the stored authentication material.
+/// This type represents raw login input at the authentication boundary. It
+/// stores the caller-provided identifier together with a plaintext secret so a
+/// verifier can compare it against stored authentication material.
 ///
 /// # Type Parameter
 ///
@@ -98,9 +102,9 @@ pub mod credentials_verifier;
 /// ```
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Credentials<Id> {
-    /// The identification of the user, eg. a username.
+    /// User identifier, such as a username, email address, or UUID.
     pub id: Id,
-    /// The secret of the user, eg. a password.
+    /// Plaintext secret supplied by the caller, such as a password.
     pub secret: String,
 }
 

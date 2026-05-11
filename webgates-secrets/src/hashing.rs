@@ -1,9 +1,9 @@
 //! Password hashing and verification services.
 //!
-//! This module provides secure password hashing functionality using industry-standard
-//! algorithms. The primary implementation uses Argon2, which is recommended by security
-//! experts for password hashing due to its resistance to both brute-force and side-channel
-//! attacks.
+//! This module contains the hashing-facing API of `webgates-secrets`.
+//!
+//! It provides the hashing abstraction, the default Argon2id implementation, and
+//! the `HashedValue` type used for stored hashes.
 //!
 //! # Key Components
 //!
@@ -65,8 +65,8 @@ pub mod hashing_service;
 
 /// A hashed value produced by password hashing algorithms.
 ///
-/// This type represents the output of cryptographic password hashing functions,
-/// typically containing the algorithm identifier, parameters, salt, and hash in
+/// This is the stored representation returned by hashing implementations.
+/// It usually contains the algorithm identifier, parameters, salt, and hash in
 /// a standardized format.
 ///
 /// ## Format

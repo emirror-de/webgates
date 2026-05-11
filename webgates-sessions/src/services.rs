@@ -34,7 +34,7 @@ use crate::tokens::{
 /// Result of issuing a brand-new session.
 ///
 /// This value keeps the persisted session record together with the client-facing
-/// token material that was produced for it.
+/// token material produced for it.
 ///
 /// # Examples
 ///
@@ -82,6 +82,9 @@ impl IssuedSession {
 }
 
 /// Service that issues new session state and token pairs.
+///
+/// Use this service after successful authentication when you want to create a
+/// session-backed login result.
 ///
 /// # Examples
 ///
@@ -173,7 +176,7 @@ where
     H: RefreshTokenHasher,
 {
     /// Issues a new session for `subject_id`, persists it, and returns the
-    /// issued tokens.
+    /// issued session plus tokens.
     ///
     /// # Errors
     ///
@@ -203,6 +206,10 @@ where
 }
 
 /// Service that renews existing sessions using refresh-token rotation.
+///
+/// Use this service when a client presents a refresh token and you need to
+/// decide whether renewal is needed, coordinate leases, rotate token state, and
+/// produce replacement tokens.
 ///
 /// # Examples
 ///

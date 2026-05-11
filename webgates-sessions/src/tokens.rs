@@ -1,6 +1,6 @@
 //! Token primitives for session issuance and renewal.
 //!
-//! This module defines framework-agnostic token boundary types used by the
+//! This module defines the framework-agnostic token boundary types used by the
 //! sessions crate. It intentionally avoids HTTP and cookie concerns so login,
 //! renewal, and logout workflows can compose these values in higher layers.
 

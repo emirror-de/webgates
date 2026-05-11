@@ -5,20 +5,48 @@
 /*!
 # webgates-secrets
 
-Secret and hashing primitives for the `webgates` ecosystem.
+User-focused secret and hashing primitives for the `webgates` ecosystem.
 
-This crate contains the reusable, server-side security building blocks that are
-shared between higher-level authentication flows and repository backends:
+This crate contains the reusable server-side security building blocks used to
+hash secrets, verify them, and bind stored hashed values to account
+identifiers.
 
-- Secret value objects
-- Secret-category error types
-- Password hashing abstractions
-- Argon2 hashing implementation
-- Hashing-category error types
+## When to use this crate
+
+Use `webgates-secrets` when you want:
+
+- the [`Secret`] value object for stored hashed credentials
+- the [`hashing`] module for hashing and verification primitives
+- the [`hashing::argon2::Argon2Hasher`] implementation with secure presets
+- structured secret and hashing error types
 
 The crate is intentionally focused on the secret/hashing boundary so repository
 traits and persistence concerns can live elsewhere without creating dependency
 cycles.
+
+## Quick start
+
+```rust
+use webgates_core::verification_result::VerificationResult;
+use webgates_secrets::hashing::argon2::Argon2Hasher;
+use webgates_secrets::hashing::hashing_service::HashingService;
+
+let hasher = Argon2Hasher::new_recommended().unwrap();
+let hashed = hasher.hash_value("user_password").unwrap();
+let result = hasher.verify_value("user_password", &hashed).unwrap();
+
+assert_eq!(result, VerificationResult::Ok);
+```
+
+## Getting started on docs.rs
+
+A good reading order is:
+
+1. [`hashing::hashing_service::HashingService`]
+2. [`hashing::argon2::Argon2Hasher`]
+3. [`hashing::HashedValue`]
+4. [`Secret`]
+5. [`errors`] and [`hashing::errors`]
 */
 
 use crate::errors::SecretError;
@@ -29,11 +57,11 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use webgates_core::verification_result::VerificationResult;
 
-/// Result type alias for secrets and hashing operations.
+/// Result alias for secrets and hashing operations.
 ///
 /// Crate-internal code should prefer concrete, caller-relevant error types at
-/// public boundaries. This alias is primarily a convenience for internal
-/// plumbing and generic implementations.
+/// public boundaries. This alias is mainly a convenience for internal plumbing
+/// and generic implementations.
 pub type Result<T, E = Box<dyn std::error::Error + Send + Sync>> = std::result::Result<T, E>;
 
 pub mod errors;
@@ -41,9 +69,9 @@ pub mod hashing;
 
 /// A hashed secret bound to a single account identifier.
 ///
-/// `Secret` stores only the hashed representation of a credential. Callers create a
-/// value from plaintext with [`Secret::new`] or reconstruct it from storage with
-/// [`Secret::from_hashed`].
+/// `Secret` is the main value object of this crate. It stores only the hashed
+/// representation of a credential. Callers create a value from plaintext with
+/// [`Secret::new`] or reconstruct it from storage with [`Secret::from_hashed`].
 ///
 /// # Security properties
 ///

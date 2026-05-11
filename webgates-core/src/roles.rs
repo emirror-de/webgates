@@ -1,5 +1,9 @@
 //! Built-in hierarchical roles for authorization decisions.
 //!
+//! Use this module when the default `webgates-core` role hierarchy matches your
+//! application. If not, define your own role enum and implement
+//! [`crate::authz::access_hierarchy::AccessHierarchy`].
+//!
 //! The built-in hierarchy is ordered from least privileged to most privileged:
 //!
 //! - [`Role::User`]
@@ -64,8 +68,9 @@ use serde::{Deserialize, Serialize};
 
 /// Built-in roles ordered from least privileged to most privileged.
 ///
+/// These roles give you a ready-to-use hierarchy for common applications.
 /// When used with [`crate::authz::access_policy::AccessPolicy::<Role, crate::groups::Group>::require_role_or_supervisor`],
-/// a higher-privileged role satisfies requirements for lower-privileged roles.
+/// a higher-privileged role can satisfy lower-role requirements.
 ///
 /// # Example
 ///
@@ -98,26 +103,19 @@ use serde::{Deserialize, Serialize};
     strum::EnumIter,
 )]
 pub enum Role {
-    /// Basic user role with standard application access.
+    /// Baseline role for regular users.
     ///
-    /// Users have access to core application features but limited
-    /// administrative capabilities.
+    /// This is the default role assigned by `Account::new(...)` when you use the
+    /// built-in [`Role`] type.
     #[default]
     User,
-    /// Reporter role with read access and reporting capabilities.
-    ///
-    /// Reporters can typically view system information, generate reports,
-    /// and access analytics data.
+    /// Role for users who primarily need read-heavy or reporting access.
     Reporter,
-    /// Moderator role with elevated privileges for content and user management.
-    ///
-    /// Moderators can typically manage content, moderate discussions,
-    /// and have elevated access to user-facing features.
+    /// Elevated role for moderation or operational workflows.
     Moderator,
-    /// Administrator role with the highest level of access.
+    /// Highest built-in role.
     ///
-    /// Administrators typically have full system access and can perform
-    /// any operation within the application.
+    /// Administrators typically have full access to protected operations.
     Admin,
 }
 

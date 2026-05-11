@@ -2,12 +2,14 @@
 #![deny(unsafe_code)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
-//! Cookie-based JWT authentication gate for browser apps (HTTP-only cookies).
+//! Cookie-based JWT authentication gate for browser-oriented Axum apps.
 //!
-//! This module implements the cookie-backed gate returned by `Gate::cookie(...)`.
+//! This module implements the cookie-backed gate returned by
+//! `webgates_axum::gate::Gate::cookie(...)`.
+//!
 //! It validates a JWT carried in a secure, HTTP-only cookie and enforces an
-//! [`AccessPolicy`] in strict mode, or it can operate in an optional, non-blocking
-//! mode that merely injects user context if present.
+//! [`AccessPolicy`] in strict mode, or it can operate in an optional,
+//! non-blocking mode that merely injects user context if present.
 //!
 //! Modes and installed request extensions:
 //! - Strict (default): validates the cookie JWT and enforces policy; on success
@@ -112,11 +114,11 @@ use std::sync::Arc;
 
 use tower::Layer;
 
-/// A configured gate ready to be used as an axum layer.
+/// A configured cookie gate ready to be used as an Axum layer.
 ///
-/// This struct is created by `Gate::cookie()` and can be customized
-/// with `with_policy()` and `with_cookie_template()` before being applied
-/// as a layer to your routes.
+/// This type is created by `Gate::cookie(...)` and can be customized with
+/// methods such as `with_policy()`, `with_cookie_template()`, and
+/// `allow_anonymous_with_optional_user()` before being applied to routes.
 ///
 /// # Troubleshooting
 ///
@@ -168,7 +170,7 @@ where
     R: AccessHierarchy + Eq + std::fmt::Display + Default,
     G: Eq + Clone,
 {
-    /// Creates a new instance with default values and the given parameter.
+    /// Internal constructor used by the Axum-facing gate entry point.
     pub(super) fn new_with_codec(issuer: &str, codec: Arc<C>) -> Self {
         Self {
             issuer: issuer.to_string(),
@@ -181,8 +183,8 @@ where
 
     /// Sets the access policy for this gate.
     ///
-    /// The access policy defines who has access to the protected routes. Access is granted
-    /// if the authenticated user meets ANY of the policy requirements (OR logic).
+    /// Access is granted when the authenticated user satisfies any configured
+    /// policy requirement.
     ///
     /// # Example
     /// ```rust
@@ -206,11 +208,9 @@ where
         self
     }
 
-    /// Configures the cookie template used for authentication.
+    /// Replaces the cookie template used for authentication.
     ///
-    /// The cookie template defines how authentication cookies are created, including
-    /// their name, security settings, and expiration. For production use, ensure
-    /// cookies are configured securely.
+    /// Keep this aligned with the cookie template used by your login and logout flows.
     ///
     /// # Example
     /// ```rust

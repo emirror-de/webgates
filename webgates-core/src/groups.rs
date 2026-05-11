@@ -1,8 +1,8 @@
 //! Group identifiers for group-based authorization decisions.
 //!
-//! Groups model non-hierarchical membership such as departments, teams, projects,
-//! or other organizational units. Unlike roles, groups are compared by exact
-//! identity and do not imply privilege ordering.
+//! Groups model exact membership such as departments, teams, tenants, projects,
+//! or other organizational units. Unlike roles, groups do not imply privilege
+//! ordering. A user is either a member of the group or not.
 //!
 //! # Examples
 //!
@@ -53,11 +53,11 @@
 
 use serde::{Deserialize, Serialize};
 
-/// A group identifier used for exact membership checks in authorization logic.
+/// A group identifier used for exact membership checks.
 ///
-/// Groups are a simple, non-hierarchical companion to roles. They are useful for
-/// modeling organizational or contextual membership such as departments, project
-/// teams, or tenant-specific cohorts.
+/// Groups are the non-hierarchical companion to roles. Use them when access is
+/// based on belonging to something, such as a department, project, tenant, or
+/// on-call rotation.
 ///
 /// # Example
 /// ```rust
@@ -75,6 +75,8 @@ pub struct Group(String);
 
 impl Group {
     /// Creates a new group from its stable name.
+    ///
+    /// The name should be application-defined and stable over time.
     ///
     /// # Parameters
     /// - `group`: Group identifier such as `"engineering"` or `"project-alpha"`.
@@ -110,10 +112,11 @@ impl Group {
 
 /// Trait for types that expose a stable group identifier.
 ///
-/// Implement this for application-specific group types when repository or mapping
-/// code needs a canonical string identifier.
+/// Implement this for your own group types when infrastructure code needs a
+/// canonical string identifier but you do not want to use the built-in [`Group`]
+/// type directly.
 pub trait GroupEntity {
-    /// Return the unique identifier for this group as `&str`.
+    /// Returns the unique identifier for this group as `&str`.
     fn group_id(&self) -> &str;
 }
 

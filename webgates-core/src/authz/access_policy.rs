@@ -3,17 +3,21 @@ use crate::authz::access_scope::AccessScope;
 use crate::permissions::Permissions;
 use crate::permissions::permission_id::PermissionId;
 
-/// Domain object describing who may access a protected resource.
+/// Declarative access requirements for a protected operation or resource.
 ///
-/// `AccessPolicy` is intentionally framework-agnostic. It stores the minimal
-/// authorization requirements needed by the authorization service:
+/// `AccessPolicy` is intentionally framework-agnostic. It lets you describe who
+/// should be allowed through without coupling the rule to HTTP, routing, or
+/// storage concerns.
+///
+/// A policy can contain:
 ///
 /// - exact role requirements
-/// - role-or-supervisor requirements
+/// - same-or-supervisor role requirements
 /// - group requirements
 /// - permission requirements
 ///
-/// Access is granted when any configured requirement matches.
+/// Important: policy requirements use **OR semantics**. Access is granted when
+/// any configured requirement matches.
 ///
 /// # Type parameters
 ///
@@ -37,8 +41,8 @@ where
 {
     /// Creates a policy with no configured requirements.
     ///
-    /// A deny-all policy is useful as a conservative default or as an explicit
-    /// placeholder during policy construction.
+    /// This is a deny-all policy. It is useful as a conservative default or as
+    /// an explicit placeholder while building up a rule.
     pub fn deny_all() -> Self {
         Self {
             role_requirements: Vec::new(),
@@ -49,8 +53,8 @@ where
 
     /// Creates a policy that requires an exact role match.
     ///
-    /// Use this when only the specified role should satisfy the requirement.
-    /// If higher-privileged roles should also match, use
+    /// Use this when only the specified role should satisfy the requirement. If
+    /// higher-privileged roles should also match, use
     /// [`Self::require_role_or_supervisor`].
     ///
     /// # Example
@@ -96,6 +100,9 @@ where
 
     /// Creates a policy that requires membership in the given group.
     ///
+    /// Use this when access depends on exact membership such as team, tenant,
+    /// department, or project assignment.
+    ///
     /// # Example
     /// ```rust
     /// use webgates_core::authz::access_policy::AccessPolicy;
@@ -114,6 +121,9 @@ where
     }
 
     /// Creates a policy that requires the given permission.
+    ///
+    /// Use this for fine-grained capabilities such as `"projects:read"` or
+    /// `"admin:users:delete"`.
     ///
     /// # Example
     /// ```rust
@@ -140,26 +150,29 @@ where
         }
     }
 
-    /// Adds an additional role requirement to this policy.
+    /// Adds another exact-role requirement to this policy.
     ///
-    /// Access will be granted if the user has ANY of the configured roles.
+    /// Because policies use OR semantics, access will be granted if the account
+    /// has any configured matching role.
     pub fn or_require_role(mut self, role: R) -> Self {
         self.role_requirements.push(AccessScope::new(role));
         self
     }
 
-    /// Adds an additional role or supervisor requirement to this policy.
+    /// Adds another same-or-supervisor role requirement to this policy.
     ///
-    /// Access will be granted if the user has the specified role or supervises it.
+    /// Because policies use OR semantics, access will be granted if the account
+    /// has the specified role or a higher one.
     pub fn or_require_role_or_supervisor(mut self, role: R) -> Self {
         self.role_requirements
             .push(AccessScope::new(role).allow_supervisor());
         self
     }
 
-    /// Adds an additional group requirement to this policy.
+    /// Adds another group requirement to this policy.
     ///
-    /// Access will be granted if the user is in ANY of the configured groups.
+    /// Because policies use OR semantics, access will be granted if the account
+    /// belongs to any configured group.
     pub fn or_require_group(mut self, group: G) -> Self {
         self.group_requirements.push(group);
         self
@@ -167,7 +180,8 @@ where
 
     /// Adds another permission requirement to this policy.
     ///
-    /// Access is granted when the account has any configured permission.
+    /// Because policies use OR semantics, access is granted when the account has
+    /// any configured permission.
     pub fn or_require_permission<P: Into<PermissionId>>(mut self, permission: P) -> Self {
         self.permission_requirements.grant(permission);
         self
@@ -175,7 +189,8 @@ where
 
     /// Adds multiple permission requirements to this policy.
     ///
-    /// Access is granted when the account has any configured permission.
+    /// Because policies use OR semantics, access is granted when the account has
+    /// any configured permission from the provided collection.
     pub fn or_require_permissions<I, P>(mut self, permissions: I) -> Self
     where
         I: IntoIterator<Item = P>,
@@ -203,6 +218,8 @@ where
     }
 
     /// Returns `true` when the policy contains no requirements.
+    ///
+    /// A policy in this state denies all access.
     pub fn denies_all(&self) -> bool {
         self.role_requirements.is_empty()
             && self.group_requirements.is_empty()
@@ -214,9 +231,9 @@ where
         !self.denies_all()
     }
 
-    /// Converts this policy into the components needed by the authorization service.
+    /// Converts this policy into owned internal components.
     ///
-    /// This is primarily used internally when bridging to the authorization service.
+    /// This is primarily useful for internal plumbing and advanced integrations.
     pub fn into_components(self) -> (Vec<AccessScope<R>>, Vec<G>, Permissions) {
         (
             self.role_requirements,

@@ -1,16 +1,11 @@
-//! Permission-category native errors.
+//! Permission-related error values.
 //!
-//! This module defines category-native errors for permission concerns,
-//! focused on collision detection. Use these errors directly in handlers,
-//! services, and middleware.
+//! These errors describe problems in the permission system itself, not ordinary
+//! authorization denials. In practice, the main case is a duplicate or hash
+//! collision discovered during permission validation.
 //!
-//! # Overview
+//! # Example
 //!
-//! - `PermissionsError`: category-native error enum for permission issues
-//!
-//! # Examples
-//!
-//! Detect a permission hash collision:
 //! ```rust
 //! use webgates_core::errors_core::{ErrorSeverity, UserFriendlyError};
 //! use webgates_core::permissions::errors::PermissionsError;
@@ -23,10 +18,10 @@
 use crate::errors_core::{ErrorSeverity, UserFriendlyError};
 use thiserror::Error;
 
-/// Category-native permission errors.
+/// Permission-domain errors.
 ///
-/// These errors model permission-related problems.
-/// Use directly in permission validation and authorization flows.
+/// Use these errors when the permission system detects an unsafe or invalid
+/// condition, such as a collision between permission names.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum PermissionsError {
@@ -43,9 +38,9 @@ pub enum PermissionsError {
 }
 
 impl PermissionsError {
-    /// Create a permission collision error with collision details.
+    /// Creates a permission collision error from the colliding permission names.
     ///
-    /// This constructor calculates the `collision_count` from the provided list.
+    /// The constructor derives `collision_count` from the provided list.
     pub fn collision(hash_id: u64, permissions: Vec<String>) -> Self {
         PermissionsError::Collision {
             collision_count: permissions.len(),

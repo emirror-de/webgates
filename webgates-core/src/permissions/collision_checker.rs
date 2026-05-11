@@ -5,10 +5,10 @@ use crate::permissions::permission_id::PermissionId;
 use crate::permissions::validation_report::ValidationReport;
 use std::collections::HashMap;
 
-/// Low-level permission collision checker for runtime validation and analysis.
+/// Low-level permission collision checker for validation and inspection.
 ///
-/// This checker validates dynamic permission strings for duplicates and hash
-/// collisions and retains a grouped collision map for follow-up inspection.
+/// This type validates permission strings for duplicates and hash collisions,
+/// then retains grouped results so you can inspect them afterward.
 ///
 /// ## Use Cases
 ///
@@ -89,7 +89,7 @@ pub struct PermissionCollisionChecker {
 }
 
 impl PermissionCollisionChecker {
-    /// Creates a new collision checker with the given permission strings.
+    /// Creates a new checker for the provided permission strings.
     ///
     /// # Arguments
     ///
@@ -184,8 +184,8 @@ impl PermissionCollisionChecker {
 
     /// Returns permissions that hash to the same ID as the given permission.
     ///
-    /// This method is useful for debugging collision issues or understanding
-    /// how permissions map to hash IDs.
+    /// This is useful for debugging or for explaining why a particular
+    /// permission ended up in a collision group.
     ///
     /// # Arguments
     ///
@@ -203,10 +203,10 @@ impl PermissionCollisionChecker {
             .unwrap_or_default()
     }
 
-    /// Returns a summary of all permissions grouped by their hash ID.
+    /// Returns all permissions grouped by their computed hash ID.
     ///
-    /// This method provides a complete view of how permissions are distributed
-    /// across hash IDs, which can be useful for analysis and debugging.
+    /// This gives you a complete snapshot of how the current permission set maps
+    /// to IDs, which can be useful for debugging and reporting.
     ///
     /// # Returns
     ///
@@ -216,12 +216,12 @@ impl PermissionCollisionChecker {
         self.collision_map.clone()
     }
 
-    /// Returns the total number of permissions being validated.
+    /// Returns the total number of permission strings under inspection.
     pub fn permission_count(&self) -> usize {
         self.permissions.len()
     }
 
-    /// Returns the number of unique hash IDs generated from the permissions.
+    /// Returns the number of unique hash IDs generated from the current permission set.
     pub fn unique_id_count(&self) -> usize {
         self.collision_map.len()
     }

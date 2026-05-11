@@ -1,10 +1,13 @@
 //! JWT infrastructure components.
 //!
-//! This module provides:
+//! This module contains the main JWT-facing API of `webgates-codecs`.
+//!
+//! It provides:
 //! - registered JWT claims via [`RegisteredClaims`]
 //! - combined application and registered claims via [`JwtClaims`]
 //! - a configurable JWT codec via [`JsonWebToken`] and [`JsonWebTokenOptions`]
 //! - validation helpers in [`validation_service`] and [`validation_result`]
+//! - JWKS helpers in [`jwks`]
 //!
 //! The implementation is framework-agnostic and depends only on shared types
 //! from `webgates-core` plus the codec abstractions from this crate.
@@ -46,7 +49,10 @@ fn canonical_es384_header_with_kid(kid: &str) -> Header {
     header
 }
 
-/// Registered/reserved claims defined by the JWT specification.
+/// Registered claims defined by the JWT specification.
+///
+/// These are the standard metadata fields that travel alongside your
+/// application-specific payload in a JWT.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[skip_serializing_none]
 pub struct RegisteredClaims {
@@ -104,6 +110,8 @@ impl RegisteredClaims {
 }
 
 /// Combined registered and application-specific JWT claims.
+///
+/// This is the main typed claim container used with [`JsonWebToken<T>`].
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct JwtClaims<CustomClaims> {
     /// Standard JWT registered claims.
@@ -130,6 +138,9 @@ impl<CustomClaims> JwtClaims<CustomClaims> {
 }
 
 /// Options used to configure a [`JsonWebToken`] codec.
+///
+/// Use this when you need explicit control over signing keys, verification keys,
+/// key identifiers, or validation settings.
 #[derive(Debug, Clone)]
 pub struct JsonWebTokenOptions {
     /// Key for ES384 encoding.
@@ -341,6 +352,8 @@ impl JsonWebTokenOptions {
 
 /// JWT codec backed by the `jsonwebtoken` crate.
 ///
+/// This is the main codec implementation provided by the crate.
+///
 /// # Key management
 ///
 /// The default constructor uses built-in ES384 development keys.
@@ -366,6 +379,8 @@ struct VerificationState {
 
 impl<P> JsonWebToken<P> {
     /// Creates a codec from explicit options.
+    ///
+    /// Use this when you need explicit signing or verification configuration.
     pub fn new_with_options(options: JsonWebTokenOptions) -> Self {
         let JsonWebTokenOptions {
             encoding_key,

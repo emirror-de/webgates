@@ -3,12 +3,12 @@ use webgates_secrets::Secret;
 use std::future::Future;
 use uuid::Uuid;
 
-/// Repository abstraction for persisting authentication [`Secret`]s (hashed credentials).
+/// Repository abstraction for persisting authentication [`Secret`] values.
 ///
-/// Secrets are intentionally stored separately from account metadata to allow:
-/// - Split persistence (e.g. different database / schema / encryption domain)
-/// - Principle of least privilege for services that only need account profile data
-/// - Defense-in-depth (compartmentalization if one store is compromised)
+/// Secrets are intentionally stored separately from account metadata to support:
+/// - split persistence such as different databases, schemas, or encryption domains
+/// - principle-of-least-privilege designs where some services only need account profile data
+/// - defense-in-depth if one store is compromised
 ///
 /// # Semantics
 ///
@@ -72,14 +72,14 @@ where
     /// Backend-specific error type for repository operations.
     type Error: std::error::Error + Send + Sync + 'static;
 
-    /// Bootstrap the repository backend.
+    /// Bootstraps the repository backend.
     ///
     /// This method allows implementations to prepare required storage objects
     /// before normal repository operations begin, for example by creating
     /// database tables if they do not exist yet.
     fn bootstrap(&self) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
-    /// Store a newly created secret.
+    /// Stores a newly created secret.
     ///
     /// Returns:
     /// - `Ok(true)` if inserted
@@ -90,7 +90,7 @@ where
         secret: Secret,
     ) -> impl Future<Output = Result<bool, Self::Error>> + Send;
 
-    /// Update (replace) an existing secret.
+    /// Updates (replaces) an existing secret.
     ///
     /// Use this for password change flows or adaptive rehashing. Implementations
     /// may choose to return an error if the secret does not already exist; if so
@@ -99,7 +99,7 @@ where
     fn update_secret(&self, secret: Secret)
     -> impl Future<Output = Result<(), Self::Error>> + Send;
 
-    /// Remove and return a secret by its owning account id.
+    /// Removes and returns a secret by its owning account id.
     ///
     /// Returns:
     /// - `Ok(Some(secret))` if a secret existed and was removed

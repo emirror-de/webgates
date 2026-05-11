@@ -1,4 +1,4 @@
-//! Remote JWKS-backed bearer gate for Tonic gRPC consumer services.
+//! Remote JWKS-backed bearer gate for tonic gRPC consumer services.
 //!
 //! [`RemoteJwksBearerGate`] wraps a [`RemoteJwksVerifier`] into a tonic-compatible
 //! tower [`Layer`] that authenticates gRPC requests via the `Authorization: Bearer`
@@ -87,9 +87,9 @@ where
         + 'static,
     G: Eq + Clone + Serialize + DeserializeOwned + Send + Sync + 'static,
 {
-    /// Build a gate from an issuer string and a shared remote JWKS verifier.
+    /// Builds a gate from an issuer string and a shared remote JWKS verifier.
     ///
-    /// The gate starts with a `deny_all` policy; call [`with_policy`](Self::with_policy)
+    /// The gate starts with a `deny_all` policy. Call [`with_policy`](Self::with_policy)
     /// to configure access rules.
     pub fn new(
         issuer: impl Into<String>,
@@ -102,14 +102,14 @@ where
         }
     }
 
-    /// Set the access policy.
+    /// Sets the access policy.
     #[must_use]
     pub fn with_policy(mut self, policy: AccessPolicy<R, G>) -> Self {
         self.policy = policy;
         self
     }
 
-    /// Allow any authenticated user (baseline role plus all supervisors).
+    /// Allows any authenticated user (baseline role plus all supervisors).
     #[must_use]
     pub fn require_login(mut self) -> Self
     where
