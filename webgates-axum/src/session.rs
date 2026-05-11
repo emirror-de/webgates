@@ -28,6 +28,25 @@
 //! - expired auth token: require successful renewal before continuing
 //! - invalid auth token: reject immediately without attempting renewal
 //!
+//! # Missing, expired, and invalid auth cookies
+//!
+//! When this layer is composed outside `webgates_axum::gate::Gate::cookie(...)`,
+//! the request behavior is:
+//!
+//! - absent auth cookie: this layer does not attempt renewal and forwards the
+//!   request to the inner cookie gate unchanged
+//! - expired auth cookie: this layer requires a successful refresh-cookie-based
+//!   renewal before the request may continue
+//! - invalid auth cookie: this layer rejects the request immediately and does
+//!   not attempt renewal
+//!
+//! The final result for an absent auth cookie still depends on how the inner
+//! cookie gate is configured:
+//!
+//! - strict cookie-gate mode returns `401 Unauthorized`
+//! - optional cookie-gate mode forwards the request and installs optional user
+//!   context
+//!
 //! On successful renewal, the layer:
 //! - rewrites the incoming auth cookie so inner middleware sees the fresh token
 //! - appends `Set-Cookie` headers for the renewed auth and refresh cookies on
