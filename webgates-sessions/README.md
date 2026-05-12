@@ -239,4 +239,4 @@ Typical validation commands for this crate:
 
 MIT
 
-For a full distributed setup and operations guide, see `docs/distributed-sessions.md` in the repository root.
+For the distributed deployment operations guide, see `docs/distributed-sessions.md` in the repository root.

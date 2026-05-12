@@ -307,7 +307,7 @@ If you are new to this crate, I recommend this order:
 - `webgates-repositories/examples/sea-orm`
 - `webgates-repositories/examples/surrealdb`
 
-For the canonical distributed authority/resource operations model, key handling, and rollout guidance, see `docs/distributed-sessions.md` in the repository root.
+For the distributed authority/resource operations guide, including key handling and rollout guidance, see `docs/distributed-sessions.md` in the repository root.
 
 ## License
 

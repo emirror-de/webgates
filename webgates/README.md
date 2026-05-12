@@ -174,7 +174,7 @@ For HTTP adapters, keep cookie extraction and response mutation in the adapter c
 
 This keeps token issuance, renewal rules, replay handling, and revocation in the framework-agnostic session layer while transport-specific cookie behavior stays in `webgates-axum`.
 
-For the distributed authority/resource operating model and key management, see `docs/distributed-sessions.md` in the repository root.
+For the distributed authority/resource operations guide, including key management and rollout guidance, see `docs/distributed-sessions.md` in the repository root.
 
 ## Recommended onboarding path
 

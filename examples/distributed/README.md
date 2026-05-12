@@ -117,5 +117,5 @@ Notes
   - `JWKS_HTTP_TIMEOUT_MS=3000`
 - In this example, login and logout stay on the auth authority; consumer routes only validate and authorize.
 
-For broader deployment, rotation, and incident procedures, see
+For broader deployment, key rotation, and incident-response guidance, see
 `docs/distributed-sessions.md`.

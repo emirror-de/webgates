@@ -61,6 +61,21 @@ let app = Router::<()>::new()
 let _ = app;
 ```
 
+## Distributed authority/resource model
+
+In a session-backed Axum deployment, this crate typically sits at two different
+HTTP boundaries:
+
+- an **auth authority** exposes login, logout, renewal, and optional JWKS
+  publication endpoints
+- a **resource service** applies cookie or bearer gates, validates access
+  tokens locally, and enforces authorization policy
+
+The canonical split is to keep refresh-token handling, session mutation, and
+signing-key ownership on the authority only. Resource services should validate
+short-lived access tokens and should not expose refresh-token or session-
+mutation endpoints.
+
 ## Getting started on docs.rs
 
 A good reading order is:

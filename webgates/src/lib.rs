@@ -110,6 +110,23 @@ let _ = gate;
 # }
 ```
 
+## Session-backed deployment model
+
+When you enable session-backed authentication, the canonical deployment model is:
+
+- an **auth authority** that verifies credentials, issues auth and refresh
+  tokens, owns session persistence, and performs refresh-token rotation and
+  revocation
+- one or more **resource services** that validate short-lived access tokens
+  locally and enforce authorization policy
+- an optional **single-node deployment** that runs both roles together while
+  preserving the same token and revocation semantics
+
+In that model, refresh-token and session mutation logic stay on the authority,
+while resource services validate access tokens locally without per-request
+introspection calls. Revocation consistency across resource nodes is therefore
+bounded by the short access-token TTL.
+
 ## Feature model
 
 This crate enables no optional features by default.

@@ -35,6 +35,44 @@ The crate is split by responsibility so you can learn it in layers:
 These modules keep transport concerns in adapter crates such as
 `webgates-axum`.
 
+## Distributed deployment model
+
+The same session lifecycle works for both single-node and distributed
+applications.
+
+Canonical responsibilities are:
+
+- **Auth authority**: verifies credentials, issues auth and refresh tokens,
+  persists session state, rotates refresh tokens, revokes sessions or session
+  families, and owns signing keys.
+- **Resource service**: validates short-lived access tokens locally,
+  enforces authorization policy, never rotates refresh tokens, and never owns
+  session persistence.
+- **Single-node deployment**: runs both roles in one process while keeping the
+  same token and revocation semantics.
+
+This separation keeps refresh-token and session mutation logic in one place
+while preserving fast local authorization on resource requests.
+
+## Trust boundaries and token model
+
+In the canonical distributed setup:
+
+- private signing keys stay on the auth authority only
+- resource services receive public verification keys only
+- refresh tokens are handled only by authority-owned login, renewal, and logout flows
+- access tokens are validated on every protected resource request
+
+Helper-minted session-backed access tokens use a short-lived JWT plus a
+long-lived refresh-token session. The `jti` claim supports audit correlation
+and token lineage, while the `sid` claim binds a session-backed access token to
+one server-side session identifier.
+
+Revocation consistency across resource nodes is intentionally bounded by the
+short access-token TTL. That trade-off avoids per-request introspection network
+calls while keeping refresh-token rotation and replay-aware revocation in the
+session layer.
+
 ## Getting started
 
 A good first path is to read [`session`], [`tokens`], and [`services`] together.
