@@ -18,6 +18,19 @@ Use `webgates` when you want to:
 
 If you only need a narrower layer, the workspace also exposes dedicated crates such as `webgates-core`, `webgates-codecs`, `webgates-secrets`, `webgates-sessions`, and `webgates-repositories`.
 
+## Workspace crates
+
+The `webgates` workspace is organized into focused crates:
+
+- `webgates` — main application-facing composition crate for gates, authentication workflows, optional cookies, OAuth2, sessions, and observability
+- `webgates-core` — foundational domain types and authorization primitives with no HTTP, codec, or session dependencies
+- `webgates-codecs` — JWT codecs, validation helpers, ES384 key handling, and JWKS support
+- `webgates-secrets` — secret value and password-hashing primitives for safe server-side credential handling
+- `webgates-sessions` — framework-agnostic session issuance, renewal, refresh-token rotation, leases, and revocation primitives
+- `webgates-repositories` — repository traits, in-memory implementations, repository-scoped services, and optional SeaORM / SurrealDB backends
+- `webgates-axum` — Axum transport adapter for gates, login/logout handlers, JWKS publication, and transparent cookie-backed session renewal
+- `webgates-tonic` — tonic server-side transport adapter for bearer-token authentication and authorization in gRPC services
+
 ## What you work with in this crate
 
 Most developers can approach `webgates` through four ideas:
