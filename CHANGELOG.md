@@ -16,7 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### 📝 Other Changes
-- Updated version numbers within documentation, added CHANGELOG.md [f6b5a85](https://github.com/emirror-de/webgates/commit/f6b5a8556cd194e93a4b7e1dc5954374477f9100)
+- Updated README.md crate list [a404a37](https://github.com/emirror-de/webgates/commit/a404a37916ab98d73c7d6f8acff73756cea45e6a)
+
+- Updated distributed sessions guide and rustdoc sections [f12327b](https://github.com/emirror-de/webgates/commit/f12327bfa19e1998a10e308592bb422da344cefe)
+
+- Removed unnecessary gitlab ci definition [11378ad](https://github.com/emirror-de/webgates/commit/11378ad3f5be27d7a549c7d20ac343f0337ef649)
+
+- Updated version numbers within documentation, added CHANGELOG.md [672f267](https://github.com/emirror-de/webgates/commit/672f2676dc6cf2b68b45ca47d9d6d74117946baa)
 
 - Updated documentation, version bump [8818a55](https://github.com/emirror-de/webgates/commit/8818a550296d8c29513c62a911b47e54732a28fd)
 
