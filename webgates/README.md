@@ -1,35 +1,22 @@
 # webgates
 
-User-focused composition crate for the `webgates` ecosystem.
+User-focused composition crate for building a practical `webgates` application stack.
 
-`webgates` is the main application-facing crate in the workspace. It composes the core domain model with optional authentication, codec, cookie, secret, OAuth2, session, audit, and metrics support behind one dependency.
+`webgates` builds on `webgates-core` and adds optional higher-level capabilities such as authentication workflows, framework-agnostic gate builders, cookie configuration, JWT support, sessions, secrets, OAuth2, and observability.
 
-If you are building application code and do not want to wire the lower-level crates together manually, this is usually the crate to start with.
+Most application developers should start here rather than wiring lower-level crates together manually.
 
 ## Who this crate is for
 
 Use `webgates` when you want to:
 
-- start from one crate for the standard `webgates` stack
+- depend on one crate as the main application-facing entry point
 - configure framework-agnostic cookie, bearer, or OAuth2 gates
-- use authentication services and cookie helpers
-- add JWT codec, secret, repository, and session support through additive features
-- keep your application code on the higher-level composition layer instead of wiring sibling crates directly
+- use higher-level login/logout orchestration
+- add optional JWT, cookie, repository, secret, and session support through features
+- keep transport-specific concerns in adapter crates while application auth logic stays here
 
-If you only need a narrower layer, the workspace also exposes dedicated crates such as `webgates-core`, `webgates-codecs`, `webgates-secrets`, `webgates-sessions`, and `webgates-repositories`.
-
-## Workspace crates
-
-The `webgates` workspace is organized into focused crates:
-
-- `webgates` — main application-facing composition crate for gates, authentication workflows, optional cookies, OAuth2, sessions, and observability
-- `webgates-core` — foundational domain types and authorization primitives with no HTTP, codec, or session dependencies
-- `webgates-codecs` — JWT codecs, validation helpers, ES384 key handling, and JWKS support
-- `webgates-secrets` — secret value and password-hashing primitives for safe server-side credential handling
-- `webgates-sessions` — framework-agnostic session issuance, renewal, refresh-token rotation, leases, and revocation primitives
-- `webgates-repositories` — repository traits, in-memory implementations, repository-scoped services, and optional SeaORM / SurrealDB backends
-- `webgates-axum` — Axum transport adapter for gates, login/logout handlers, JWKS publication, and transparent cookie-backed session renewal
-- `webgates-tonic` — tonic server-side transport adapter for bearer-token authentication and authorization in gRPC services
+If you only need the domain model and authorization primitives, use `webgates-core` directly.
 
 ## What you work with in this crate
 
@@ -38,7 +25,7 @@ Most developers can approach `webgates` through four ideas:
 - `gate` gives you framework-agnostic gate builders and policy composition
 - `authn` gives you higher-level authentication workflows
 - feature flags add lower-level capabilities such as codecs, cookies, secrets, repositories, sessions, audit logging, and Prometheus integration
-- transport adapters such as `webgates-axum` and `webgates-tonic` plug this crate into HTTP or gRPC frameworks
+- adapter crates translate this crate into framework-specific HTTP or gRPC behavior
 
 ## Install
 
@@ -67,19 +54,6 @@ Custom setup with only selected capabilities:
 webgates = { version = "1.0.0", default-features = false, features = ["codecs", "cookies", "authn"] }
 ```
 
-Minimum supported Rust version: `1.91`.
-
-## The mental model
-
-The easiest way to understand this crate is:
-
-1. `webgates-core` owns the domain model
-2. `webgates` composes that model with optional higher-level capabilities
-3. your transport adapter calls into this crate instead of reimplementing auth logic
-4. you enable only the features needed for your actual application surface
-
-That gives you one place to express gates, auth flows, cookie behavior, and optional session-backed composition without pulling transport details into the core layer.
-
 ## Quick start
 
 ```rust
@@ -98,10 +72,6 @@ let gate = Gate::cookie::<_, Role, Group>("my-app", Arc::clone(&codec))
     .require_login()
     .with_policy(AccessPolicy::<Role, Group>::require_permission("admin:read"));
 ```
-
-Use `webgates-axum` if you want ready-made Axum middleware and route handlers.
-Use `webgates-tonic` if you want tonic server-side bearer-token integration.
-If you use another framework, build an adapter around the gate runtime APIs.
 
 ## Core concepts
 
@@ -141,25 +111,6 @@ The `webgates` crate ships with no enabled default features. Enable only the fea
 - `prometheus`: Prometheus metrics support; implies `audit-logging`
 - `wasm`: WASM-oriented build support
 
-`full` currently enables:
-
-- `authn`
-- `audit-logging`
-- `codecs`
-- `cookies`
-- `oauth2`
-- `prometheus`
-- `repositories`
-- `secrets`
-- `sessions`
-
-Typical choices:
-
-- most applications: enable `full` or explicitly list the runtime features you need
-- domain-only usage: `default-features = false`
-- session-backed authentication: enable `sessions` together with the auth and transport features you need
-- custom composition: disable defaults and enable only what you need
-
 ## Session-backed authentication
 
 Enable the `sessions` feature when you want short-lived auth JWTs backed by long-lived refresh-token session state.
@@ -185,10 +136,6 @@ For HTTP adapters, keep cookie extraction and response mutation in the adapter c
 - `webgates_axum::route_handlers::logout_with_sessions`
 - `webgates_axum::session::CookieSessionLayer`
 
-This keeps token issuance, renewal rules, replay handling, and revocation in the framework-agnostic session layer while transport-specific cookie behavior stays in `webgates-axum`.
-
-For the distributed authority/resource operations guide, including key management and rollout guidance, see `docs/distributed-sessions.md` in the repository root.
-
 ## Recommended onboarding path
 
 If you are new to this crate, I recommend this order:
@@ -198,17 +145,6 @@ If you are new to this crate, I recommend this order:
 3. `authn` if you need login/logout workflows
 4. feature-specific areas such as `codecs`, `cookies`, `sessions`, or `oauth2`
 5. the adapter crate that matches your transport layer
-
-## Which crate should you use?
-
-- use `webgates` when you want the main application-facing composition layer
-- use `webgates-core` when you only want domain types and authorization primitives
-- use `webgates-axum` when you want Axum integration
-- use `webgates-tonic` when you want tonic server-side bearer-token integration
-- use `webgates-codecs` when you need JWT or codec support directly
-- use `webgates-secrets` when you need hashing and secret handling directly
-- use `webgates-sessions` when you need the session layer directly
-- use `webgates-repositories` when you need repository contracts and storage backends directly
 
 ## Security checklist
 
@@ -220,17 +156,6 @@ If you are new to this crate, I recommend this order:
 - avoid logging secrets or tokens
 - use correlation IDs for observability
 - enable `audit-logging` and `prometheus` where appropriate
-- enable only the features and sibling crates you actually need
-
-## Related crates
-
-- `webgates-core`: domain model and authorization primitives
-- `webgates-codecs`: codec implementations such as JWT support
-- `webgates-secrets`: secret and hashing primitives
-- `webgates-sessions`: framework-agnostic session lifecycle and renewal primitives
-- `webgates-axum`: Axum integration, including session-backed login/logout handlers and transparent cookie renewal middleware
-- `webgates-tonic`: tonic integration for bearer-token authentication and authorization on gRPC servers
-- `webgates-repositories`: repository traits and storage backends, including session repository backends
 
 ## License
 

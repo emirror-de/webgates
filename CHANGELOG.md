@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.0] - 2026-05-12
+## [1.0.0] - 2026-05-13
 ### 🏗 Refactoring
 - **💥 BREAKING CHANGE:** Login and logout modules are now public [edfac67](https://github.com/emirror-de/webgates/commit/edfac67e3e2b0d50ea3a3cbdcbd9992d3c16bf6f)
 
@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### 📝 Other Changes
+- Updated README.md and webgates/README.md [742540f](https://github.com/emirror-de/webgates/commit/742540ff6e638b225c5785a4430e353f1e834e79)
+
+- Updated CHANGELOG.md [93ecbf1](https://github.com/emirror-de/webgates/commit/93ecbf1367b037bde8aa7c5669a4cc4e9f76902c)
+
 - Updated README.md crate list [a404a37](https://github.com/emirror-de/webgates/commit/a404a37916ab98d73c7d6f8acff73756cea45e6a)
 
 - Updated distributed sessions guide and rustdoc sections [f12327b](https://github.com/emirror-de/webgates/commit/f12327bfa19e1998a10e308592bb422da344cefe)

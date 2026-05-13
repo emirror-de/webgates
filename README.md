@@ -5,137 +5,130 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Build Status](https://github.com/emirror-de/webgates/workflows/CI/badge.svg)](https://github.com/emirror-de/webgates/actions)
 
-Flexible, type-safe authentication and authorization primitives and integrations for Rust web services.
+`webgates` is a Rust workspace for authentication, authorization, session-backed login flows, and transport adapters.
 
-This repository is a workspace split into focused crates:
+This repository is organized as a set of focused crates so you can either start from the main application-facing crate or adopt narrower layers directly.
 
-- `webgates` — user-facing composition crate that bundles core domain models and optional services (JWT codecs, permissions, roles, cookies, sessions, OAuth2).
-- `webgates-axum` — Axum integration layer (extractors, middleware, route handlers for login/logout and session-backed auth, OAuth2 flows).
-- `webgates-repositories` — repository implementations (in-memory, SeaORM, SurrealDB backends) and session repository backends.
-- `webgates-sessions` — framework-agnostic session lifecycle, refresh-token rotation, and renewal primitives.
-- `webgates-secrets` — secret value and hashing primitives (Argon2).
-- `webgates-codecs` — JWT codec implementation.
-- `webgates-core` — foundational domain types and authorization primitives with no HTTP or runtime dependencies.
+## Workspace crates
 
-Feature highlights (available across the workspace):
-- Cookie and bearer authentication
-- OAuth2 Authorization Code + PKCE flow with optional first‑party JWT cookie issuance
-- Hierarchical roles, groups, and string-based permissions
-- Ready-to-use login/logout handlers and extractors for Axum
-- Optional anonymous user context and static-token mode for simple internal service auth
-- In-memory and optional database-backed repositories (SeaORM, SurrealDB)
-- Feature-gated audit logging and Prometheus metrics
+The repository is organized into focused crates with clear boundaries:
 
-Note on feature defaults:
-- Crates in this workspace intentionally ship with no enabled default features. Enable the specific features you need (for example, enable the `codecs` and `cookies` features on `webgates` to pull in runtime- and HTTP-related modules such as `gate`, `codecs`, and `cookie_template`). This keeps dependencies minimal when you only need core domain types.
+- `webgates` — main application-facing composition crate for gates, authentication workflows, optional cookies, OAuth2, sessions, and observability
+- `webgates-core` — foundational domain types and authorization primitives with no HTTP, codec, or session dependencies
+- `webgates-codecs` — JWT codecs, validation helpers, ES384 key handling, and JWKS support
+- `webgates-secrets` — secret value and password-hashing primitives for safe server-side credential handling
+- `webgates-sessions` — framework-agnostic session issuance, renewal, refresh-token rotation, leases, and revocation primitives
+- `webgates-repositories` — repository traits, in-memory implementations, repository-scoped services, and optional SeaORM / SurrealDB backends
+- `webgates-axum` — Axum transport adapter for gates, login/logout handlers, JWKS publication, and transparent cookie-backed session renewal
+- `webgates-tonic` — tonic server-side transport adapter for bearer-token authentication and authorization in gRPC services
 
-## Install
+## How to choose a crate
 
-Pick only the crates and features you need. Crates are split by concern so that runtime and HTTP dependencies are opt-in.
+Typical usage patterns:
 
-Core-only (domain types, no HTTP dependencies):
+- start with `webgates` when you want the main application-facing composition layer
+- use `webgates-core` directly for domain-only authorization logic
+- use `webgates-codecs` when you need JWT handling without the higher-level stack
+- use `webgates-secrets` when you need hashing and secret handling directly
+- use `webgates-sessions` when you need the session lifecycle layer directly
+- use `webgates-repositories` when you need repository contracts or storage backends directly
+- add `webgates-axum` or `webgates-tonic` when you want transport integration
+
+## Getting started
+
+For most applications, start with the main composition crate:
+
 ```toml
 [dependencies]
-webgates = { version = "1.0.0", default-features = false }
-```
-
-Axum integration (recommended when you need middleware and route handlers):
-```toml
-[dependencies]
-axum = "0.8"
-tokio = { version = "1", features = ["full"] }
-serde = { version = "1", features = ["derive"] }
 webgates = "1.0.0"
-webgates-axum = "1.0.0"
 ```
 
-Session-backed authentication (short-lived JWTs + refresh-token rotation):
+Common Axum setup with session-backed authentication:
+
 ```toml
 [dependencies]
-axum = "0.8"
-tokio = { version = "1", features = ["full"] }
 webgates = { version = "1.0.0", default-features = false, features = ["authn", "codecs", "cookies", "repositories", "secrets", "sessions"] }
 webgates-axum = "1.0.0"
-webgates-repositories = { version = "1.0.0", features = ["sessions"] }
 ```
 
-Repository/backends and optional features:
-- Use `webgates-repositories` for persistence backends (in-memory, SeaORM, SurrealDB). Backend support is feature-gated in that crate.
-- Enable only the features you need to avoid pulling in large transitive dependencies.
+Use `webgates-repositories` for persistence backends such as in-memory, SeaORM, or SurrealDB. Backend support is feature-gated in that crate.
 
-Common optional features across the workspace (examples):
-- `audit-logging` — structured audit events (`tracing`) (opt-in)
-- `prometheus` — Prometheus metrics (opt-in; depends on `audit-logging`)
+Minimum supported Rust version: `1.91`.
 
-Note: Feature names and exact crate versions are listed in each crate's `Cargo.toml` and in the crate docs on docs.rs.
+## How the workspace fits together
 
-## Core concepts
+A typical application stack looks like this:
 
-- Gate layer (Axum helpers)
-  - `Gate::cookie("issuer", codec)` — JWT via HTTP-only cookies (for browser-based apps)
-  - `Gate::bearer("issuer", codec)` — JWT via `Authorization: Bearer` header (for APIs)
-  - `Gate::bearer(...).with_static_token("...")` — static bearer-token mode for internal services
-  - `Gate::oauth2::<R, G>()` — OAuth2 Authorization Code + PKCE flow builder (Axum helpers)
-  - `allow_anonymous_with_optional_user()` — never blocks; injects optional user context
-  - `require_login()` — require authenticated user (respects role hierarchy)
-- Access policies
-  - `require_role(..)`, `require_role_or_supervisor(..)` — role-based guards
-  - `require_group(..)` — group membership checks
-  - `require_permission("domain:action")` — deterministic mapping to `PermissionId`; use the provided macros to validate registries at test-time
-- Login/logout
-  - Provided route handlers verify credentials and set/remove auth cookies (see `webgates-axum::route_handlers`)
-- Repositories
-  - In-memory implementations for quick development and tests
-  - Optional database-backed repositories in `webgates-repositories` (SeaORM / SurrealDB) behind features
-- JWT codec
-  - `codecs::jwt::JsonWebToken` and associated options — ES384 asymmetric signing and validation with canonical `kid` headers
-  - distributed verification baseline uses JWKS discovery (`/.well-known/jwks.json`) with local in-memory verification
+1. `webgates-core` defines accounts, roles, groups, permissions, and authorization primitives
+2. `webgates` composes the core model with higher-level auth flows and optional features
+3. `webgates-codecs`, `webgates-secrets`, `webgates-sessions`, and `webgates-repositories` provide narrower building blocks behind those higher-level flows
+4. `webgates-axum` or `webgates-tonic` adapts the model to HTTP or gRPC transports
 
-## Cryptographic Backend
+This keeps domain rules, token handling, secret handling, session lifecycle, persistence, and transport concerns in distinct layers.
 
-JWT operations use the `rust_crypto` backend where applicable (see crate documentation for configured features). Password hashing and other crypto primitives are exposed via the domain crates and repository helpers.
+## Workspace capabilities
 
-## Security
+Feature highlights available across the workspace include:
 
-- Use a persistent JWT signing key in production (do not rely on ephemeral defaults)
-- Keep the JWT issuer consistent between Gate configuration and registered claims
-- Use secure cookie attributes in production (`HttpOnly`, `Secure`, appropriate `SameSite`)
-- Rate-limit sensitive endpoints (login, token endpoints)
-- Enable `audit-logging` and `prometheus` features for observability; never log secrets, tokens, or raw cookie values
+- cookie and bearer authentication
+- explicit authorization policies
+- session-backed authentication with refresh-token rotation
+- repository contracts plus in-memory and database-backed implementations
+- JWKS-based distributed verification
+- Axum and tonic transport adapters
+- optional audit logging and Prometheus integration
 
-## Examples and docs
+## Session-backed deployment model
 
-- API docs for each crate are published on docs.rs:
-  - `webgates`: https://docs.rs/webgates
-  - `webgates-axum`: https://docs.rs/webgates-axum
-  - `webgates-repositories`: https://docs.rs/webgates-repositories
-- The repository contains curated examples under `examples/` (OAuth2 flows, Prometheus integration, permission validation, etc.). See the examples to understand typical wiring for Axum servers and repository setup.
-- For the canonical authority/resource architecture and operations model, see `docs/distributed-sessions.md`.
-- For the JWKS-first distributed setup example (`JWKS_URL` on consumers), see `examples/distributed/README.md`.
-- For practical debugging and common integration issues, consult `TROUBLESHOOTING.md` in the repository.
+When you enable session-backed authentication, the canonical deployment model is:
 
-## MSRV and license
+- an **auth authority** that verifies credentials, issues auth and refresh tokens, owns session persistence, and performs refresh-token rotation and revocation
+- one or more **resource services** that validate short-lived access tokens locally and enforce authorization policy
+- an optional **single-node deployment** that runs both roles together while preserving the same token and revocation semantics
 
-- MSRV: 1.91
-- License: MIT
+In that model, refresh-token and session mutation logic stay on the authority, while resource services validate access tokens locally without per-request introspection calls. Revocation consistency across resource nodes is therefore bounded by the short access-token TTL.
 
-SurrealDB (BUSL-1.1) notice:
-- Enabling the optional SurrealDB-backed repository feature (`surrealdb`) in `webgates-repositories` pulls in SurrealDB, which is distributed under the Business Source License 1.1 (BUSL). That license may impose restrictions on Production Use until its Change Date. If you enable this feature for development, CI, or distribution, review SurrealDB's license terms and comply with any obligations (including required notices).
-- The SurrealDB-backed repositories are opt-in and off by default. Prefer in-memory or SeaORM-backed repositories for fully open-source deployments where BUSL implications are a concern.
-- When enabling `surrealdb` in your project, document the choice in your release and ensure your legal/compliance process accepts the license terms.
+For the distributed authority/resource operations guide, including key management and rollout guidance, see `docs/distributed-sessions.md`.
 
-Subtle and other third-party license notices:
-- Some dependencies carry additional notices (see the repository `NOTICE` file when redistributing).
+## Crate docs
 
----
-For more details, examples, and API references, see the crate documentation and the `examples/` folder in this repository.
+- `webgates`: https://docs.rs/webgates
+- `webgates-core`: https://docs.rs/webgates-core
+- `webgates-codecs`: https://docs.rs/webgates-codecs
+- `webgates-secrets`: https://docs.rs/webgates-secrets
+- `webgates-sessions`: https://docs.rs/webgates-sessions
+- `webgates-repositories`: https://docs.rs/webgates-repositories
+- `webgates-axum`: https://docs.rs/webgates-axum
+- `webgates-tonic`: https://docs.rs/webgates-tonic
+
+## Repository docs and examples
+
+- `docs/distributed-sessions.md` — distributed deployment operations guide
+- `examples/distributed/README.md` — JWKS-first distributed setup example
+- `examples/oauth2-github` — OAuth2 login flow example
+- `examples/prometheus` — metrics integration example
+- `examples/permission-validation` and `examples/permission-registry` — permission modeling examples
+- `webgates-repositories/examples/sea-orm` and `webgates-repositories/examples/surrealdb` — backend examples
+- `TROUBLESHOOTING.md` — common integration and debugging guidance
+
+## Security and licensing notes
+
+- keep signing keys persistent and out of source control in production
+- avoid logging raw tokens, secrets, or cookies
+- align issuer strings, cookie names, and cookie templates across the layers that mint, validate, write, and clear auth state
+- enable only the features and crates you actually need
+- review the `surrealdb` feature in `webgates-repositories` carefully before production use
+
+SurrealDB is distributed under the Business Source License 1.1 (BUSL). If you enable the optional SurrealDB backend for development, CI, or distribution, review its license terms and comply with any obligations.
 
 ## Development
 
-Quick notes for contributors and local development:
+- run the full workspace test suite with `cargo test --workspace --all-features`
+- run workspace checks with `cargo check --workspace --all-features`
+- see crate-specific READMEs for focused API guidance
+- see `docs/distributed-sessions.md` for deployment and rotation procedures
+- see `CONTRIBUTING.md` for contributor setup, CI workflow, and local validation commands
 
-- The workspace contains multiple crates: `webgates`, `webgates-axum`, `webgates-repositories`, `webgates-sessions`, `webgates-secrets`, `webgates-codecs`, and `webgates-core`.
-- Run the test suite for all crates with `cargo test --workspace`.
-- Example applications live under the `examples/` directory and demonstrate common setups (OAuth2, Prometheus, distributed systems, permissions).
-- Crates intentionally ship without default features; enable only the features you need during development to keep dependency scope small.
-- See `CONTRIBUTING.md` for detailed contributor setup, CI workflow, and local validation commands.
+## License
+
+MIT
