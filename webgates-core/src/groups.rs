@@ -51,6 +51,8 @@
 //! assert_eq!(teams.len(), 3);
 //! ```
 
+use std::str::FromStr;
+
 use serde::{Deserialize, Serialize};
 
 /// A group identifier used for exact membership checks.
@@ -107,6 +109,13 @@ impl Group {
     /// ```
     pub fn name(&self) -> &str {
         &self.0
+    }
+}
+
+impl FromStr for Group {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Group::new(s))
     }
 }
 

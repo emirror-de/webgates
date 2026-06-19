@@ -24,8 +24,8 @@ use webgates::cookie_template::CookieTemplate;
 use webgates::credentials::Credentials;
 use webgates_axum::gate::Gate;
 use webgates_axum::route_handlers;
-use webgates_repositories::memory::account::MemoryAccountRepository;
 use webgates_repositories::memory::secret::MemorySecretRepository;
+use webgates_repositories::sea_orm::SeaOrmRepository;
 use webgates_repositories::services::account_insert::AccountInsertService;
 
 use std::fs;
@@ -79,6 +79,7 @@ fn load_env_or_file(var_name: &str, path_var_name: &str, fallback: &str) -> Stri
     Deserialize,
     Debug,
     strum::Display,
+    strum::EnumString,
 )]
 pub enum CustomRoleDefinition {
     #[default]
@@ -93,7 +94,9 @@ pub enum CustomRoleDefinition {
 impl AccessHierarchy for CustomRoleDefinition {}
 
 /// A custom group definition.
-#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize, Debug)]
+#[derive(
+    Eq, PartialEq, Copy, Clone, Serialize, Deserialize, Debug, strum::EnumString, strum::Display,
+)]
 pub enum CustomGroupDefinition {
     Maintenance,
     Operations,
@@ -307,7 +310,11 @@ async fn main() {
         JwtClaims<Account<CustomRoleDefinition, CustomGroupDefinition>>,
     >::new_with_options(jwt_options));
 
-    let account_repository = Arc::new(MemoryAccountRepository::from(vec![]));
+    // Database and Repository initialization
+    let db = sea_orm::Database::connect("sqlite::memory:").await.unwrap();
+    let account_repository = SeaOrmRepository::new(&db).unwrap();
+    account_repository.bootstrap().await.unwrap();
+    let account_repository = Arc::new(account_repository);
     debug!("Account repository initialized.");
     let secrets_repository = Arc::new(MemorySecretRepository::try_from(vec![]).unwrap());
     debug!("Secrets repository initialized.");

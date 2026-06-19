@@ -44,6 +44,9 @@
 //! This module is available when the `sea-orm` feature of `webgates-repositories`
 //! is enabled because it exists to support the SeaORM storage backend in this crate.
 
+#[cfg(feature = "sea-orm")]
+use std::{fmt::Display, str::FromStr};
+
 /// Conversion between a model and its CSV representation.
 pub trait CommaSeparatedValue
 where
@@ -56,42 +59,24 @@ where
 }
 
 #[cfg(feature = "sea-orm")]
-impl CommaSeparatedValue for Vec<webgates_core::roles::Role> {
+impl<R> CommaSeparatedValue for Vec<R>
+where
+    R: Display + FromStr,
+    <R as FromStr>::Err: Display,
+{
+    fn from_csv(value: &str) -> Result<Self, String> {
+        let mut role_str = value.split(',').collect::<Vec<&str>>();
+        let mut roles = Vec::with_capacity(role_str.len());
+        while let Some(r) = role_str.pop() {
+            roles.push(R::from_str(r).map_err(|e| e.to_string())?);
+        }
+        Ok(roles)
+    }
+
     fn into_csv(self) -> String {
         self.into_iter()
-            .map(|r: webgates_core::roles::Role| r.to_string())
-            .collect::<Vec<_>>()
+            .map(|g| g.to_string())
+            .collect::<Vec<String>>()
             .join(",")
-    }
-
-    fn from_csv(value: &str) -> Result<Self, String> {
-        if value.trim().is_empty() {
-            return Ok(Vec::new());
-        }
-        value
-            .split(',')
-            .map(|s| s.trim().parse::<webgates_core::roles::Role>())
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| format!("failed to parse role from csv: {e}"))
-    }
-}
-
-#[cfg(feature = "sea-orm")]
-impl CommaSeparatedValue for Vec<webgates_core::groups::Group> {
-    fn into_csv(self) -> String {
-        self.into_iter()
-            .map(|g| g.name().to_string())
-            .collect::<Vec<_>>()
-            .join(",")
-    }
-
-    fn from_csv(value: &str) -> Result<Self, String> {
-        if value.trim().is_empty() {
-            return Ok(Vec::new());
-        }
-        Ok(value
-            .split(',')
-            .map(|s| webgates_core::groups::Group::new(s.trim()))
-            .collect())
     }
 }
