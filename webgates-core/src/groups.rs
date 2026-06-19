@@ -51,6 +51,7 @@
 //! assert_eq!(teams.len(), 3);
 //! ```
 
+use std::fmt::Display;
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
@@ -116,6 +117,12 @@ impl FromStr for Group {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Group::new(s))
+    }
+}
+
+impl Display for Group {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
     }
 }
 
