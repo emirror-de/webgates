@@ -12,3 +12,6 @@ AGENTS.md
 examples/oauth2-github/.env
 examples/distributed/.env
 examples/custom-roles/.env
+
+# Any node_modules
+**/node_modules
