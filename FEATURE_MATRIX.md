@@ -101,6 +101,17 @@ This matrix serves as the authoritative source for:
 **Minimal combinations that must compile:**
 - (default only)
 
+### webgates-tonic
+
+**Features:**
+- `default = []`
+- `audit-logging = ["webgates/audit-logging"]`
+- `prometheus = ["audit-logging", "webgates/prometheus", "dep:prometheus"]`
+
+**Minimal combinations that must compile:**
+- (default only)
+- `--all-features`
+
 ## CI Requirements
 
 The following commands must pass for the feature matrix to be considered valid:
