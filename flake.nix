@@ -56,7 +56,7 @@
         commonArgs = {
           inherit src;
           pname = "webgates";
-          version = "0.1.0-dev";
+          version = "1.1.0-dev";
           strictDeps = true;
 
           nativeBuildInputs = with pkgs; [
