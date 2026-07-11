@@ -205,7 +205,7 @@
               cargo-audit
               cargo-deny
               cargo-nextest
-              cargo-watch
+              #cargo-watch # temporary disabled due to compile error on macos
               cargo-sort
               cargo-expand # For macro debugging
               cargo-machete # For unused dependency detection
