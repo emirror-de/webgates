@@ -53,7 +53,7 @@ webgates-axum = "1.0.0"
 
 Use `webgates-repositories` for persistence backends such as in-memory, SeaORM, or SurrealDB. Backend support is feature-gated in that crate.
 
-Minimum supported Rust version: `1.91`.
+Minimum supported Rust version: `1.94`.
 
 ## How the workspace fits together
 

@@ -63,7 +63,7 @@ SurrealDB backend:
 webgates-repositories = { version = "1.0.0", features = ["surrealdb"] }
 ```
 
-Minimum supported Rust version: `1.91`.
+Minimum supported Rust version: `1.94`.
 
 ## The mental model
 

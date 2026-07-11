@@ -40,7 +40,7 @@ webgates = "1.0.0"
 webgates-tonic = "1.0.0"
 ```
 
-Minimum supported Rust version: `1.91`.
+Minimum supported Rust version: `1.94`.
 
 ## The mental model
 

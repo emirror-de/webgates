@@ -2,7 +2,7 @@
 name = "webgates-repositories"
 version = "1.0.0"
 edition = "2024"
-rust-version = "1.91"
+rust-version = "1.94"
 license = "MIT"
 authors = ["Lewin Probst <info@emirror.de>"]
 description = "Repository traits, storage backends, and repository services for webgates."

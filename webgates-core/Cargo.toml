@@ -2,7 +2,7 @@
 name = "webgates-core"
 version = "1.0.0"
 edition = "2024"
-rust-version = "1.91"
+rust-version = "1.94"
 license = "MIT"
 authors = ["Lewin Probst <info@emirror.de>"]
 description = "Core domain types, permission system, and authorization building blocks for webgates."
