@@ -19,3 +19,7 @@ reason = "bincode is unmaintained but reachable only via surrealdb->surrealmx; a
 [[advisories.ignore]]
 id = "RUSTSEC-2023-0071"
 reason = "No fix available in rsa 0.9.x; RSA JWT algorithms are discouraged in the project defaults. Remove when rsa crate publishes a patched release."
+
+[[advisories.ignore]]
+id = "RUSTSEC-2026-0173"
+reason = "Dependency of sea-orm -> sea-bae."
