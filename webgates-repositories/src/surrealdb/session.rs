@@ -161,7 +161,7 @@ where
     S: Connection,
 {
     async fn create_session(&self, input: CreateSession) -> RepositoryResult<()> {
-        self.bootstrap_session_tables().await?;
+        let repo = self.bootstrap_session_tables().await?;
 
         let family_table = sessions_family_table_name();
         let session_table = sessions_table_name();
@@ -186,14 +186,14 @@ where
         )?;
 
         let family_record_id = family_record_id(input.session.family_id, &family_table);
-        let existing_family: Option<SurrealSessionFamilyRecord> = self
+        let existing_family: Option<SurrealSessionFamilyRecord> = repo
             .db
             .select(family_record_id.clone())
             .await
             .map_err(map_backend_error)?;
 
         if existing_family.is_none() {
-            let _: Option<SurrealSessionFamilyRecord> = self
+            let _: Option<SurrealSessionFamilyRecord> = repo
                 .db
                 .insert(family_record_id)
                 .content(family_record)
@@ -202,7 +202,7 @@ where
         }
 
         let session_record_id = session_record_id(input.session.session_id, &session_table);
-        let existing_session: Option<SurrealSessionRecord> = self
+        let existing_session: Option<SurrealSessionRecord> = repo
             .db
             .select(session_record_id.clone())
             .await
@@ -212,7 +212,7 @@ where
             return Err(RepositoryError::Conflict);
         }
 
-        let _: Option<SurrealSessionRecord> = self
+        let _: Option<SurrealSessionRecord> = repo
             .db
             .insert(session_record_id)
             .content(session_record)
@@ -226,14 +226,14 @@ where
         &'a self,
         refresh_token_hash: RefreshTokenHashRef<'a>,
     ) -> RepositoryResult<Option<SessionLookup>> {
-        self.bootstrap_session_tables().await?;
+        let repo = self.bootstrap_session_tables().await?;
 
         let session_table = sessions_table_name();
         let family_table = sessions_family_table_name();
 
         let query = "SELECT * FROM type::table($session_table) WHERE active_refresh_token_hash = $refresh_hash LIMIT 1";
 
-        let mut response = self
+        let mut response = repo
             .db
             .query(query)
             .bind(("session_table", session_table.clone()))
@@ -254,7 +254,7 @@ where
 
         let family_id = SessionFamilyId::from_uuid(stored_session.family_id);
         let family_record_id = family_record_id(family_id, &family_table);
-        let stored_family: Option<SurrealSessionFamilyRecord> = self
+        let stored_family: Option<SurrealSessionFamilyRecord> = repo
             .db
             .select(family_record_id)
             .await
@@ -272,12 +272,12 @@ where
     }
 
     async fn find_session(&self, session_id: SessionId) -> RepositoryResult<Option<SessionRecord>> {
-        self.bootstrap_session_tables().await?;
+        let repo = self.bootstrap_session_tables().await?;
 
         let session_table = sessions_table_name();
         let record_id = session_record_id(session_id, &session_table);
         let stored: Option<SurrealSessionRecord> =
-            self.db.select(record_id).await.map_err(map_backend_error)?;
+            repo.db.select(record_id).await.map_err(map_backend_error)?;
 
         Ok(stored.map(|record| record.to_session_record()))
     }
@@ -286,12 +286,12 @@ where
         &self,
         family_id: SessionFamilyId,
     ) -> RepositoryResult<Option<SessionFamilyRecord>> {
-        self.bootstrap_session_tables().await?;
+        let repo = self.bootstrap_session_tables().await?;
 
         let family_table = sessions_family_table_name();
         let record_id = family_record_id(family_id, &family_table);
         let stored: Option<SurrealSessionFamilyRecord> =
-            self.db.select(record_id).await.map_err(map_backend_error)?;
+            repo.db.select(record_id).await.map_err(map_backend_error)?;
 
         stored
             .map(SurrealSessionFamilyRecord::into_domain)
@@ -302,12 +302,12 @@ where
         &self,
         session_id: SessionId,
     ) -> RepositoryResult<Option<SessionRefreshRecord>> {
-        self.bootstrap_session_tables().await?;
+        let repo = self.bootstrap_session_tables().await?;
 
         let session_table = sessions_table_name();
         let record_id = session_record_id(session_id, &session_table);
         let stored: Option<SurrealSessionRecord> =
-            self.db.select(record_id).await.map_err(map_backend_error)?;
+            repo.db.select(record_id).await.map_err(map_backend_error)?;
 
         Ok(stored.map(|record| record.to_refresh_record()))
     }
@@ -317,11 +317,11 @@ where
         session_id: SessionId,
         lease: RenewalLease,
     ) -> RepositoryResult<LeaseAcquisition> {
-        self.bootstrap_session_tables().await?;
+        let repo = self.bootstrap_session_tables().await?;
 
         let session_table = sessions_table_name();
         let record_id = session_record_id(session_id, &session_table);
-        let stored: Option<SurrealSessionRecord> = self
+        let stored: Option<SurrealSessionRecord> = repo
             .db
             .select(record_id.clone())
             .await
@@ -346,7 +346,7 @@ where
 
         stored.lease = Some(SurrealLeaseRecord::from_domain(lease));
 
-        let _: Option<SurrealSessionRecord> = self
+        let _: Option<SurrealSessionRecord> = repo
             .db
             .update(record_id)
             .content(stored)
@@ -360,13 +360,13 @@ where
         &self,
         input: RotateRefreshToken,
     ) -> RepositoryResult<RotateRefreshTokenOutcome> {
-        self.bootstrap_session_tables().await?;
+        let repo = self.bootstrap_session_tables().await?;
 
         let session_table = sessions_table_name();
         let family_table = sessions_family_table_name();
 
         let session_record_id = session_record_id(input.session_id, &session_table);
-        let stored_session: Option<SurrealSessionRecord> = self
+        let stored_session: Option<SurrealSessionRecord> = repo
             .db
             .select(session_record_id.clone())
             .await
@@ -377,7 +377,7 @@ where
         };
 
         let family_record_id = family_record_id(input.family.family_id, &family_table);
-        let stored_family: Option<SurrealSessionFamilyRecord> = self
+        let stored_family: Option<SurrealSessionFamilyRecord> = repo
             .db
             .select(family_record_id)
             .await
@@ -434,7 +434,7 @@ where
             None,
         )?;
 
-        let _: Option<SurrealSessionRecord> = self
+        let _: Option<SurrealSessionRecord> = repo
             .db
             .update(session_record_id)
             .content(updated)
@@ -451,11 +451,11 @@ where
     ) -> RepositoryResult<()> {
         match scope {
             RevokeSessionScope::CurrentSession => {
-                self.bootstrap_session_tables().await?;
+                let repo = self.bootstrap_session_tables().await?;
 
                 let session_table = sessions_table_name();
                 let record_id = session_record_id(session_id, &session_table);
-                let stored: Option<SurrealSessionRecord> = self
+                let stored: Option<SurrealSessionRecord> = repo
                     .db
                     .select(record_id.clone())
                     .await
@@ -469,7 +469,7 @@ where
                 stored.active_refresh_revoked = true;
                 stored.lease = None;
 
-                let _: Option<SurrealSessionRecord> = self
+                let _: Option<SurrealSessionRecord> = repo
                     .db
                     .update(record_id)
                     .content(stored)
@@ -489,13 +489,13 @@ where
     }
 
     async fn revoke_family(&self, family_id: SessionFamilyId) -> RepositoryResult<()> {
-        self.bootstrap_session_tables().await?;
+        let repo = self.bootstrap_session_tables().await?;
 
         let family_table = sessions_family_table_name();
         let session_table = sessions_table_name();
 
         let family_record_id = family_record_id(family_id, &family_table);
-        let stored_family: Option<SurrealSessionFamilyRecord> = self
+        let stored_family: Option<SurrealSessionFamilyRecord> = repo
             .db
             .select(family_record_id.clone())
             .await
@@ -507,7 +507,7 @@ where
 
         stored_family.revoked = true;
 
-        let _: Option<SurrealSessionFamilyRecord> = self
+        let _: Option<SurrealSessionFamilyRecord> = repo
             .db
             .update(family_record_id)
             .content(stored_family)
@@ -515,7 +515,7 @@ where
             .map_err(map_backend_error)?;
 
         let query = "SELECT * FROM type::table($session_table) WHERE family_id = $family_id ORDER BY created_at_unix_seconds ASC";
-        let mut response = self
+        let mut response = repo
             .db
             .query(query)
             .bind(("session_table", session_table.clone()))
@@ -536,7 +536,7 @@ where
                 &session_table,
             );
 
-            let _: Option<SurrealSessionRecord> = self
+            let _: Option<SurrealSessionRecord> = repo
                 .db
                 .update(record_id)
                 .content(stored_session)
@@ -548,11 +548,11 @@ where
     }
 
     async fn touch_session(&self, touch: SessionTouch) -> RepositoryResult<()> {
-        self.bootstrap_session_tables().await?;
+        let repo = self.bootstrap_session_tables().await?;
 
         let session_table = sessions_table_name();
         let record_id = session_record_id(touch.session_id, &session_table);
-        let stored: Option<SurrealSessionRecord> = self
+        let stored: Option<SurrealSessionRecord> = repo
             .db
             .select(record_id.clone())
             .await
@@ -564,7 +564,7 @@ where
 
         stored.last_seen_at_unix_seconds = Some(system_time_to_unix_seconds(touch.last_seen_at)?);
 
-        let _: Option<SurrealSessionRecord> = self
+        let _: Option<SurrealSessionRecord> = repo
             .db
             .update(record_id)
             .content(stored)
@@ -583,16 +583,16 @@ impl<S> SurrealDbRepository<S>
 where
     S: Connection,
 {
-    async fn bootstrap_session_tables(&self) -> RepositoryResult<()> {
-        self.use_ns_db().await.map_err(map_backend_error)?;
+    async fn bootstrap_session_tables(&self) -> RepositoryResult<SurrealDbRepository<S>> {
+        let repo = self.use_ns_db().await.map_err(map_backend_error)?;
 
         let family_table = sessions_family_table_name();
         let session_table = sessions_table_name();
 
-        self.define_schemaless_table(&family_table).await?;
-        self.define_schemaless_table(&session_table).await?;
+        repo.define_schemaless_table(&family_table).await?;
+        repo.define_schemaless_table(&session_table).await?;
 
-        Ok(())
+        Ok(repo)
     }
 
     async fn define_schemaless_table(&self, table_name: &str) -> RepositoryResult<()> {

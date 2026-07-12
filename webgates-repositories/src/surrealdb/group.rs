@@ -72,12 +72,12 @@ where
     type Error = RepoError;
 
     async fn bootstrap(&self) -> RepoResult<()> {
-        self.use_ns_db().await?;
+        let repo = self.use_ns_db().await?;
 
         let table_name = TableName::WebgatesGroups.to_string();
         let query = "DEFINE TABLE IF NOT EXISTS $table SCHEMALESS;";
 
-        self.db
+        repo.db
             .query(query)
             .bind(("table", table_name.clone()))
             .await
@@ -94,18 +94,18 @@ where
     }
 
     async fn store_group(&self, group: T) -> RepoResult<bool> {
-        self.use_ns_db().await?;
+        let repo = self.use_ns_db().await?;
 
-        let record = group_to_record(group, &self.scope_settings.groups)?;
+        let record = group_to_record(group, &repo.scope_settings.groups)?;
         let group_id = record.group_id.clone();
-        let recid = RecordId::new(self.scope_settings.groups.clone(), group_id.clone());
+        let recid = RecordId::new(repo.scope_settings.groups.clone(), group_id.clone());
 
         let existing: Option<SurrealGroupRecord> =
-            self.db.select(recid.clone()).await.map_err(|e| {
+            repo.db.select(recid.clone()).await.map_err(|e| {
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Query,
                     format!("Failed to query group existence: {}", e),
-                    Some(self.scope_settings.groups.clone()),
+                    Some(repo.scope_settings.groups.clone()),
                     Some(group_id.clone()),
                 ))
             })?;
@@ -115,11 +115,11 @@ where
         }
 
         let inserted: Option<SurrealGroupRecord> =
-            self.db.insert(recid).content(record).await.map_err(|e| {
+            repo.db.insert(recid).content(record).await.map_err(|e| {
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Insert,
                     format!("Failed to insert group: {}", e),
-                    Some(self.scope_settings.groups.clone()),
+                    Some(repo.scope_settings.groups.clone()),
                     Some(group_id.clone()),
                 ))
             })?;
@@ -128,82 +128,82 @@ where
     }
 
     async fn delete_group(&self, id: &str) -> RepoResult<Option<T>> {
-        self.use_ns_db().await?;
+        let repo = self.use_ns_db().await?;
 
-        let recid = RecordId::new(self.scope_settings.groups.clone(), id.to_string());
-        let deleted: Option<SurrealGroupRecord> = self.db.delete(recid).await.map_err(|e| {
+        let recid = RecordId::new(repo.scope_settings.groups.clone(), id.to_string());
+        let deleted: Option<SurrealGroupRecord> = repo.db.delete(recid).await.map_err(|e| {
             RepoError::Database(DatabaseError::with_context(
                 DatabaseOperation::Delete,
                 format!("Failed to delete group: {}", e),
-                Some(self.scope_settings.groups.clone()),
+                Some(repo.scope_settings.groups.clone()),
                 Some(id.to_string()),
             ))
         })?;
 
         deleted
-            .map(|record| record_to_group(record, &self.scope_settings.groups))
+            .map(|record| record_to_group(record, &repo.scope_settings.groups))
             .transpose()
     }
 
     async fn update_group(&self, group: T) -> RepoResult<Option<T>> {
-        self.use_ns_db().await?;
+        let repo = self.use_ns_db().await?;
 
-        let record = group_to_record(group, &self.scope_settings.groups)?;
+        let record = group_to_record(group, &repo.scope_settings.groups)?;
         let group_id = record.group_id.clone();
-        let recid = RecordId::new(self.scope_settings.groups.clone(), group_id.clone());
+        let recid = RecordId::new(repo.scope_settings.groups.clone(), group_id.clone());
 
         let updated: Option<SurrealGroupRecord> =
-            self.db.update(&recid).content(record).await.map_err(|e| {
+            repo.db.update(&recid).content(record).await.map_err(|e| {
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Update,
                     format!("Failed to update group: {}", e),
-                    Some(self.scope_settings.groups.clone()),
+                    Some(repo.scope_settings.groups.clone()),
                     Some(group_id.clone()),
                 ))
             })?;
 
         updated
-            .map(|record| record_to_group(record, &self.scope_settings.groups))
+            .map(|record| record_to_group(record, &repo.scope_settings.groups))
             .transpose()
     }
 
     async fn query_group_by_id(&self, id: &str) -> RepoResult<Option<T>> {
-        self.use_ns_db().await?;
+        let repo = self.use_ns_db().await?;
 
-        let recid = RecordId::new(self.scope_settings.groups.clone(), id.to_string());
-        let found: Option<SurrealGroupRecord> = self.db.select(recid).await.map_err(|e| {
+        let recid = RecordId::new(repo.scope_settings.groups.clone(), id.to_string());
+        let found: Option<SurrealGroupRecord> = repo.db.select(recid).await.map_err(|e| {
             RepoError::Database(DatabaseError::with_context(
                 DatabaseOperation::Query,
                 format!("Failed to query group by id: {}", e),
-                Some(self.scope_settings.groups.clone()),
+                Some(repo.scope_settings.groups.clone()),
                 Some(id.to_string()),
             ))
         })?;
 
         found
-            .map(|record| record_to_group(record, &self.scope_settings.groups))
+            .map(|record| record_to_group(record, &repo.scope_settings.groups))
             .transpose()
     }
 
     async fn query_all_groups(&self) -> RepoResult<Vec<T>> {
-        self.use_ns_db().await?;
+        let repo = self.use_ns_db().await?;
 
-        let groups: Vec<SurrealGroupRecord> = self
+        let groups: Vec<SurrealGroupRecord> = repo
             .db
-            .select(self.scope_settings.groups.clone())
+            .select(repo.scope_settings.groups.clone())
             .await
             .map_err(|e| {
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Query,
                     format!("Failed to query all groups: {}", e),
-                    Some(self.scope_settings.groups.clone()),
+                    Some(repo.scope_settings.groups.clone()),
                     None,
                 ))
             })?;
 
         groups
             .into_iter()
-            .map(|record| record_to_group(record, &self.scope_settings.groups))
+            .map(|record| record_to_group(record, &repo.scope_settings.groups))
             .collect()
     }
 }

@@ -62,17 +62,17 @@ where
     type Error = crate::errors::Error;
 
     async fn bootstrap(&self) -> RepoResult<()> {
-        self.use_ns_db().await?;
+        let repo = self.use_ns_db().await?;
 
         let table_name = TableName::WebgatesCredentials.to_string();
         let query = "DEFINE TABLE IF NOT EXISTS $table SCHEMALESS;";
 
-        self.db
+        repo.db
             .query(query)
             .bind(("table", table_name.clone()))
             .await
             .map_err(|error| {
-                self.scoped_database_error(
+                repo.scoped_database_error(
                     DatabaseOperation::Insert,
                     &table_name,
                     format!("Failed to bootstrap secret repository: {error}"),
@@ -84,17 +84,17 @@ where
     }
 
     async fn store_secret(&self, secret: Secret) -> RepoResult<bool> {
-        self.use_ns_db().await?;
+        let repo = self.use_ns_db().await?;
 
         let table_name = TableName::WebgatesCredentials.to_string();
         let account_id = secret.account_id;
         let record_id = secret_record_id(&table_name, account_id);
 
-        let existing: Option<SecretRecord> = match self.db.select(record_id.clone()).await {
+        let existing: Option<SecretRecord> = match repo.db.select(record_id.clone()).await {
             Ok(existing) => existing,
             Err(error) if error.to_string().contains("does not exist") => None,
             Err(error) => {
-                return Err(self.scoped_database_error(
+                return Err(repo.scoped_database_error(
                     DatabaseOperation::Query,
                     &table_name,
                     format!("Failed to query secret existence: {error}"),
@@ -107,13 +107,13 @@ where
             return Ok(false);
         }
 
-        let inserted: Option<SecretRecord> = self
+        let inserted: Option<SecretRecord> = repo
             .db
             .insert(record_id)
             .content(SecretRecord::from(secret))
             .await
             .map_err(|error| {
-                self.scoped_database_error(
+                repo.scoped_database_error(
                     DatabaseOperation::Insert,
                     &table_name,
                     format!("Failed to store secret: {error}"),
@@ -125,13 +125,13 @@ where
     }
 
     async fn delete_secret(&self, id: &Uuid) -> RepoResult<Option<Secret>> {
-        self.use_ns_db().await?;
+        let repo = self.use_ns_db().await?;
 
         let table_name = TableName::WebgatesCredentials.to_string();
         let record_id = secret_record_id(&table_name, *id);
 
-        let deleted: Option<SecretRecord> = self.db.delete(record_id).await.map_err(|error| {
-            self.scoped_database_error(
+        let deleted: Option<SecretRecord> = repo.db.delete(record_id).await.map_err(|error| {
+            repo.scoped_database_error(
                 DatabaseOperation::Delete,
                 &table_name,
                 format!("Failed to delete secret: {error}"),
@@ -143,19 +143,19 @@ where
     }
 
     async fn update_secret(&self, secret: Secret) -> RepoResult<()> {
-        self.use_ns_db().await?;
+        let repo = self.use_ns_db().await?;
 
         let table_name = TableName::WebgatesCredentials.to_string();
         let account_id = secret.account_id;
         let record_id = secret_record_id(&table_name, account_id);
 
-        let _: Option<SecretRecord> = self
+        let _: Option<SecretRecord> = repo
             .db
             .update(record_id)
             .content(SecretRecord::from(secret))
             .await
             .map_err(|error| {
-                self.scoped_database_error(
+                repo.scoped_database_error(
                     DatabaseOperation::Update,
                     &table_name,
                     format!("Failed to update secret: {error}"),
@@ -183,16 +183,16 @@ where
             let table_name = TableName::WebgatesCredentials.to_string();
             let record_id = secret_record_id(&table_name, id);
 
-            self.use_ns_db().await?;
+            let repo = self.use_ns_db().await?;
 
             let query = "SELECT VALUE secret FROM ONLY $record_id";
-            let mut response = self
+            let mut response = repo
                 .db
                 .query(query)
                 .bind(("record_id", record_id))
                 .await
                 .map_err(|error| {
-                    self.scoped_database_error(
+                    repo.scoped_database_error(
                         DatabaseOperation::Query,
                         &table_name,
                         format!("Failed to query stored secret: {error}"),
@@ -201,7 +201,7 @@ where
                 })?;
 
             let stored_secret: Option<String> = response.take(0).map_err(|error| {
-                self.scoped_database_error(
+                repo.scoped_database_error(
                     DatabaseOperation::Query,
                     &table_name,
                     format!("Failed to extract stored secret: {error}"),
@@ -211,18 +211,18 @@ where
 
             let (hash_for_verification, user_exists_choice) = match stored_secret {
                 Some(secret) => (secret, Choice::from(1u8)),
-                None => (self.dummy_hash.clone(), Choice::from(0u8)),
+                None => (repo.dummy_hash.clone(), Choice::from(0u8)),
             };
 
             let verify_query = "RETURN crypto::argon2::compare(type::string($stored_hash), type::string($request_secret))";
-            let mut verify_response = self
+            let mut verify_response = repo
                 .db
                 .query(verify_query)
                 .bind(("stored_hash", hash_for_verification))
                 .bind(("request_secret", secret))
                 .await
                 .map_err(|error| {
-                    self.scoped_database_error(
+                    repo.scoped_database_error(
                         DatabaseOperation::Query,
                         &table_name,
                         format!("Failed to verify credentials: {error}"),
@@ -231,7 +231,7 @@ where
                 })?;
 
             let hash_matches: Option<bool> = verify_response.take(0).map_err(|error| {
-                self.scoped_database_error(
+                repo.scoped_database_error(
                     DatabaseOperation::Query,
                     &table_name,
                     format!("Failed to extract verification result: {error}"),

@@ -101,9 +101,12 @@ where
         })
     }
 
-    /// Sets the configured namespace and database before each operation.
-    pub(crate) async fn use_ns_db(&self) -> Result<()> {
-        self.db
+    /// Sets the namespace and database for the SurrealDB connection.
+    ///
+    /// Returns a new instance to use a new SurrealDB session.
+    pub(crate) async fn use_ns_db(&self) -> Result<Self> {
+        let new = Self::new(self.db.clone(), self.scope_settings.clone())?;
+        new.db
             .use_ns(&self.scope_settings.namespace)
             .use_db(&self.scope_settings.database)
             .await
@@ -115,7 +118,8 @@ where
                     None,
                     None,
                 ))
-            })
+            })?;
+        Ok(new)
     }
 
     /// Builds a table-aware database error for SurrealDB adapter operations.
