@@ -194,7 +194,7 @@ jobs:
                   cargo install cargo-audit
                   cargo install cargo-deny
             - name: Run cargo audit
-              run: cargo audit --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2025-0141 --ignore RUSTSEC-2026-0097
+              run: cargo audit
             - name: Run cargo deny
               run: cargo deny check
 
