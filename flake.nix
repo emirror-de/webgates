@@ -36,8 +36,8 @@
         pkgs = nixpkgs.legacyPackages.${system};
         inherit (pkgs) lib;
 
-        # Use stable Rust toolchain
-        rustToolchain = fenix.packages.${system}.stable.toolchain;
+        # Use latest Rust toolchain
+        rustToolchain = fenix.packages.${system}.latest.toolchain;
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
         src = lib.cleanSourceWith {
@@ -80,7 +80,7 @@
 
         # Toolchain with LLVM tools for coverage
         craneLibLLvmTools = craneLib.overrideToolchain (
-          fenix.packages.${system}.stable.withComponents [
+          fenix.packages.${system}.latest.withComponents [
             "cargo"
             "llvm-tools"
             "rustc"
