@@ -209,6 +209,7 @@
               cargo-sort
               cargo-expand # For macro debugging
               cargo-machete # For unused dependency detection
+              cargo-workspaces # Workspace version management
 
               # Database tools for examples
               sqlite
