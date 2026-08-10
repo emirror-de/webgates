@@ -26,7 +26,7 @@ reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = "3"
-sha2 = "0.10"
+sha2 = "0.11"
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["fs", "sync", "time"] }
 tracing = { workspace = true }
