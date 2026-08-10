@@ -1,6 +1,6 @@
 # Security Policy
 
-This document outlines the security practices, built-in protections, and deployment guidance for `webgates` v1.0.0.
+This document outlines the security practices, built-in protections, and deployment guidance for `webgates` v1.1.0.
 
 ---
 
@@ -234,7 +234,7 @@ async fn logout_handler(cookie_jar: CookieJar) -> CookieJar {
 
 ## 10. Observability & Monitoring
 
-### Current state (v1.0.0)
+### Current state (v1.1.0)
 - **Structured Logging**: Comprehensive tracing integration with contextual metadata for all authentication operations
 - **Prometheus Metrics**: Built-in counters and histograms (authorization decisions, JWT validation latency, account operations)
 - **Audit Logging**: Emits structured tracing events when `audit-logging` is enabled; integrate with your tracing subscriber/sink
@@ -374,7 +374,7 @@ match auth_result {
 
 ## 15. Feature Flags and Security
 
-### Available Feature Flags (v2.0.0-dev)
+### Available Feature Flags (v1.1.0)
 | Feature | Security Impact | Recommendation |
 |---------|-----------------|----------------|
 | `full` | ✅ Enables the standard composed authentication stack | Recommended for most applications |
@@ -388,15 +388,15 @@ match auth_result {
 // Production-safe feature configuration
 [dependencies]
 webgates = {
-    version = "2.0.0-dev",
+    version = "1.1.0",
     features = ["audit-logging", "prometheus"]
 }
-webgates-repositories = { version = "2.0.0-dev", features = ["surrealdb"] }
+webgates-repositories = { version = "1.1.0", features = ["surrealdb"] }
 
 // Development configuration (faster hashing automatically enabled in debug builds)
 [dev-dependencies]
-webgates = { version = "2.0.0-dev" }
-webgates-repositories = { version = "2.0.0-dev", features = ["surrealdb"] }
+webgates = { version = "1.1.0" }
+webgates-repositories = { version = "1.1.0", features = ["surrealdb"] }
 ```
 
 ---
@@ -482,6 +482,6 @@ cargo clippy -- -D warnings
 
 ---
 
-**Stay Secure**: `webgates` v2.0.0-dev provides a robust security foundation with production-ready features. Defense-in-depth requires combining it with proper infrastructure hardening, monitoring, and operational security practices.
+**Stay Secure**: `webgates` v1.1.0 provides a robust security foundation with production-ready features. Defense-in-depth requires combining it with proper infrastructure hardening, monitoring, and operational security practices.
 
 For the latest security updates and best practices, monitor the [GitHub repository](https://github.com/emirror-de/webgates) and [security advisories](https://github.com/emirror-de/webgates/security/advisories).

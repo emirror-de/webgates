@@ -40,15 +40,15 @@ For most applications, start with the main composition crate:
 
 ```toml
 [dependencies]
-webgates = "1.0.0"
+webgates = "1.1.0"
 ```
 
 Common Axum setup with session-backed authentication:
 
 ```toml
 [dependencies]
-webgates = { version = "1.0.0", default-features = false, features = ["authn", "codecs", "cookies", "repositories", "secrets", "sessions"] }
-webgates-axum = "1.0.0"
+webgates = { version = "1.1.0", default-features = false, features = ["authn", "codecs", "cookies", "repositories", "secrets", "sessions"] }
+webgates-axum = "1.1.0"
 ```
 
 Use `webgates-repositories` for persistence backends such as in-memory, SeaORM, or SurrealDB. Backend support is feature-gated in that crate.

@@ -12,28 +12,28 @@ Common issues and quick resolutions when working with this workspace.
 
 - Need `Gate`, `codecs::jwt`, or cookie helpers?
   ```toml
-  webgates = { version = "1.0.0", features = ["codecs", "cookies", "authn"] }
+  webgates = { version = "1.1.0", features = ["codecs", "cookies", "authn"] }
   ```
 - Need session-backed login/logout?
   ```toml
-  webgates = { version = "1.0.0", features = ["sessions"] }
+  webgates = { version = "1.1.0", features = ["sessions"] }
   ```
 - Need Prometheus metrics?
   ```toml
-  webgates = { version = "1.0.0", features = ["prometheus"] }
-    webgates-axum = { version = "1.0.0", features = ["prometheus"] }
+  webgates = { version = "1.1.0", features = ["prometheus"] }
+    webgates-axum = { version = "1.1.0", features = ["prometheus"] }
   ```
 - Need the SurrealDB repository backend?
   ```toml
-  webgates-repositories = { version = "1.0.0", features = ["surrealdb"] }
+  webgates-repositories = { version = "1.1.0", features = ["surrealdb"] }
   ```
 - Need the SeaORM repository backend?
   ```toml
-  webgates-repositories = { version = "1.0.0", features = ["sea-orm"] }
+  webgates-repositories = { version = "1.1.0", features = ["sea-orm"] }
   ```
 - Need the in-memory session repository for tests or local dev?
   ```toml
-  webgates-repositories = { version = "1.0.0", features = ["sessions"] }
+  webgates-repositories = { version = "1.1.0", features = ["sessions"] }
   ```
 
 Refer to `FEATURE_MATRIX.md` for the full list of available features and their dependencies.
