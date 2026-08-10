@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-08-10
+### 📝 Other Changes
+- Updated audit.toml, added new vulnerability by surrealdb-types [b8446be](https://github.com/emirror-de/webgates/commit/b8446becfcf41dfc7df8598b3539499d5a52cd2d)
+
+- Updated version numbers in markdown files [5033e16](https://github.com/emirror-de/webgates/commit/5033e16880bf6fffca04404d8d8472ab9a1b646a)
+
+- Removed ignore flag for obsolete deny entry [f2d7355](https://github.com/emirror-de/webgates/commit/f2d73556ab3d04f7ccd44a7e8c4976da1a6df654)
+
+- Upgraded dependencies, removed obsolete deny.toml entry [7e55160](https://github.com/emirror-de/webgates/commit/7e551609dfe5cc48704e2ae27b9e99d58cea2b51)
+
+- Added cargo-semver-checks to flake.nix [8464bd2](https://github.com/emirror-de/webgates/commit/8464bd2eda3c623cc6b667191ff942adaa69ab23)
+
+- Updated sea-orm to 2 [46f42fa](https://github.com/emirror-de/webgates/commit/46f42fa2fe13027405fd7086f45e7f6c6e372627)
+
+- Upgrade versions to v1.1.0 [21df934](https://github.com/emirror-de/webgates/commit/21df934ea5dc5f1d89486d6cdf39304a5eb285a6)
+
+- Added cargo workspaces to flake.nix [25500c8](https://github.com/emirror-de/webgates/commit/25500c855bbffa0c936a4bfa95c85045cb8b3ceb)
+
+- Updated feature contract check script [082ddeb](https://github.com/emirror-de/webgates/commit/082ddeb1f046d3105845cfb1564d7bd113e47b81)
+
+- Using session feature of surrealdb [fc96f71](https://github.com/emirror-de/webgates/commit/fc96f7114e92e95553471985cea141b25c35490c)
+
+- Now using latest toolchain in flake.nix [0582def](https://github.com/emirror-de/webgates/commit/0582defc9a6c8e638c5d6bdd4f7b1254f6afee1b)
+
+- Updated Cargo.lock [70637f4](https://github.com/emirror-de/webgates/commit/70637f43809f32af802f95583bafee5d40c10f5d)
+
+- Moved ignored RUSTSEC items from CI definition to .cargo/audit.toml [b97d583](https://github.com/emirror-de/webgates/commit/b97d5833b635b257ab878624b7372ef49a239799)
+
+- Added webgates-tonic to feature matrix [619d86c](https://github.com/emirror-de/webgates/commit/619d86c91888b70f9eb0d066a5c3a90ae6b97122)
+
+- Added node_modules in any subdirectory to .gitignore [76592b9](https://github.com/emirror-de/webgates/commit/76592b9c6bbfc71d2001ed246c8fd7877bdc1a86)
+
+- Updated Cargo.lock and flake.lock [cb7bc01](https://github.com/emirror-de/webgates/commit/cb7bc014b2d30494349aec606cd12faf17f13456)
+
+- Temporary disabled cargo-watch due to compilation error [3b00b42](https://github.com/emirror-de/webgates/commit/3b00b42997c03b8836b247c9104797d7f532fa8a)
+
+- Added proc-macro-error2 to deny.toml [72f476b](https://github.com/emirror-de/webgates/commit/72f476bfaa7ff369618467655c1cdd626c6ea018)
+
+- Removed old advisories from deny.toml [eea00dc](https://github.com/emirror-de/webgates/commit/eea00dcc3662e706a48eea2073914cbb800f5ac3)
+
+- Updated Rust version to 1.94 [844906c](https://github.com/emirror-de/webgates/commit/844906c7527e376acff989be25cb95f664790b4d)
+
+- Updated workspace/flake version to v1.1.0-dev [c4fe6b9](https://github.com/emirror-de/webgates/commit/c4fe6b9d2de3672fffe1c0e494643f49f60d696e)
+
+- Upgrade sea-orm to v2.0.0-rc.42 [0d86d98](https://github.com/emirror-de/webgates/commit/0d86d98623df879379ea04c94b0565e4cfa9066a)
+
+- Added missing Display implementation for Group [f400006](https://github.com/emirror-de/webgates/commit/f4000062ed46c877e51d477eb8c2a97be8c5bb26)
+
+- Custom roles serialization with sea-orm [0cbad8d](https://github.com/emirror-de/webgates/commit/0cbad8d2a7f781a2a5d92c45ebcf166eb1fa359f)
+
+
+
 ## [1.0.0] - 2026-05-13
 ### 🏗 Refactoring
 - **💥 BREAKING CHANGE:** Login and logout modules are now public [edfac67](https://github.com/emirror-de/webgates/commit/edfac67e3e2b0d50ea3a3cbdcbd9992d3c16bf6f)
@@ -16,7 +68,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### 📝 Other Changes
-- Updated README.md and webgates/README.md [742540f](https://github.com/emirror-de/webgates/commit/742540ff6e638b225c5785a4430e353f1e834e79)
+- Updated Cargo.toml descriptions [75b11b9](https://github.com/emirror-de/webgates/commit/75b11b9167d7c64214a51dc2e142a2d7910d44c0)
+
+- Updated README.md and webgates/README.md [19e330f](https://github.com/emirror-de/webgates/commit/19e330f54e26c295089a57469f3fae51c00e11e6)
 
 - Updated CHANGELOG.md [93ecbf1](https://github.com/emirror-de/webgates/commit/93ecbf1367b037bde8aa7c5669a4cc4e9f76902c)
 
