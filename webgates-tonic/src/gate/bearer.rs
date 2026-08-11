@@ -592,7 +592,6 @@ mod tests {
     use chrono::Utc;
     use webgates::accounts::Account;
     use webgates::authz::access_policy::AccessPolicy;
-    use webgates::codecs::Codec as _;
     use webgates::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
     use webgates::groups::Group;
     use webgates::roles::Role;
@@ -948,7 +947,6 @@ mod tests {
 
         use webgates::accounts::Account;
         use webgates::authz::access_policy::AccessPolicy;
-        use webgates::codecs::Codec as _;
         use webgates::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
         use webgates::groups::Group;
         use webgates::roles::Role;
