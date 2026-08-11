@@ -34,7 +34,7 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tower = { version = "0.5", features = ["limit", "util", "timeout", "buffer", "load-shed"] }
-tower-http = { version = "0.6", features = ["trace"] }
+tower-http = { version = "0.7", features = ["trace"] }
 tracing = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v7"] }
 webgates = { path = "../webgates", version = "1.0.0", features = ["authn", "codecs", "cookies", "oauth2", "repositories", "secrets", "sessions"] }

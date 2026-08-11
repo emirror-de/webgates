@@ -15,3 +15,7 @@ examples/custom-roles/.env
 
 # Any node_modules
 **/node_modules
+
+# Ignore Cargo.lock except root
+**/Cargo.lock
+!/Cargo.lock

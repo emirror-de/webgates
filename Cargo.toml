@@ -33,7 +33,7 @@ rand = "0.10"
 reqwest = { version = "0.13.1", default-features = false, features = ["json", "rustls"] }
 roaring = "0.11"
 sea-orm = { version = "2" }
-sea-query = { version = "0.32.6", default-features = false, features = ["backend-sqlite", "derive", "sea-query-derive"] }
+sea-query = { version = "1.0.1", default-features = false, features = ["backend-sqlite", "derive", "sea-query-derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 strum = { version = "0.28", features = ["derive"] }
