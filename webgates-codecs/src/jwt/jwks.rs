@@ -339,11 +339,11 @@ Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
             Ok(key) => key,
             Err(error) => panic!("decoding key conversion should succeed: {error}"),
         };
-        assert!(
-            !key.try_get_as_bytes()
-                .expect("getting decoding key as bytes should not fail")
-                .is_empty()
-        );
+        let key = match key.try_get_as_bytes() {
+            Ok(key) => key,
+            Err(error) => panic!("decoding key as bytes should succeed: {error}"),
+        };
+        assert!(!key.is_empty());
 
         let serialized = match serde_json::to_string(&JwksDocument {
             keys: vec![jwk.clone()],
