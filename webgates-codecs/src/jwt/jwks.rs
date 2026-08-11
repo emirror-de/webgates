@@ -34,6 +34,7 @@ use p384::EncodedPoint;
 use p384::elliptic_curve::sec1::ToEncodedPoint;
 use p384::pkcs8::DecodePublicKey;
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 
 /// Canonical JWKS document shape for ES384 public verification keys.
 ///
@@ -290,20 +291,25 @@ pub fn es384_kid_from_public_key_pem(public_key_pem: &[u8]) -> Result<String> {
     ) {
         Ok(public_key) => EncodedPoint::from(public_key).as_bytes().to_vec(),
         Err(_) => DecodingKey::from_ec_pem(public_key_pem)
-            .map(|key| key.as_bytes().to_vec())
             .map_err(|error| {
                 Error::Jwt(JwtError::processing(
                     JwtOperation::Validate,
                     format!("failed to parse ES384 public PEM for kid derivation: {error}"),
                 ))
-            })?,
+            })?
+            .try_get_as_bytes()
+            .map_err(|error| {
+                Error::Jwt(JwtError::processing(
+                    JwtOperation::Validate,
+                    format!("failed to get key as bytes: {error}"),
+                ))
+            })?
+            .to_vec(),
     };
 
     let digest = sha2::Sha256::digest(digest_source);
     Ok(format!("es384-{}", URL_SAFE_NO_PAD.encode(digest)))
 }
-
-use sha2::Digest as _;
 
 #[cfg(test)]
 mod tests {
@@ -333,7 +339,11 @@ Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
             Ok(key) => key,
             Err(error) => panic!("decoding key conversion should succeed: {error}"),
         };
-        assert!(!key.as_bytes().is_empty());
+        assert!(
+            !key.try_get_as_bytes()
+                .expect("getting decoding key as bytes should not fail")
+                .is_empty()
+        );
 
         let serialized = match serde_json::to_string(&JwksDocument {
             keys: vec![jwk.clone()],
