@@ -28,7 +28,7 @@ use std::sync::RwLock;
 
 use chrono::Utc;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode_header};
-use p384::elliptic_curve::rand_core::OsRng;
+use p384::elliptic_curve::Generate;
 use p384::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_with::skip_serializing_none;
@@ -305,7 +305,7 @@ impl Es384KeyPairLoader {
 }
 
 fn generate_es384_key_pair_pem() -> Result<(Vec<u8>, Vec<u8>)> {
-    let signing_key = p384::ecdsa::SigningKey::random(&mut OsRng);
+    let signing_key = p384::ecdsa::SigningKey::generate();
     let verifying_key = signing_key.verifying_key();
 
     let private_key_pem = signing_key

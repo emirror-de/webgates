@@ -30,8 +30,8 @@ use jsonwebtoken::jwk::{
     AlgorithmParameters, CommonParameters, EllipticCurve, EllipticCurveKeyParameters,
     EllipticCurveKeyType, Jwk, JwkSet, KeyAlgorithm, PublicKeyUse,
 };
-use p384::EncodedPoint;
-use p384::elliptic_curve::sec1::ToEncodedPoint;
+use p384::Sec1Point;
+use p384::elliptic_curve::sec1::ToSec1Point;
 use p384::pkcs8::DecodePublicKey;
 use serde::{Deserialize, Serialize};
 
@@ -147,7 +147,7 @@ impl EcP384Jwk {
                 format!("failed to parse ES384 public PEM: {error}"),
             ))
         })?;
-        let encoded = public_key.to_encoded_point(false);
+        let encoded = public_key.to_sec1_point(false);
         let x = encoded.x().ok_or_else(|| {
             Error::Jwt(JwtError::processing(
                 JwtOperation::Validate,
@@ -288,7 +288,7 @@ pub fn es384_kid_from_public_key_pem(public_key_pem: &[u8]) -> Result<String> {
             ))
         })?,
     ) {
-        Ok(public_key) => EncodedPoint::from(public_key).as_bytes().to_vec(),
+        Ok(public_key) => Sec1Point::from(public_key).as_bytes().to_vec(),
         Err(_) => DecodingKey::from_ec_pem(public_key_pem)
             .map(|key| key.as_bytes().to_vec())
             .map_err(|error| {
