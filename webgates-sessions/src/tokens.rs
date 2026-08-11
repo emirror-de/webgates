@@ -5,7 +5,7 @@
 //! renewal, and logout workflows can compose these values in higher layers.
 
 use crate::errors::TokenError;
-use rand::{Rng, distr::Alphanumeric, rng};
+use rand::{RngExt, distr::Alphanumeric, rng};
 use sha2::{Digest, Sha256};
 use webgates_codecs::Codec;
 
