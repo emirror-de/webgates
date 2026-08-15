@@ -321,6 +321,8 @@ where
         let refresh_cookie_template = self.refresh_cookie_template.clone();
         let codec = self.codec.clone();
         let session_config = self.session_config.clone();
+        let auth_token_ttl = session_config.auth_token_ttl;
+        let refresh_token_ttl = session_config.refresh_token_ttl;
         let session_repository = self.session_repository.clone();
 
         Box::pin(async move {
@@ -364,8 +366,6 @@ where
                         tokens.auth_token.as_str(),
                     );
 
-                    let auth_token_ttl = tokens.auth_token_ttl;
-                    let refresh_token_ttl = session_config.refresh_token_ttl;
                     let auth_token = tokens.auth_token.into_inner();
                     let refresh_token = tokens.refresh_token.into_inner();
                     let mut response = inner.call(req).await?;
