@@ -38,10 +38,11 @@ use webgates::sessions::tokens::AuthTokenIssuer;
 use webgates_repositories::account_repository::AccountRepository;
 
 use std::sync::Arc;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use axum::http::StatusCode;
 use axum_extra::extract::CookieJar;
+use cookie::time::Duration as CookieDuration;
 use tracing::error;
 
 /// Authenticates credentials and returns a cookie jar containing the auth cookie.
@@ -93,8 +94,19 @@ where
         .await;
 
     match result {
-        LoginResult::Success(jwt_string) => {
-            let cookie = cookie_template.build_with_value(&jwt_string);
+        LoginResult::Success {
+            token,
+            expiration_time,
+        } => {
+            let now = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap_or(Duration::ZERO)
+                .as_secs();
+            let max_age_secs = expiration_time.saturating_sub(now) as i64;
+            let cookie = cookie_template
+                .clone()
+                .max_age(CookieDuration::seconds(max_age_secs))
+                .build_with_value(&token);
             #[cfg(feature = "audit-logging")]
             tracing::info!(user_id = %user_id, "login_success");
             Ok(cookie_jar.add(cookie))
@@ -260,8 +272,23 @@ where
     match result {
         SessionLoginResult::Success(issued_session) => {
             let auth_cookie = auth_cookie_template
+                .clone()
+                .max_age(
+                    CookieDuration::try_from(issued_session.tokens.auth_token_ttl)
+                        .unwrap_or(CookieDuration::ZERO),
+                )
                 .build_with_value(issued_session.tokens.token_pair.auth_token.as_str());
+
+            let refresh_cookie_ttl = issued_session
+                .session
+                .expires_at
+                .duration_since(now)
+                .unwrap_or(Duration::ZERO);
             let refresh_cookie = refresh_cookie_template
+                .clone()
+                .max_age(
+                    CookieDuration::try_from(refresh_cookie_ttl).unwrap_or(CookieDuration::ZERO),
+                )
                 .build_with_value(issued_session.tokens.token_pair.refresh_token.as_str());
             #[cfg(feature = "audit-logging")]
             tracing::info!(user_id = %user_id, "session_login_success");

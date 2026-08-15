@@ -85,7 +85,7 @@
 //!     .await;
 //!
 //! match result {
-//!     LoginResult::Success(token) => println!("Login successful"),
+//!     LoginResult::Success { token, .. } => println!("Login successful"),
 //!     LoginResult::InvalidCredentials { .. } => println!("Invalid credentials"),
 //!     LoginResult::InternalError { .. } => println!("System error"),
 //! }

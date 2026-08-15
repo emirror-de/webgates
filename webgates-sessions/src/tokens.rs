@@ -7,6 +7,7 @@
 use crate::errors::TokenError;
 use rand::{RngExt, distr::Alphanumeric, rng};
 use sha2::{Digest, Sha256};
+use std::time::Duration;
 use webgates_codecs::Codec;
 
 /// Short-lived authentication token returned to clients after login or renewal.
@@ -352,7 +353,7 @@ impl RefreshTokenHasher for Sha256RefreshTokenHasher {
 /// let refresh = RefreshTokenPlaintext::new("a".repeat(64)).unwrap();
 /// let hash = RefreshTokenHash::new("abc123def456").unwrap();
 /// let pair = IssuedTokenPair::new(auth, refresh);
-/// let issued = IssuedSessionTokens::new(pair, hash.clone());
+/// let issued = IssuedSessionTokens::new(pair, hash.clone(), Duration::from_secs(900));
 ///
 /// assert_eq!(issued.refresh_token_hash, hash);
 /// ```
@@ -362,15 +363,22 @@ pub struct IssuedSessionTokens {
     pub token_pair: IssuedTokenPair,
     /// Deterministic persisted fingerprint for the refresh token.
     pub refresh_token_hash: RefreshTokenHash,
+    /// Remaining lifetime of the auth token at issuance time.
+    pub auth_token_ttl: Duration,
 }
 
 impl IssuedSessionTokens {
     /// Creates a new issuance result from a token pair and persisted hash.
     #[must_use]
-    pub fn new(token_pair: IssuedTokenPair, refresh_token_hash: RefreshTokenHash) -> Self {
+    pub fn new(
+        token_pair: IssuedTokenPair,
+        refresh_token_hash: RefreshTokenHash,
+        auth_token_ttl: Duration,
+    ) -> Self {
         Self {
             token_pair,
             refresh_token_hash,
+            auth_token_ttl,
         }
     }
 }
@@ -571,7 +579,10 @@ where
 /// );
 ///
 /// let subject = String::from("user-42");
-/// let issued = issuer.issue_for_subject(&subject).await.unwrap();
+/// let issued = issuer
+///     .issue_for_subject(&subject, Duration::from_secs(900))
+///     .await
+///     .unwrap();
 /// assert_eq!(issued.token_pair.auth_token.as_str(), "auth-user-42");
 /// assert_eq!(issued.token_pair.refresh_token.as_str().len(), 64);
 /// # });
@@ -625,6 +636,7 @@ impl<A, G, H> TokenPairIssuer<A, G, H> {
     pub async fn issue_for_subject<Subject>(
         &self,
         subject: &Subject,
+        auth_token_ttl: Duration,
     ) -> Result<IssuedSessionTokens, TokenError>
     where
         A: AuthTokenIssuer<Subject>,
@@ -646,6 +658,7 @@ impl<A, G, H> TokenPairIssuer<A, G, H> {
         Ok(IssuedSessionTokens::new(
             IssuedTokenPair::new(auth_token, refresh_token),
             refresh_token_hash,
+            auth_token_ttl,
         ))
     }
 }
@@ -817,7 +830,10 @@ mod tests {
         );
         let subject = String::from("subject-123");
 
-        let issued = match issuer.issue_for_subject(&subject).await {
+        let issued = match issuer
+            .issue_for_subject(&subject, Duration::from_secs(900))
+            .await
+        {
             Ok(issued) => issued,
             Err(error) => panic!("expected successful token-pair issuance: {error}"),
         };

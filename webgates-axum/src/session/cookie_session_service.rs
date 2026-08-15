@@ -6,6 +6,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
+use cookie::time::Duration as CookieDuration;
 use http::{HeaderValue, StatusCode, header::SET_COOKIE};
 use tower::Service;
 use webgates::accounts::Account;
@@ -207,9 +208,18 @@ where
         refresh_cookie_template: &CookieTemplate,
         auth_token: &str,
         refresh_token: &str,
+        auth_token_ttl: Duration,
+        refresh_token_ttl: Duration,
     ) -> bool {
-        let auth_cookie = auth_cookie_template.build_with_value(auth_token);
-        let refresh_cookie = refresh_cookie_template.build_with_value(refresh_token);
+        let auth_cookie = auth_cookie_template
+            .clone()
+            .max_age(CookieDuration::try_from(auth_token_ttl).unwrap_or(CookieDuration::ZERO))
+            .build_with_value(auth_token);
+
+        let refresh_cookie = refresh_cookie_template
+            .clone()
+            .max_age(CookieDuration::try_from(refresh_token_ttl).unwrap_or(CookieDuration::ZERO))
+            .build_with_value(refresh_token);
 
         Self::append_set_cookie(response, auth_cookie)
             && Self::append_set_cookie(response, refresh_cookie)
@@ -303,35 +313,36 @@ where
                 }
             };
 
-        let token_pair_issuer = TokenPairIssuer::new(
-            self.codec.as_ref().clone(),
-            OpaqueRefreshTokenGenerator::default(),
-            Sha256RefreshTokenHasher,
-        );
-
-        let renewer = match SessionRenewer::new(
-            self.session_config.clone(),
-            self.session_repository.clone(),
-            token_pair_issuer,
-        ) {
-            Ok(renewer) => renewer,
-            Err(_) => {
-                if matches!(requirement, RenewalRequirement::Required) {
-                    return Box::pin(async move { Ok(Self::unauthorized()) });
-                }
-                let inner = self.inner.call(req);
-                return Box::pin(inner);
-            }
-        };
-
         // Clone the inner service so ownership can be moved into the async
         // future below. This avoids blocking the executor thread with a nested
         // synchronous runtime (which would deadlock or panic under Tokio).
         let mut inner = self.inner.clone();
         let auth_cookie_template = self.auth_cookie_template.clone();
         let refresh_cookie_template = self.refresh_cookie_template.clone();
+        let codec = self.codec.clone();
+        let session_config = self.session_config.clone();
+        let session_repository = self.session_repository.clone();
 
         Box::pin(async move {
+            // Create renewal infrastructure in async context to avoid blocking
+            // the request processing thread.
+            let token_pair_issuer = TokenPairIssuer::new(
+                codec.as_ref().clone(),
+                OpaqueRefreshTokenGenerator::default(),
+                Sha256RefreshTokenHasher,
+            );
+
+            let renewer =
+                match SessionRenewer::new(session_config, session_repository, token_pair_issuer) {
+                    Ok(renewer) => renewer,
+                    Err(_) => {
+                        if matches!(requirement, RenewalRequirement::Required) {
+                            return Ok(Self::unauthorized());
+                        }
+                        return inner.call(req).await;
+                    }
+                };
+
             let renewal_outcome = match renewer
                 .renew_session(auth_token_state, requirement, &refresh_token, now)
                 .await
@@ -353,6 +364,8 @@ where
                         tokens.auth_token.as_str(),
                     );
 
+                    let auth_token_ttl = tokens.auth_token_ttl;
+                    let refresh_token_ttl = session_config.refresh_token_ttl;
                     let auth_token = tokens.auth_token.into_inner();
                     let refresh_token = tokens.refresh_token.into_inner();
                     let mut response = inner.call(req).await?;
@@ -362,6 +375,8 @@ where
                         &refresh_cookie_template,
                         &auth_token,
                         &refresh_token,
+                        auth_token_ttl,
+                        refresh_token_ttl,
                     );
                     Ok(response)
                 }

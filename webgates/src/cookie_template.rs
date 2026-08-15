@@ -30,8 +30,8 @@
 //! - **Session cookies**: No persistence by default
 //! - **Explicit local-dev opt-in**: Insecure cookies require an intentional builder call
 
-use cookie::time::Duration;
-use cookie::{Cookie, CookieBuilder, SameSite};
+use cookie::time::{Duration, OffsetDateTime};
+use cookie::{Cookie, CookieBuilder, Expiration, SameSite};
 use std::borrow::Cow;
 
 /// Default cookie name used by the gate when none is specified.
@@ -106,6 +106,7 @@ pub struct CookieTemplate {
     http_only: bool,
     same_site: SameSite,
     max_age: Option<Duration>,
+    expires: Option<Expiration>,
 }
 
 impl Default for CookieTemplate {
@@ -124,6 +125,7 @@ impl Default for CookieTemplate {
             http_only: true,
             same_site: SameSite::Strict,
             max_age: None, // session cookie – safer by default
+            expires: None,
         }
     }
 }
@@ -218,6 +220,9 @@ impl CookieTemplate {
     #[must_use]
     pub fn max_age(mut self, max_age: Duration) -> Self {
         self.max_age = Some(max_age);
+        self.expires = OffsetDateTime::now_utc()
+            .checked_add(max_age)
+            .map(Expiration::DateTime);
         self
     }
 
@@ -225,6 +230,7 @@ impl CookieTemplate {
     #[must_use]
     pub fn clear_max_age(mut self) -> Self {
         self.max_age = None;
+        self.expires = None;
         self
     }
 
@@ -299,6 +305,10 @@ impl CookieTemplate {
             builder = builder.max_age(max_age);
         }
 
+        if let Some(expires) = self.expires {
+            builder = builder.expires(expires);
+        }
+
         builder
     }
 
@@ -324,6 +334,10 @@ impl CookieTemplate {
 
         if let Some(max_age) = self.max_age {
             builder = builder.max_age(max_age);
+        }
+
+        if let Some(expires) = self.expires {
+            builder = builder.expires(expires);
         }
 
         builder.build()

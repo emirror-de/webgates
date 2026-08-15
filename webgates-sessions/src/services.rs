@@ -60,6 +60,7 @@ use crate::tokens::{
 ///         RefreshTokenPlaintext::new("a".repeat(64)).unwrap(),
 ///     ),
 ///     RefreshTokenHash::new("abc123def456").unwrap(),
+///     Duration::from_secs(900),
 /// );
 ///
 /// let issued = IssuedSession::new(session.clone(), tokens);
@@ -192,7 +193,10 @@ where
             now,
             now + self.config.refresh_token_ttl,
         );
-        let tokens = self.token_pair_issuer.issue_for_subject(&session).await?;
+        let tokens = self
+            .token_pair_issuer
+            .issue_for_subject(&session, self.config.auth_token_ttl)
+            .await?;
 
         self.repository
             .create_session(CreateSession {
@@ -381,7 +385,7 @@ where
 
         let issued = self
             .token_pair_issuer
-            .issue_for_subject(&next_session)
+            .issue_for_subject(&next_session, self.config.auth_token_ttl)
             .await?;
         let rotate_outcome = self
             .repository

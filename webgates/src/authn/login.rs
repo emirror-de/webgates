@@ -42,8 +42,13 @@ use webgates_sessions::tokens::{
 /// [`LoginResult::InvalidCredentials`].
 #[derive(Debug)]
 pub enum LoginResult {
-    /// Authentication succeeded and returned the issued auth token.
-    Success(String),
+    /// Authentication succeeded and returned the issued auth token plus typed expiry metadata.
+    Success {
+        /// Encoded auth token issued for the authenticated account.
+        token: String,
+        /// JWT expiration timestamp carried in the typed registered claims.
+        expiration_time: u64,
+    },
     /// Credentials were invalid, such as an unknown user or wrong password.
     InvalidCredentials {
         /// User-facing message.
@@ -93,7 +98,7 @@ impl LoginResult {
     /// Returns the user-facing message for this result.
     pub fn user_message(&self) -> String {
         match self {
-            LoginResult::Success(_) => "Sign-in successful! Welcome back.".to_string(),
+            LoginResult::Success { .. } => "Sign-in successful! Welcome back.".to_string(),
             LoginResult::InvalidCredentials { user_message, .. } => user_message.clone(),
             LoginResult::InternalError { user_message, .. } => user_message.clone(),
         }
@@ -102,7 +107,7 @@ impl LoginResult {
     /// Returns the support code, if available.
     pub fn support_code(&self) -> Option<String> {
         match self {
-            LoginResult::Success(_) => None,
+            LoginResult::Success { .. } => None,
             LoginResult::InvalidCredentials { support_code, .. } => support_code.clone(),
             LoginResult::InternalError { support_code, .. } => support_code.clone(),
         }
@@ -111,7 +116,7 @@ impl LoginResult {
     /// Returns technical details for developers or logs.
     pub fn technical_message(&self) -> Option<String> {
         match self {
-            LoginResult::Success(_) => None,
+            LoginResult::Success { .. } => None,
             LoginResult::InvalidCredentials { .. } => {
                 Some("Invalid credentials provided".to_string())
             }
@@ -124,7 +129,7 @@ impl LoginResult {
     /// Returns whether this result indicates a retryable error.
     pub fn is_retryable(&self) -> bool {
         match self {
-            LoginResult::Success(_) => false,
+            LoginResult::Success { .. } => false,
             LoginResult::InvalidCredentials { .. } => true,
             LoginResult::InternalError { retryable, .. } => *retryable,
         }
@@ -399,6 +404,7 @@ where
 
         if login_successful {
             if let Some(account) = account_opt {
+                let expiration_time = registered_claims.expiration_time;
                 let claims = JwtClaims::new(account, registered_claims);
                 let jwt = match codec.encode(&claims) {
                     Ok(token) => token,
@@ -425,7 +431,10 @@ where
                     }
                 };
                 debug!("Login successful, JWT generated");
-                LoginResult::Success(jwt_string)
+                LoginResult::Success {
+                    token: jwt_string,
+                    expiration_time,
+                }
             } else {
                 error!("Internal error: login marked successful but no account available");
                 LoginResult::internal_error(
@@ -781,7 +790,7 @@ mod tests {
                     jwt_codec.clone(),
                 )
                 .await;
-            assert!(matches!(r, LoginResult::Success(_)));
+            assert!(matches!(r, LoginResult::Success { .. }));
             vec![start.elapsed()]
         }[0];
 
