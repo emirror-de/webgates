@@ -4,7 +4,6 @@ on:
     push:
         branches:
             - nightly
-            - "version/*"
     pull_request:
 
 permissions:
