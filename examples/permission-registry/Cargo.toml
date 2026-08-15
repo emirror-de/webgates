@@ -6,6 +6,9 @@ description = "Example demonstrating the optional permission mapping registry pa
 license = "MIT"
 publish = false
 
+[package.metadata.release]
+release = false
+
 [dependencies]
 anyhow = "1"
 tokio = { workspace = true }

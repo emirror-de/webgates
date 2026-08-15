@@ -5,6 +5,9 @@ edition = "2024"
 license = "MIT"
 publish = false
 
+[package.metadata.release]
+release = false
+
 [[bin]]
 name = "auth_node"
 path = "src/bin/auth_node.rs"

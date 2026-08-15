@@ -5,6 +5,9 @@ edition = "2024"
 license = "MIT"
 publish = false
 
+[package.metadata.release]
+release = false
+
 [dependencies]
 axum = "0.8"
 axum-extra = "0.12.5"
