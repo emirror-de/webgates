@@ -7,8 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-08-15
+### 📝 Other Changes
+- Added RELEASE_NOTES.md [060a61e](https://github.com/emirror-de/webgates/commit/060a61e0cfc272f79cd00bc16a11daeb2210aede)
+
+- Bumped version numbers of all crates, set workspace version to 1.2.0 [9da006d](https://github.com/emirror-de/webgates/commit/9da006d18cf4d455949308edd3b67c525c15bc91)
+
+- Added missing use statements in doc-tests [f61dd12](https://github.com/emirror-de/webgates/commit/f61dd12f136783c345b45a89543c50945f9788d3)
+
+- TTL config retrieval at wrong code position [caa92e5](https://github.com/emirror-de/webgates/commit/caa92e51af7c20e43f4e70438bbf374490fa269a)
+
+- Align cookie expiration with typed token metadata [61fd71a](https://github.com/emirror-de/webgates/commit/61fd71a987c190272e60b6652e5470f59271152a)
+
+- Removed all Cargo.lock files except the root one, added this to .gitignore [7585523](https://github.com/emirror-de/webgates/commit/7585523251fbaf35a8d03a85cf16d9a43adb7b2a)
+
+- Merge pull request #4 from emirror-de/dependabot/cargo/jsonwebtoken-11.0.0 chore(deps): bump jsonwebtoken from 10.4.0 to 11.0.0 [f7cb8f6](https://github.com/emirror-de/webgates/commit/f7cb8f6f02b34ae04400a527c3f2585b555a189d)
+
+- Merge conflicts [192d86a](https://github.com/emirror-de/webgates/commit/192d86a6ff7b42085939c69bbd93f3c2211e7f33)
+
+- Merge pull request #7 from emirror-de/dependabot/cargo/rand-0.10.2 chore(deps): bump rand from 0.9.5 to 0.10.2 [e06b905](https://github.com/emirror-de/webgates/commit/e06b905eddd884e463477039e130b1a254c1c9af)
+
+- Updated changed import of rand [e33f89e](https://github.com/emirror-de/webgates/commit/e33f89e354c72c85654d5b183218f4fb978a437d)
+
+- Merge conflict [c6ba000](https://github.com/emirror-de/webgates/commit/c6ba00050292dd22bab3aa214ca63adfb06ce9ea)
+
+- Clippy lint [1410d51](https://github.com/emirror-de/webgates/commit/1410d51b7f1241ec5247ce2d54660d49d8949975)
+
+- Updated to new jsonwebtoken syntax [e0e3328](https://github.com/emirror-de/webgates/commit/e0e33288b4367c83a18999014d55177aacaafe76)
+
+- Removed unused imports in tests [ae53903](https://github.com/emirror-de/webgates/commit/ae53903ba9926279138b1c317df5f63e8fc1de6c)
+
+- Merge pull request #5 from emirror-de/dependabot/cargo/p384-0.14.0 chore(deps): bump p384 from 0.13.1 to 0.14.0 [8cba542](https://github.com/emirror-de/webgates/commit/8cba542a9ef067d49279ec8c831d7422309b5237)
+
+- Updated to latest API of p384 [4bc2028](https://github.com/emirror-de/webgates/commit/4bc2028e17135a37f53bf8894c7f436a338b85d8)
+
+- Merge pull request #3 from emirror-de/dependabot/cargo/strum-0.28.0 chore(deps): bump strum from 0.27.2 to 0.28.0 [25af1d0](https://github.com/emirror-de/webgates/commit/25af1d0c541d286fb7b1e7672160242246fff4b8)
+
+- Merge pull request #6 from emirror-de/dependabot/cargo/sha2-0.11.0 chore(deps): bump sha2 from 0.10.9 to 0.11.0 [4c21f80](https://github.com/emirror-de/webgates/commit/4c21f80b49c219e166453a0dffaa26f9d6ed0c1a)
+
+- Added initial dependabot.yml [63c3030](https://github.com/emirror-de/webgates/commit/63c30304822f13120bde05a426a872a98cb15f8b)
+
+
+
+### 🚲 Miscellaneous
+- Bump rand from 0.9.5 to 0.10.2 Bumps [rand](https://github.com/rust-random/rand) from 0.9.5 to 0.10.2. - [Release notes](https://github.com/rust-random/rand/releases) - [Changelog](https://github.com/rust-random/rand/blob/master/CHANGELOG.md) - [Commits](https://github.com/rust-random/rand/compare/0.9.5...0.10.2) --- updated-dependencies: - dependency-name: rand dependency-version: 0.10.2 dependency-type: direct:production update-type: version-update:semver-minor ... Signed-off-by: dependabot[bot] <support@github.com> *(deps)*  [7c4da19](https://github.com/emirror-de/webgates/commit/7c4da190d170e757f59d2c854c25d41b58bddaeb)
+
+- Bump jsonwebtoken from 10.4.0 to 11.0.0 Bumps [jsonwebtoken](https://github.com/Keats/jsonwebtoken) from 10.4.0 to 11.0.0. - [Changelog](https://github.com/Keats/jsonwebtoken/blob/master/CHANGELOG.md) - [Commits](https://github.com/Keats/jsonwebtoken/compare/v10.4.0...v11.0.0) --- updated-dependencies: - dependency-name: jsonwebtoken dependency-version: 11.0.0 dependency-type: direct:production update-type: version-update:semver-major ... Signed-off-by: dependabot[bot] <support@github.com> *(deps)*  [c325e79](https://github.com/emirror-de/webgates/commit/c325e79511186960e81fc7c18222971e9aa23100)
+
+- Bump p384 from 0.13.1 to 0.14.0 Bumps [p384](https://github.com/RustCrypto/elliptic-curves) from 0.13.1 to 0.14.0. - [Commits](https://github.com/RustCrypto/elliptic-curves/compare/sm2/v0.13.1...p384/v0.14.0) --- updated-dependencies: - dependency-name: p384 dependency-version: 0.14.0 dependency-type: direct:production update-type: version-update:semver-minor ... Signed-off-by: dependabot[bot] <support@github.com> *(deps)*  [5710a76](https://github.com/emirror-de/webgates/commit/5710a7646945a21a5175367cde83730a9da53c45)
+
+- Bump strum from 0.27.2 to 0.28.0 Bumps [strum](https://github.com/Peternator7/strum) from 0.27.2 to 0.28.0. - [Release notes](https://github.com/Peternator7/strum/releases) - [Changelog](https://github.com/Peternator7/strum/blob/master/CHANGELOG.md) - [Commits](https://github.com/Peternator7/strum/compare/v0.27.2...v0.28.0) --- updated-dependencies: - dependency-name: strum dependency-version: 0.28.0 dependency-type: direct:production update-type: version-update:semver-minor ... Signed-off-by: dependabot[bot] <support@github.com> *(deps)*  [c572197](https://github.com/emirror-de/webgates/commit/c572197f3ad450d43f2720c5576c21767ebfec80)
+
+- Bump sha2 from 0.10.9 to 0.11.0 Bumps [sha2](https://github.com/RustCrypto/hashes) from 0.10.9 to 0.11.0. - [Commits](https://github.com/RustCrypto/hashes/compare/sha2-v0.10.9...sha2-v0.11.0) --- updated-dependencies: - dependency-name: sha2 dependency-version: 0.11.0 dependency-type: direct:production update-type: version-update:semver-minor ... Signed-off-by: dependabot[bot] <support@github.com> *(deps)*  [9df4e3c](https://github.com/emirror-de/webgates/commit/9df4e3c9c34bcce5906b5beb1951b870d789cfb8)
+
+
+
 ## [1.1.0] - 2026-08-10
 ### 📝 Other Changes
+- Updated CHANGELOG.md [50911ff](https://github.com/emirror-de/webgates/commit/50911ffcccf78c6429409c49d3455e8c6f4fca1a)
+
 - Updated audit.toml, added new vulnerability by surrealdb-types [b8446be](https://github.com/emirror-de/webgates/commit/b8446becfcf41dfc7df8598b3539499d5a52cd2d)
 
 - Updated version numbers in markdown files [5033e16](https://github.com/emirror-de/webgates/commit/5033e16880bf6fffca04404d8d8472ab9a1b646a)
