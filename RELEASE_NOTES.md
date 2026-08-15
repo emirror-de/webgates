@@ -1,6 +1,6 @@
 # Release notes
 
-## v1.2.0
+## webgates-v1.2.0
 
 `webgates` v1.2.0 improves how authentication cookies are written across `webgates`, `webgates-axum`, and `webgates-sessions`.
 
