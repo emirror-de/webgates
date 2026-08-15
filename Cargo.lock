@@ -6715,7 +6715,7 @@ dependencies = [
 
 [[package]]
 name = "webgates"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "chrono",
  "const-crypto",
@@ -6745,7 +6745,7 @@ dependencies = [
 
 [[package]]
 name = "webgates-axum"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "axum",
  "axum-extra",
@@ -6773,7 +6773,7 @@ dependencies = [
 
 [[package]]
 name = "webgates-codecs"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -6794,7 +6794,7 @@ dependencies = [
 
 [[package]]
 name = "webgates-core"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "const-crypto",
  "roaring",
@@ -6810,7 +6810,7 @@ dependencies = [
 
 [[package]]
 name = "webgates-repositories"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "sea-orm",
  "sea-query",
@@ -6832,7 +6832,7 @@ dependencies = [
 
 [[package]]
 name = "webgates-secrets"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "argon2",
  "serde",
@@ -6844,7 +6844,7 @@ dependencies = [
 
 [[package]]
 name = "webgates-sessions"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "chrono",
  "rand 0.10.2",
@@ -6862,7 +6862,7 @@ dependencies = [
 
 [[package]]
 name = "webgates-tonic"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "axum",
  "chrono",
