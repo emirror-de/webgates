@@ -348,6 +348,7 @@ impl RefreshTokenHasher for Sha256RefreshTokenHasher {
 ///     AuthToken, IssuedSessionTokens, IssuedTokenPair, RefreshTokenHash,
 ///     RefreshTokenPlaintext,
 /// };
+/// use std::time::Duration;
 ///
 /// let auth = AuthToken::new("eyJhbGciOiJIUzI1NiJ9.payload.sig").unwrap();
 /// let refresh = RefreshTokenPlaintext::new("a".repeat(64)).unwrap();
@@ -555,6 +556,7 @@ where
 ///     AuthToken, AuthTokenIssuer, OpaqueRefreshTokenGenerator, RefreshTokenGenerator,
 ///     RefreshTokenLength, Sha256RefreshTokenHasher, TokenPairIssuer,
 /// };
+/// use std::time::Duration;
 ///
 /// #[derive(Debug, Clone, Copy)]
 /// struct PrefixAuthTokenIssuer;
