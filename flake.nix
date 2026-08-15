@@ -210,6 +210,7 @@
               cargo-expand # For macro debugging
               cargo-machete # For unused dependency detection
               cargo-workspaces # Workspace version management
+              cargo-release
               cargo-semver-checks # semantic versioning checks
 
               # Database tools for examples
