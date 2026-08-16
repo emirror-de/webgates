@@ -667,7 +667,12 @@ mod tests {
         install_jwt_crypto_provider();
         let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
         let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
-        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let jwt_codec = Arc::new(
+            JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+                crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+                    .expect("generating ephemeral ES384 key pair should not fail"),
+            ),
+        );
         let login_service = LoginService::new();
 
         let existing_user = "existing@example.com";
@@ -821,7 +826,12 @@ mod tests {
         install_jwt_crypto_provider();
         let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
         let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
-        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let jwt_codec = Arc::new(
+            JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+                crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+                    .expect("generating ephemeral ES384 key pair should not fail"),
+            ),
+        );
         let login_service = LoginService::new();
 
         let registered_claims = crate::codecs::jwt::RegisteredClaims::new(

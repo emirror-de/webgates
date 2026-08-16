@@ -29,7 +29,10 @@
 //! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
 //! use webgates_axum::gate::Gate;
 //! # async fn admin() {}
-//! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+//!     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+//!         .expect("generating ephemeral ES384 key pair should not fail"),
+//! ));
 //! let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin);
 //!
 //! let app = Router::<()>::new()
@@ -48,7 +51,10 @@
 //! use webgates::roles::Role;
 //! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
 //! use webgates_axum::gate::Gate;
-//! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+//!     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+//!         .expect("generating ephemeral ES384 key pair should not fail"),
+//! ));
 //! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt)
 //!     .allow_anonymous_with_optional_user(); // inserts Option<Account>, Option<RegisteredClaims>
 //! ```
@@ -61,7 +67,10 @@
 //! use webgates::roles::Role;
 //! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
 //! use webgates_axum::gate::Gate;
-//! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+//!     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+//!         .expect("generating ephemeral ES384 key pair should not fail"),
+//! ));
 //! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt)
 //!     .require_login(); // baseline role + all supervisors
 //! ```
@@ -75,7 +84,10 @@
 //! use webgates::cookie_template::CookieTemplate;
 //! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
 //! use webgates_axum::gate::Gate;
-//! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+//!     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+//!         .expect("generating ephemeral ES384 key pair should not fail"),
+//! ));
 //! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt)
 //!     .configure_cookie_template(|tpl: CookieTemplate| {
 //!         tpl.name("auth-token")
@@ -195,7 +207,10 @@ where
     /// # use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
     /// # use webgates::gate::Gate;
     /// # use std::sync::Arc;
-    /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+    /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+    /// #     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+    /// #         .expect("generating ephemeral ES384 key pair should not fail"),
+    /// # ));
     /// let gate = Gate::cookie("my-app", jwt_codec)
     ///     .with_policy(
     ///         AccessPolicy::require_role(Role::Admin)
@@ -222,7 +237,10 @@ where
     /// # use webgates::gate::Gate;
     /// # use webgates::cookie_template::CookieTemplate;
     /// # use std::sync::Arc;
-    /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+    /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+    /// #     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+    /// #         .expect("generating ephemeral ES384 key pair should not fail"),
+    /// # ));
     /// let cookie_template = CookieTemplate::recommended();
     /// let gate = Gate::cookie("my-app", jwt_codec)
     ///     .with_policy(AccessPolicy::<Role, Group>::deny_all())
@@ -269,7 +287,10 @@ where
     /// # use webgates::gate::Gate;
     /// # use webgates::cookie_template::CookieTemplate;
     /// # use std::sync::Arc;
-    /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+    /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+    /// #     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+    /// #         .expect("generating ephemeral ES384 key pair should not fail"),
+    /// # ));
     /// let gate = Gate::cookie("my-app", jwt_codec)
     ///     .with_policy(AccessPolicy::<Role, Group>::deny_all())
     ///     .configure_cookie_template(|tpl: CookieTemplate| {
@@ -356,7 +377,10 @@ where
     /// # use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
     /// # use webgates::gate::Gate;
     /// # use std::sync::Arc;
-    /// let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+    /// let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+    ///     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+    ///         .expect("generating ephemeral ES384 key pair should not fail"),
+    /// ));
     /// let gate = Gate::cookie::<_, Role, Group>("my-app", jwt_codec).require_login();
     /// ```
     pub fn require_login(mut self) -> Self {
@@ -367,6 +391,7 @@ where
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::{super::*, *};
     use webgates::accounts::Account;
@@ -376,9 +401,16 @@ mod tests {
     use std::sync::Arc;
     use webgates::codecs::jwt::{JsonWebToken, JwtClaims};
 
+    fn make_test_codec() -> Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> {
+        Arc::new(JsonWebToken::new_with_options(
+            webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+                .expect("generating ephemeral ES384 key pair should not fail"),
+        ))
+    }
+
     #[test]
     fn cookie_creates_gate_with_deny_all_policy() {
-        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let jwt_codec = make_test_codec();
         let gate: CookieGate<_, Role, Group> = Gate::cookie("test-app", jwt_codec);
 
         assert_eq!(gate.issuer, "test-app");
@@ -387,7 +419,7 @@ mod tests {
 
     #[test]
     fn require_login_creates_gate_with_user_or_supervisor_policy() {
-        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let jwt_codec = make_test_codec();
         let gate: CookieGate<_, Role, Group> = Gate::cookie("test-app", jwt_codec).require_login();
 
         assert_eq!(gate.issuer, "test-app");
@@ -409,7 +441,7 @@ mod tests {
 
     #[test]
     fn with_policy_updates_access_policy() {
-        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let jwt_codec = make_test_codec();
         let custom_policy: AccessPolicy<Role, Group> = AccessPolicy::require_role(Role::Admin);
 
         let gate: CookieGate<_, Role, Group> =
@@ -430,7 +462,7 @@ mod tests {
 
     #[test]
     fn with_cookie_template_updates_cookie_configuration() {
-        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let jwt_codec = make_test_codec();
         let custom_template = CookieTemplate::recommended().name("custom-cookie");
 
         let _gate: CookieGate<_, Role, Group> =
@@ -443,7 +475,7 @@ mod tests {
     #[test]
     #[allow(clippy::unwrap_used)]
     fn configure_cookie_template_uses_closure() {
-        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let jwt_codec = make_test_codec();
 
         let _gate: CookieGate<_, Role, Group> = Gate::cookie("test-app", jwt_codec)
             .configure_cookie_template(|tpl| {
@@ -458,7 +490,7 @@ mod tests {
 
     #[test]
     fn require_login_allows_all_role_hierarchy() {
-        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let jwt_codec = make_test_codec();
         let gate: CookieGate<_, Role, Group> = Gate::cookie("test-app", jwt_codec).require_login();
 
         let (_, expected_groups, expected_permissions) =
@@ -477,7 +509,7 @@ mod tests {
     #[test]
     #[allow(clippy::unwrap_used)]
     fn require_login_can_be_chained_with_other_methods() {
-        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let jwt_codec = make_test_codec();
         let gate: CookieGate<_, Role, Group> = Gate::cookie("test-app", jwt_codec)
             .require_login()
             .configure_cookie_template(|tpl| tpl.name("custom-auth"))

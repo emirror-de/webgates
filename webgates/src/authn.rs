@@ -72,7 +72,10 @@
 //!
 //! let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
 //! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-//! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+//!     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+//!         .expect("generating ephemeral ES384 key pair should not fail"),
+//! ));
 //!
 //! let result = login_service
 //!     .authenticate(

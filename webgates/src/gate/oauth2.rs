@@ -312,7 +312,12 @@ mod tests {
     #[tokio::test]
     async fn oauth2_with_jwt_codec_mints_jti_and_leaves_sid_absent() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = Arc::new(
+            JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+                crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+                    .expect("generating ephemeral ES384 key pair should not fail"),
+            ),
+        );
         let runtime = OAuth2Gate::<Role, Group>::new()
             .auth_url("https://provider.example/authorize")
             .token_url("https://provider.example/token")

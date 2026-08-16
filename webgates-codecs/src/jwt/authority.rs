@@ -99,36 +99,67 @@ where
     ///
     /// # Example
     ///
-    /// ```ignore
-    /// // First run: generates and saves keys
-    /// let authority = JwtAuthority::<MyClaims>::from_private_key_path(
-    ///     "/etc/jwt/key"
-    /// ).await?;
+    /// ```rust
+    /// use webgates_codecs::jwt::JwtClaims;
+    /// use webgates_codecs::jwt::authority::JwtAuthority;
     ///
-    /// // Subsequent runs: reuses existing keys
-    /// let authority = JwtAuthority::<MyClaims>::from_private_key_path(
-    ///     "/etc/jwt/key"
-    /// ).await?;
+    /// # let unique = std::time::SystemTime::now()
+    /// #     .duration_since(std::time::UNIX_EPOCH)?
+    /// #     .as_nanos();
+    /// # let temp_dir = std::env::temp_dir().join(format!("webgates-authority-reuse-docs-{unique}"));
+    /// # std::fs::create_dir_all(&temp_dir)?;
+    /// # let key_path = temp_dir.join("jwt.key");
+    /// # let public_key_path = temp_dir.join("jwt.key.pub");
+    /// # let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
+    /// // First run: generates and saves keys.
+    /// let first = runtime.block_on(async {
+    ///     JwtAuthority::<JwtClaims<()>>::from_private_key_path(&key_path).await
+    /// })?;
+    ///
+    /// // Subsequent runs: reuses existing keys.
+    /// let second = runtime.block_on(async {
+    ///     JwtAuthority::<JwtClaims<()>>::from_private_key_path(&key_path).await
+    /// })?;
+    ///
+    /// assert_eq!(first.key_id(), second.key_id());
+    /// assert!(key_path.is_file());
+    /// assert!(public_key_path.is_file());
+    /// # let _ = std::fs::remove_file(&public_key_path);
+    /// # let _ = std::fs::remove_file(&key_path);
+    /// # let _ = std::fs::remove_dir_all(&temp_dir);
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     ///
     /// # Production Use
     ///
     /// Perfect for auth servers that publish JWKS:
     ///
-    /// ```ignore
-    /// #[tokio::main]
-    /// async fn main() -> Result<()> {
-    ///     // Loads or generates keys
-    ///     let authority = JwtAuthority::<MyClaimsType>::from_private_key_path(
-    ///         "/etc/jwt/server.key"
-    ///     ).await?;
+    /// ```rust
+    /// use webgates_codecs::jwt::JwtClaims;
+    /// use webgates_codecs::jwt::authority::JwtAuthority;
     ///
-    ///     let signing_codec = authority.codec();
-    ///     let jwks_provider = authority.jwks_provider();
+    /// # let unique = std::time::SystemTime::now()
+    /// #     .duration_since(std::time::UNIX_EPOCH)?
+    /// #     .as_nanos();
+    /// # let temp_dir = std::env::temp_dir().join(format!("webgates-authority-server-docs-{unique}"));
+    /// # std::fs::create_dir_all(&temp_dir)?;
+    /// # let key_path = temp_dir.join("server.key");
+    /// # let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
+    /// // Loads or generates keys.
+    /// let authority = runtime.block_on(async {
+    ///     JwtAuthority::<JwtClaims<()>>::from_private_key_path(&key_path).await
+    /// })?;
     ///
-    ///     // Build routes and start server
-    ///     Ok(())
-    /// }
+    /// let signing_codec = authority.codec();
+    /// let jwks_provider = authority.jwks_provider();
+    /// assert_eq!(jwks_provider.document().keys.len(), 1);
+    /// assert_eq!(authority.key_id(), jwks_provider.key_id().unwrap());
+    ///
+    /// # let _ = signing_codec;
+    /// # let _ = std::fs::remove_file(temp_dir.join("server.key.pub"));
+    /// # let _ = std::fs::remove_file(&key_path);
+    /// # let _ = std::fs::remove_dir_all(&temp_dir);
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     ///
     /// # Errors
@@ -178,10 +209,17 @@ where
     ///
     /// # Example
     ///
-    /// ```ignore
-    /// let authority = JwtAuthority::<MyClaimsType>::generate_for_testing()?;
-    /// let codec = authority.codec();        // For signing
-    /// let jwks = authority.jwks_provider(); // For publication
+    /// ```rust
+    /// use webgates_codecs::jwt::JwtClaims;
+    /// use webgates_codecs::jwt::authority::JwtAuthority;
+    ///
+    /// let authority = JwtAuthority::<JwtClaims<()>>::generate_for_testing()?;
+    /// let codec = authority.codec();
+    /// let jwks = authority.jwks_provider();
+    /// assert_eq!(jwks.document().keys.len(), 1);
+    /// assert_eq!(authority.key_id(), jwks.key_id().unwrap());
+    /// # let _ = codec;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     ///
     /// # Errors

@@ -36,8 +36,8 @@ Most developers can approach this crate through five concepts:
 
 ```toml
 [dependencies]
-webgates-codecs = "1.1.0"
-webgates-core = "1.1.0"
+webgates-codecs = "1.1.1"
+webgates-core = "1.1.1"
 ```
 
 Minimum supported Rust version: `1.94`.
@@ -48,31 +48,39 @@ Minimum supported Rust version: `1.94`.
 
 ```rust
 use std::sync::Arc;
+use webgates_codecs::jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER as JWT_CRYPTO_PROVIDER;
 use webgates_codecs::jwt::{
     JsonWebToken,
     JsonWebTokenOptions,
     JwtClaims,
     RegisteredClaims,
 };
+use webgates_codecs::jwt::validation_service::JwtValidationService;
 use webgates_codecs::Codec;
 
 type AppClaims = JwtClaims<()>;
 
-// Fresh keys generated automatically (perfect for tests)
-let codec = Arc::new(JsonWebToken::<AppClaims>::new_with_options(
-    JsonWebTokenOptions::default(),
-));
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let _ = JWT_CRYPTO_PROVIDER.install_default();
 
-let claims = JwtClaims::new(
-    (),
-    RegisteredClaims::new("my-app", 4_102_444_800),
-);
+    // Fresh keys generated explicitly (perfect for tests and local development)
+    let codec = Arc::new(JsonWebToken::<AppClaims>::new_with_options(
+        JsonWebTokenOptions::generate_for_testing()?,
+    ));
 
-let encoded = codec.encode(&claims)?;
-let decoded = codec.decode(&encoded)?;
+    let claims = JwtClaims::new(
+        (),
+        RegisteredClaims::new("my-app", 4_102_444_800),
+    );
 
-assert!(decoded.has_issuer("my-app"));
-# Ok::<(), Box<dyn std::error::Error>>(())
+    let encoded = codec.encode(&claims)?;
+    let decoded = codec.decode(&encoded)?;
+    assert!(decoded.has_issuer("my-app"));
+
+    let validator = JwtValidationService::new(Arc::clone(&codec), "my-app");
+    let _ = validator.validate_token(std::str::from_utf8(&encoded)?);
+    Ok(())
+}
 ```
 
 ### Production: Persistent keys from file
@@ -80,17 +88,19 @@ assert!(decoded.has_issuer("my-app"));
 ```rust
 use webgates_codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // First run: generates keys and saves to disk
-    // Subsequent runs: loads existing keys
-    let options = JsonWebTokenOptions::from_private_key_path(
-        "/etc/jwt/key"  // Public key auto-derived as /etc/jwt/key.pub
-    ).await?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+
+    // First run: generates keys and saves to disk.
+    // Subsequent runs: loads the same keys from disk.
+    let options = runtime.block_on(async {
+        JsonWebTokenOptions::from_private_key_path("/etc/jwt/key").await
+    })?;
 
     let codec = JsonWebToken::<JwtClaims<()>>::new_with_options(options);
-    
-    // Use codec for signing/verification...
+    let _ = codec;
     Ok(())
 }
 ```
@@ -98,19 +108,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Full auth server with JWKS
 
 ```rust
+use webgates_codecs::jwt::JwtClaims;
 use webgates_codecs::jwt::authority::JwtAuthority;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // One path, everything handled automatically
-    let authority = JwtAuthority::<JwtClaims<()>>::from_private_key_path(
-        "/etc/jwt/server.key"
-    ).await?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
 
-    let signing_codec = authority.codec();      // For creating tokens
-    let jwks = authority.jwks_provider();        // For publishing public keys
-    
-    // Build your auth server...
+    // One path, everything handled automatically.
+    let authority = runtime.block_on(async {
+        JwtAuthority::<JwtClaims<()>>::from_private_key_path("/etc/jwt/server.key").await
+    })?;
+
+    let signing_codec = authority.codec();
+    let jwks = authority.jwks_provider();
+    assert_eq!(authority.key_id(), jwks.key_id().unwrap());
+
+    let _ = signing_codec;
     Ok(())
 }
 ```
@@ -119,13 +134,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### For development and testing
 
-Use automatic key generation - fresh keys every time:
+Use explicit key generation - fresh keys every time:
 
 ```rust
-// Each invocation gets a unique key pair
-let options = JsonWebTokenOptions::default();
-// or explicitly:
-let options = JsonWebTokenOptions::generate_for_testing()?;
+use webgates_codecs::jwt::JsonWebTokenOptions;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Each invocation gets a unique key pair
+    let options = JsonWebTokenOptions::generate_for_testing()?;
+    assert_eq!(options.verification_key_count(), 1);
+    Ok(())
+}
 ```
 
 **Benefits:**
@@ -139,9 +158,22 @@ let options = JsonWebTokenOptions::generate_for_testing()?;
 Use persistent file-based keys - automatically persist and reuse:
 
 ```rust
-// First run: generates and saves keys
-// Subsequent runs: loads existing keys
-let options = JsonWebTokenOptions::from_private_key_path("/etc/jwt/key").await?;
+use webgates_codecs::jwt::JsonWebTokenOptions;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+
+    // First run: generates and saves keys.
+    // Subsequent runs: loads existing keys.
+    let options = runtime.block_on(async {
+        JsonWebTokenOptions::from_private_key_path("/etc/jwt/key").await
+    })?;
+
+    let _ = options;
+    Ok(())
+}
 ```
 
 **How it works:**
@@ -172,11 +204,19 @@ let options = JsonWebTokenOptions::from_private_key_path("/etc/jwt/key").await?;
 When you have keys from a secure source (vault, KMS, file, etc.):
 
 ```rust
-let private_pem = vault.get_secret("jwt-private-key").await?;
-let public_pem = vault.get_secret("jwt-public-key").await?;
+use webgates_codecs::jwt::JsonWebTokenOptions;
 
-let options = JsonWebTokenOptions::from_es384_pem(&private_pem, &public_pem)?;
+async fn bootstrap(vault: &VaultClient) -> Result<(), Box<dyn std::error::Error>> {
+    let private_pem = vault.get_secret("jwt-private-key").await?;
+    let public_pem = vault.get_secret("jwt-public-key").await?;
+
+    let options = JsonWebTokenOptions::from_es384_pem(&private_pem, &public_pem)?;
+    let _ = options;
+    Ok(())
+}
 ```
+
+Here `VaultClient` stands in for your own KMS, secret manager, or vault client.
 
 ## Production guidance
 
@@ -185,16 +225,23 @@ let options = JsonWebTokenOptions::from_es384_pem(&private_pem, &public_pem)?;
 The simplest approach for most production deployments:
 
 ```rust
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Works with environment variables
+use webgates_codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+
+    // Works with environment variables.
     let key_path = std::env::var("JWT_KEY_PATH")
         .unwrap_or_else(|_| "/etc/jwt/key".to_string());
-    
-    let options = JsonWebTokenOptions::from_private_key_path(&key_path).await?;
-    let codec = JsonWebToken::new_with_options(options);
-    
-    // Your auth server...
+
+    let options = runtime.block_on(async {
+        JsonWebTokenOptions::from_private_key_path(&key_path).await
+    })?;
+    let codec = JsonWebToken::<JwtClaims<()>>::new_with_options(options);
+
+    let _ = codec;
     Ok(())
 }
 ```
@@ -202,18 +249,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### With JwtAuthority for JWKS publication
 
 ```rust
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let authority = JwtAuthority::<MyClaims>::from_private_key_path(
-        "/etc/jwt/server.key"
-    ).await?;
+use webgates_codecs::jwt::JwtClaims;
+use webgates_codecs::jwt::authority::JwtAuthority;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+
+    let authority = runtime.block_on(async {
+        JwtAuthority::<JwtClaims<()>>::from_private_key_path("/etc/jwt/server.key").await
+    })?;
 
     // Signing codec
     let codec = authority.codec();
-    
+
     // Publish JWKS at /.well-known/jwks.json
     let jwks = authority.jwks_provider();
-    
+    assert_eq!(authority.key_id(), jwks.key_id().unwrap());
+
+    let _ = codec;
     Ok(())
 }
 ```
@@ -225,13 +280,15 @@ If a node only validates tokens and never signs them:
 ```rust
 use webgates_codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
 
-let public_pem = std::fs::read("/run/secrets/jwt-es384-public.pem")?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let public_pem = std::fs::read("/run/secrets/jwt-es384-public.pem")?;
+    let codec = JsonWebToken::<JwtClaims<()>>::new_with_options(
+        JsonWebTokenOptions::for_es384_verification_only(&public_pem)?,
+    );
 
-let codec = JsonWebToken::<JwtClaims<()>>::new_with_options(
-    JsonWebTokenOptions::for_es384_verification_only(&public_pem)?,
-);
-# let _ = codec;
-# Ok::<(), Box<dyn std::error::Error>>(())
+    let _ = codec;
+    Ok(())
+}
 ```
 
 ### JWKS-backed verification
@@ -242,12 +299,16 @@ For strict `kid`-based key selection:
 use webgates_codecs::jwt::jwks::EcP384Jwk;
 use webgates_codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
 
-let jwk = EcP384Jwk::from_public_key_pem("auth-key-1", public_pem.as_bytes())?;
-let codec = JsonWebToken::<JwtClaims<()>>::new_with_options(
-    JsonWebTokenOptions::for_es384_jwks_keys(&[jwk])?,
-);
-# let _ = codec;
-# Ok::<(), Box<dyn std::error::Error>>(())
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let public_pem = std::fs::read("/run/secrets/jwt-es384-public.pem")?;
+    let jwk = EcP384Jwk::from_public_key_pem("auth-key-1", &public_pem)?;
+    let codec = JsonWebToken::<JwtClaims<()>>::new_with_options(
+        JsonWebTokenOptions::for_es384_jwks_keys(&[jwk])?,
+    );
+
+    let _ = codec;
+    Ok(())
+}
 ```
 
 ## Deployment examples
@@ -387,8 +448,8 @@ These are especially useful for auth authorities and resource servers that need 
 
 ### Development vs Production
 
-**Development** (via `JsonWebTokenOptions::default()`):
-- Generates fresh keys automatically
+**Development** (via `JsonWebTokenOptions::generate_for_testing()`):
+- Generates fresh keys explicitly
 - Perfect for tests and local development
 - Keys are ephemeral
 - No security risk (test isolation)
@@ -469,7 +530,7 @@ If you are new to this crate, I recommend this order:
 2. `jwt::RegisteredClaims` - standard JWT claims
 3. `jwt::JwtClaims<T>` - typed application claims
 4. `jwt::JsonWebToken<T>` - the JWT implementation
-5. `JsonWebTokenOptions::default()` - development setup
+5. `JsonWebTokenOptions::generate_for_testing()` - development setup
 6. `JsonWebTokenOptions::from_private_key_path()` - production setup
 7. `jwt::validation_service::JwtValidationService` - validation at boundaries
 8. `jwt::jwks` - distributed verification

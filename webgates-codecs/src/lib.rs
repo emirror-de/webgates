@@ -54,10 +54,7 @@ type Claims = JwtClaims<Account<Role, Group>>;
 
 let _ = JWT_CRYPTO_PROVIDER.install_default();
 
-// Option 1: Default (auto-generates fresh keys every call)
-let codec = Arc::new(JsonWebToken::<Claims>::default());
-
-// Option 2: Explicit generation for testing
+// Generate fresh keys for testing/development
 let options = JsonWebTokenOptions::generate_for_testing()?;
 let codec = Arc::new(JsonWebToken::<Claims>::new_with_options(options));
 
@@ -79,57 +76,80 @@ let _ = validator.validate_token(std::str::from_utf8(&token)?);
 
 Perfect for production servers—keys automatically persist and reuse across restarts:
 
-```rust,ignore
+```rust
 use webgates_codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
-use webgates_codecs::jwt::authority::JwtAuthority;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // First run: generates and saves keys to /etc/jwt/key and /etc/jwt/key.pub
-    // Subsequent runs: loads existing keys from disk
-    let options = JsonWebTokenOptions::from_private_key_path("/etc/jwt/key").await?;
+# let unique = std::time::SystemTime::now()
+#     .duration_since(std::time::UNIX_EPOCH)?
+#     .as_nanos();
+# let temp_dir = std::env::temp_dir().join(format!("webgates-codecs-docs-{unique}"));
+# std::fs::create_dir_all(&temp_dir)?;
+# let key_path = temp_dir.join("jwt.key");
+# let public_key_path = temp_dir.join("jwt.key.pub");
+# let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
+// First run: generates and saves keys to disk.
+// Subsequent runs: loads the same keys from disk.
+let options = runtime.block_on(async {
+    JsonWebTokenOptions::from_private_key_path(&key_path).await
+})?;
 
-    let codec = JsonWebToken::<JwtClaims<()>>::new_with_options(options);
+let codec = JsonWebToken::<JwtClaims<()>>::new_with_options(options);
+assert!(key_path.is_file());
+assert!(public_key_path.is_file());
 
-    // Use codec for signing/verification...
-    Ok(())
-}
+# let _ = codec;
+# let _ = std::fs::remove_file(&public_key_path);
+# let _ = std::fs::remove_file(&key_path);
+# let _ = std::fs::remove_dir_all(&temp_dir);
+# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
 ## Quick start: Auth Server with JWKS Publication
 
 Publish JWKS for distributed token verification:
 
-```rust,ignore
-use webgates_codecs::jwt::authority::JwtAuthority;
+```rust
 use webgates_codecs::jwt::JwtClaims;
+use webgates_codecs::jwt::authority::JwtAuthority;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // One path, everything handled automatically:
-    // - Keys generated on first run
-    // - Keys persisted across restarts
-    // - JWKS provider ready to publish
-    let authority = JwtAuthority::<JwtClaims<()>>::from_private_key_path(
-        "/etc/jwt/server.key"
-    ).await?;
+# let unique = std::time::SystemTime::now()
+#     .duration_since(std::time::UNIX_EPOCH)?
+#     .as_nanos();
+# let temp_dir = std::env::temp_dir().join(format!("webgates-authority-docs-{unique}"));
+# std::fs::create_dir_all(&temp_dir)?;
+# let key_path = temp_dir.join("server.key");
+# let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
+// One path, everything handled automatically:
+// - Keys generated on first run
+// - Keys persisted across restarts
+// - JWKS provider ready to publish
+let authority = runtime.block_on(async {
+    JwtAuthority::<JwtClaims<()>>::from_private_key_path(&key_path).await
+})?;
 
-    let signing_codec = authority.codec();      // For creating tokens
-    let jwks_provider = authority.jwks_provider();  // For publishing public keys
+let signing_codec = authority.codec();
+let jwks_provider = authority.jwks_provider();
+assert_eq!(jwks_provider.document().keys.len(), 1);
+assert_eq!(authority.key_id(), jwks_provider.key_id().unwrap());
 
-    // Build your auth server...
-    Ok(())
-}
+# let _ = signing_codec;
+# let _ = std::fs::remove_file(temp_dir.join("server.key.pub"));
+# let _ = std::fs::remove_file(&key_path);
+# let _ = std::fs::remove_dir_all(&temp_dir);
+# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
 ## Key Management Strategies
 
 ### Development (Fresh Keys Every Time)
 
-Use [`jwt::JsonWebTokenOptions::default()`] or [`jwt::JsonWebTokenOptions::generate_for_testing()`]:
+Use [`jwt::JsonWebTokenOptions::generate_for_testing()`]:
 
-```rust,ignore
-let options = JsonWebTokenOptions::default();  // Fresh keys every call
+```rust
+# use webgates_codecs::jwt::JsonWebTokenOptions;
+let options = JsonWebTokenOptions::generate_for_testing()?;
+assert_eq!(options.verification_key_count(), 1);
+# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
 **Perfect for**:
@@ -141,10 +161,28 @@ let options = JsonWebTokenOptions::default();  // Fresh keys every call
 
 Use [`jwt::JsonWebTokenOptions::from_private_key_path()`] or [`jwt::authority::JwtAuthority::from_private_key_path()`]:
 
-```rust,ignore
-// First run: generates and saves keys
-// Subsequent runs: loads existing keys
-let options = JsonWebTokenOptions::from_private_key_path("/etc/jwt/key").await?;
+```rust
+# use webgates_codecs::jwt::JsonWebTokenOptions;
+# let unique = std::time::SystemTime::now()
+#     .duration_since(std::time::UNIX_EPOCH)?
+#     .as_nanos();
+# let temp_dir = std::env::temp_dir().join(format!("webgates-strategy-docs-{unique}"));
+# std::fs::create_dir_all(&temp_dir)?;
+# let key_path = temp_dir.join("jwt.key");
+# let public_key_path = temp_dir.join("jwt.key.pub");
+# let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
+// First run: generates and saves keys.
+// Subsequent runs: loads existing keys.
+let options = runtime.block_on(async {
+    JsonWebTokenOptions::from_private_key_path(&key_path).await
+})?;
+assert!(key_path.is_file());
+assert!(public_key_path.is_file());
+# let _ = options;
+# let _ = std::fs::remove_file(&public_key_path);
+# let _ = std::fs::remove_file(&key_path);
+# let _ = std::fs::remove_dir_all(&temp_dir);
+# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
 **Perfect for**:
@@ -162,11 +200,14 @@ let options = JsonWebTokenOptions::from_private_key_path("/etc/jwt/key").await?;
 
 When a node only validates tokens and never signs them:
 
-```rust,ignore
-let public_pem = std::fs::read("/run/secrets/jwt-public.pem")?;
-let codec = JsonWebToken::new_with_options(
+```rust
+# use webgates_codecs::jwt::{generate_es384_key_pair_pem, JsonWebToken, JsonWebTokenOptions, JwtClaims};
+# let (_private_pem, public_pem) = generate_es384_key_pair_pem()?;
+let codec = JsonWebToken::<JwtClaims<()>>::new_with_options(
     JsonWebTokenOptions::for_es384_verification_only(&public_pem)?
 );
+# let _ = codec;
+# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
 ## Deployment Examples

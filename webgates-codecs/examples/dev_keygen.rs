@@ -1,9 +1,7 @@
-//! Demonstrates the improved developer experience with automatic key generation.
+//! Demonstrates automatic key generation for development applications.
 //!
 //! This example shows how webgates now generates fresh ES384 key pairs on demand,
 //! eliminating the need for hardcoded keys or complex key management in development.
-//!
-//! Run with: `cargo run --example dev_keygen`
 
 use chrono::Utc;
 use webgates_codecs::Codec as _;
@@ -20,12 +18,12 @@ struct AppClaims {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔑 WebGates JWT Key Generation Example\n");
 
-    // ===== APPROACH 1: Using Default (fresh keys every time) =====
-    println!("Approach 1: Default constructor generates fresh keys");
-    println!("{}", "-".repeat(60));
+    // ===== APPROACH 1: JsonWebTokenOptions with explicit generation =====
+    println!("Approach 1: JsonWebTokenOptions::generate_for_testing()");
+    println!("{}\n", "-".repeat(60));
 
-    let options_default = JsonWebTokenOptions::default();
-    let codec = webgates_codecs::jwt::JsonWebToken::new_with_options(options_default);
+    let options = JsonWebTokenOptions::generate_for_testing()?;
+    let codec = webgates_codecs::jwt::JsonWebToken::new_with_options(options);
 
     let app_claims = AppClaims {
         user_id: "alice@example.com".to_string(),
@@ -42,39 +40,45 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "✓ Encoded JWT: {}...",
         &token_str[..50.min(token_str.len())]
     );
-    println!("  This token is now usable for local development!\n");
+    println!("  Fresh keys generated, perfect for tests\n");
 
     // Decode to verify
     let decoded: JwtClaims<AppClaims> = codec.decode(&token)?;
     println!(
-        "✓ Decoded successfully: user_id = {}",
+        "✓ Decoded successfully: user_id = {}\n",
         decoded.custom_claims.user_id
     );
 
-    // ===== APPROACH 2: Explicit generate_for_testing() =====
-    println!("\n{}", "-".repeat(60));
-    println!("Approach 2: Explicit generate_for_testing() method\n");
+    // ===== APPROACH 2: Demonstrating key isolation =====
+    println!("Approach 2: Keys are isolated between instances\n");
+    println!("{}", "-".repeat(60));
 
-    let fresh_options = JsonWebTokenOptions::generate_for_testing()?;
-    let fresh_codec = webgates_codecs::jwt::JsonWebToken::new_with_options(fresh_options);
+    // Generate a completely different key pair
+    let different_options = JsonWebTokenOptions::generate_for_testing()?;
+    let different_codec = webgates_codecs::jwt::JsonWebToken::new_with_options(different_options);
 
-    let fresh_token = fresh_codec.encode(&claims)?;
-    let fresh_token_str = String::from_utf8_lossy(&fresh_token);
-    println!(
-        "✓ Generated fresh token: {}...",
-        &fresh_token_str[..50.min(fresh_token_str.len())]
-    );
+    // Create a token with the first codec
+    let original_token = codec.encode(&claims)?;
 
-    // Tokens from different key pairs won't validate with each other
-    let decode_result = codec.decode(&fresh_token);
+    // Try to decode it with a different codec (should fail - different keys)
+    let decode_result = different_codec.decode(&original_token);
     match decode_result {
-        Err(_) => println!("✓ Correctly rejected token from different key pair"),
-        Ok(_) => println!("✗ Unexpectedly accepted token from different key pair"),
+        Err(_) => println!("✓ Different codec rejected token (signature mismatch)"),
+        Ok(_) => println!("✗ Unexpected: token validated across different key pairs"),
     }
 
-    // ===== APPROACH 3: Authority with fresh keys =====
-    println!("\n{}", "-".repeat(60));
-    println!("Approach 3: JwtAuthority::generate_for_testing()\n");
+    // Show that the different codec can create its own tokens
+    let different_token = different_codec.encode(&claims)?;
+    let different_token_str = String::from_utf8_lossy(&different_token);
+    println!(
+        "✓ Approach 2 created token with different keys: {}...",
+        &different_token_str[..50.min(different_token_str.len())]
+    );
+    println!("  Each call to generate_for_testing() creates unique keys\n");
+
+    // ===== APPROACH 3: JwtAuthority for signing + JWKS publication =====
+    println!("Approach 3: JwtAuthority::generate_for_testing()");
+    println!("{}", "-".repeat(60));
 
     let authority = JwtAuthority::<JwtClaims<AppClaims>>::generate_for_testing()?;
     let signing_codec = authority.codec();
@@ -88,13 +92,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("✓ JWKS endpoint ready with kid: {}", authority.key_id());
     println!("✓ JWKS document keys: {}", jwks.document().keys.len());
+    println!("  Perfect for full auth servers with JWKS publication\n");
 
-    println!("\n{}", "=".repeat(60));
+    println!("{}", "=".repeat(60));
     println!("Summary:");
     println!("  ✓ No hardcoded keys");
     println!("  ✓ Fresh key pair on each run");
     println!("  ✓ Perfect for tests and dev");
-    println!("  ✓ Production path: JsonWebTokenOptions::from_es384_pem()");
+    println!("  ✓ Production path: JsonWebTokenOptions::from_private_key_path()");
+    println!("  ✓ Explicit generation makes intent clear");
     println!("{}", "=".repeat(60));
 
     Ok(())

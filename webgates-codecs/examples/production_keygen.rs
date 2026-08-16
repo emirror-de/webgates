@@ -9,7 +9,6 @@
 
 use chrono::Utc;
 use std::fs;
-use std::path::PathBuf;
 use webgates_codecs::Codec as _;
 use webgates_codecs::jwt::{
     JsonWebTokenOptions, JwtClaims, RegisteredClaims, authority::JwtAuthority,

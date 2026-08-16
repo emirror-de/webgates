@@ -13,7 +13,10 @@
 //! use webgates::prelude::{Role, Group, AccessPolicy, Account};
 //! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
 //!
-//! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+//!     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+//!         .expect("generating ephemeral ES384 key pair should not fail"),
+//! ));
 //!
 //! let gate = Gate::oauth2::<Role, Group>()
 //!     .auth_url("https://provider.example.com/oauth2/authorize")

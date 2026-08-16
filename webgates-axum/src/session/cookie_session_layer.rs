@@ -59,7 +59,7 @@ use super::cookie_session_service::CookieSessionService;
 ///
 /// // A codec that satisfies both the JWT encoding contract and the session
 /// // auth-token issuance contract. In production this wraps your app's JWT
-/// // configuration; here it uses the default options.
+/// // configuration; here it generates fresh ES384 keys for the docs example.
 /// #[derive(Clone)]
 /// struct AppCodec {
 ///     jwt: JsonWebToken<JwtClaims<Account<Role, Group>>>,
@@ -68,7 +68,10 @@ use super::cookie_session_service::CookieSessionService;
 /// impl AppCodec {
 ///     fn new() -> Self {
 ///         Self {
-///             jwt: JsonWebToken::new_with_options(JsonWebTokenOptions::default()),
+///             jwt: JsonWebToken::new_with_options(
+///                 JsonWebTokenOptions::generate_for_testing()
+///                     .expect("generating ephemeral ES384 key pair should not fail"),
+///             ),
 ///         }
 ///     }
 /// }

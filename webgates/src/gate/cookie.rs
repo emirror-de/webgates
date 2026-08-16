@@ -60,9 +60,13 @@ where
 }
 
 fn example_usage() {
-    // Create a codec (placeholder default implementation provided in this crate)
-    let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> =
-        Arc::new(JsonWebToken::default());
+    // Create a codec backed by fresh ephemeral testing keys
+    let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> = Arc::new(
+        JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+            webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+                .expect("generating ephemeral ES384 key pair should not fail"),
+        ),
+    );
 
     // Configure a gate (deny-all by default)
     let gate = CookieGate::new_with_codec("my-issuer", Arc::clone(&jwt_codec))
@@ -449,7 +453,12 @@ mod tests {
     fn optional_mode_missing_token_is_anonymous() {
         let gate = CookieGate::<_, Role, Group>::new_with_codec(
             "issuer",
-            Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default()),
+            Arc::new(
+                JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+                    crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+                        .expect("generating ephemeral ES384 key pair should not fail"),
+                ),
+            ),
         )
         .allow_anonymous_with_optional_user();
 
@@ -463,7 +472,12 @@ mod tests {
     fn strict_mode_with_deny_all_policy_short_circuits() {
         let gate = CookieGate::<_, Role, Group>::new_with_codec(
             "issuer",
-            Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default()),
+            Arc::new(
+                JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+                    crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+                        .expect("generating ephemeral ES384 key pair should not fail"),
+                ),
+            ),
         );
 
         let runtime = gate.runtime();

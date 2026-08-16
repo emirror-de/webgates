@@ -49,7 +49,10 @@ use webgates::roles::Role;
 use webgates_axum::gate::Gate;
 use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
 
-let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+    webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+        .expect("generating ephemeral ES384 key pair should not fail"),
+));
 
 let app = Router::<()>::new()
     .route("/admin", get(|| async { "ok" }))

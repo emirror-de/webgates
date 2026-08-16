@@ -156,7 +156,8 @@ async fn main() {
             public_key_pem.as_bytes(),
         )
         .expect("JWT_ES384_PRIVATE_KEY_PEM and JWT_ES384_PUBLIC_KEY_PEM must be valid PEM keys"),
-        _ => JsonWebTokenOptions::default(),
+        _ => JsonWebTokenOptions::generate_for_testing()
+            .expect("generating ephemeral ES384 key pair should not fail"),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
@@ -343,7 +344,8 @@ async fn homepage(Extension(opt_user): Extension<Option<Account<Role, Group>>>) 
 
   <div class="note">
     <p>Required environment variables: <code>GITHUB_CLIENT_ID</code>, <code>GITHUB_CLIENT_SECRET</code>.</p>
-    <p>Optional: <code>GITHUB_REDIRECT_URL</code> (default <code>http://localhost:3000/auth/callback</code>), <code>JWT_ES384_PRIVATE_KEY_PEM</code>, <code>JWT_ES384_PUBLIC_KEY_PEM</code>, <code>JWT_ISSUER</code>, <code>AUTH_COOKIE_NAME</code>, <code>POST_LOGIN_REDIRECT</code>, <code>ALLOW_INSECURE_LOCAL_COOKIES</code>.</p>
+    <p>Optional: <code>GITHUB_REDIRECT_URL</code> (default <code>http://localhost:3000/auth/callback</code>), <code>JWT_ES384_PRIVATE_KEY_PATH</code> + <code>JWT_ES384_PUBLIC_KEY_PATH</code>, <code>JWT_ES384_PRIVATE_KEY_PEM</code> + <code>JWT_ES384_PUBLIC_KEY_PEM</code>, <code>JWT_ISSUER</code>, <code>AUTH_COOKIE_NAME</code>, <code>JWT_TTL_SECS</code>, <code>POST_LOGIN_REDIRECT</code>, <code>ALLOW_INSECURE_LOCAL_COOKIES</code>.</p>
+    <p>If no <code>JWT_ES384_*</code> variables are set, this example generates ephemeral ES384 keys on startup for local development only.</p>
     <p>Secure cookies are enabled by default. Set <code>ALLOW_INSECURE_LOCAL_COOKIES=true</code> only for intentional local HTTP development, never for staging or production.</p>
   </div>
 </body>

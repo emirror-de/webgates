@@ -81,7 +81,10 @@ use webgates::groups::Group;
 use webgates::roles::Role;
 
 type AppClaims = JwtClaims<Account<Role, Group>>;
-let codec = Arc::new(JsonWebToken::<AppClaims>::default());
+let codec = Arc::new(JsonWebToken::<AppClaims>::new_with_options(
+    webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+        .expect("generating ephemeral ES384 key pair should not fail"),
+));
 let _ = codec;
 # }
 ```
@@ -100,7 +103,10 @@ use webgates::groups::Group;
 use webgates::roles::Role;
 
 type AppClaims = JwtClaims<Account<Role, Group>>;
-let codec = Arc::new(JsonWebToken::<AppClaims>::default());
+let codec = Arc::new(JsonWebToken::<AppClaims>::new_with_options(
+    webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+        .expect("generating ephemeral ES384 key pair should not fail"),
+));
 
 let gate = Gate::cookie::<_, Role, Group>("my-app", Arc::clone(&codec))
     .require_login()
