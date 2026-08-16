@@ -40,7 +40,7 @@ use std::sync::Arc;
 
 use crate::Result;
 use crate::jwt::jwks::JwksProvider;
-use crate::jwt::{JsonWebToken, JsonWebTokenOptions};
+use crate::jwt::{JsonWebToken, JsonWebTokenOptions, generate_es384_key_pair_pem};
 
 use serde::{Serialize, de::DeserializeOwned};
 
@@ -87,6 +87,64 @@ where
         })
     }
 
+    /// Loads or generates an authority bundle from a private key file path.
+    ///
+    /// The public key path is derived by appending `.pub` to the private key path.
+    ///
+    /// # Behavior
+    ///
+    /// - **Both files exist**: Loads keys from disk
+    /// - **Neither file exists**: Generates fresh keys and saves both files
+    /// - **Only one file exists**: Returns an error
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // First run: generates and saves keys
+    /// let authority = JwtAuthority::<MyClaims>::from_private_key_path(
+    ///     "/etc/jwt/key"
+    /// ).await?;
+    ///
+    /// // Subsequent runs: reuses existing keys
+    /// let authority = JwtAuthority::<MyClaims>::from_private_key_path(
+    ///     "/etc/jwt/key"
+    /// ).await?;
+    /// ```
+    ///
+    /// # Production Use
+    ///
+    /// Perfect for auth servers that publish JWKS:
+    ///
+    /// ```ignore
+    /// #[tokio::main]
+    /// async fn main() -> Result<()> {
+    ///     // Loads or generates keys
+    ///     let authority = JwtAuthority::<MyClaimsType>::from_private_key_path(
+    ///         "/etc/jwt/server.key"
+    ///     ).await?;
+    ///
+    ///     let signing_codec = authority.codec();
+    ///     let jwks_provider = authority.jwks_provider();
+    ///
+    ///     // Build routes and start server
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Only one key file exists
+    /// - Files cannot be read/written/created
+    /// - Invalid key material is found
+    pub async fn from_private_key_path(
+        private_key_path: impl Into<std::path::PathBuf>,
+    ) -> Result<Self> {
+        let loader = crate::jwt::Es384KeyPairLoader::from_private_key_path(private_key_path);
+        let key_pair = loader.initialize_if_required().await?;
+        Self::from_es384_pem(key_pair.private_key_pem(), key_pair.public_key_pem())
+    }
+
     /// Returns the signing codec.
     ///
     /// Use this to encode JWTs in login handlers.
@@ -106,6 +164,32 @@ where
     /// This value is identical to the `kid` in the published JWKS document.
     pub fn key_id(&self) -> &str {
         &self.key_id
+    }
+
+    /// Generates a fresh ES384 key pair and builds an authority bundle.
+    ///
+    /// This is a convenience method for testing and development that combines
+    /// [`JsonWebTokenOptions::generate_for_testing`] with [`Self::from_es384_pem`].
+    ///
+    /// Each call produces a unique key pair, making it perfect for:
+    /// - Unit/integration tests that need isolated key material
+    /// - Quick development setups without key management
+    /// - Examples and prototypes
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let authority = JwtAuthority::<MyClaimsType>::generate_for_testing()?;
+    /// let codec = authority.codec();        // For signing
+    /// let jwks = authority.jwks_provider(); // For publication
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if key generation or authority construction fails.
+    pub fn generate_for_testing() -> Result<Self> {
+        let (private_key_pem, public_key_pem) = generate_es384_key_pair_pem()?;
+        Self::from_es384_pem(&private_key_pem, &public_key_pem)
     }
 }
 

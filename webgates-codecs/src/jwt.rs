@@ -1,13 +1,91 @@
-//! JWT claim types, codecs, validation helpers, and JWKS support.
+//! JWT claim types, codecs, validation helpers, JWKS support, and automatic key management.
 //!
-//! This module contains the main JWT-facing API of `webgates-codecs`.
+//! This module contains the main JWT-facing API of `webgates-codecs`, including production-ready
+//! automatic key generation and file-based persistence.
 //!
-//! It provides:
-//! - registered JWT claims via [`RegisteredClaims`]
-//! - combined application and registered claims via [`JwtClaims`]
-//! - a configurable JWT codec via [`JsonWebToken`] and [`JsonWebTokenOptions`]
-//! - validation helpers in [`validation_service`] and [`validation_result`]
-//! - JWKS helpers in [`jwks`]
+//! # Key Management
+//!
+//! This module provides three strategies for managing ES384 keys:
+//!
+//! ## 1. Development (Auto-Generated, Ephemeral)
+//!
+//! Perfect for tests and local development:
+//!
+//! ```rust,ignore
+//! // Fresh keys every time
+//! let options = JsonWebTokenOptions::default();
+//! let options = JsonWebTokenOptions::generate_for_testing()?;
+//! ```
+//!
+//! Each call produces a unique ES384 key pair using cryptographic randomness.
+//! Keys are not persisted to disk. Perfect test isolation.
+//!
+//! ## 2. Production (File-Based Persistence)
+//!
+//! Perfect for production servers, containers, and orchestration platforms:
+//!
+//! ```rust,ignore
+//! // First run: generates and saves keys
+//! // Subsequent runs: loads existing keys
+//! let options = JsonWebTokenOptions::from_private_key_path("/etc/jwt/key").await?;
+//! ```
+//!
+//! **How it works**:
+//! - **First run**: Generates fresh ES384 keys using cryptographic randomness and saves to:
+//!   - `/etc/jwt/key` (private key)
+//!   - `/etc/jwt/key.pub` (public key, auto-derived)
+//! - **Subsequent runs**: Loads existing keys from disk
+//! - **Error case**: If only one file exists, returns error (prevents misconfiguration)
+//!
+//! Perfect for Docker, Kubernetes, systemd, and any stateful deployment.
+//!
+//! ## 3. Verification-Only (Public Key Only)
+//!
+//! When a node only validates tokens (never signs):
+//!
+//! ```rust,ignore
+//! let options = JsonWebTokenOptions::for_es384_verification_only(&public_pem)?;
+//! ```
+//!
+//! # Core Types
+//!
+//! This module provides:
+//! - [`RegisteredClaims`]: Standard JWT claims (issuer, subject, expiration, etc.)
+//! - [`JwtClaims<T>`]: Combined registered and application-specific claims
+//! - [`JsonWebTokenOptions`]: Configuration for key management and algorithm selection
+//! - [`JsonWebToken<T>`]: The JWT codec implementation
+//! - [`Es384KeyPairLoader`]: Low-level file-based key loading and generation
+//! - [`Es384KeyPair`]: In-memory ES384 key material
+//! - [`JwtAuthority<P>`] (in [`authority`]): Auth server bundle with signing + JWKS publication
+//!
+//! # Validation & Verification
+//!
+//! See these modules:
+//! - [`validation_service::JwtValidationService`]: Validate raw token strings
+//! - [`validation_result::JwtValidationResult`]: Structured validation results
+//! - [`remote_verifier`]: Fetch and cache public keys from remote JWKS endpoints
+//!
+//! # JWKS (JSON Web Key Set)
+//!
+//! Distributed token verification via the [`jwks`] module:
+//! - [`jwks::EcP384Jwk`]: An ES384 public key in JWKS format
+//! - [`jwks::JwksDocument`]: A JWKS document (collection of keys)
+//! - [`jwks::JwksProvider`]: Publishes JWKS for external verification
+//!
+//! # Security
+//!
+//! - **Algorithm**: ES384 (ECDSA with NIST P-384) - RFC 7518 compliant
+//! - **Randomness**: Cryptographically secure randomness via `getrandom`
+//! - **Format**: PKCS#8 PEM (industry standard)
+//! - **Algorithm enforcement**: Strictly requires ES384, prevents algorithm confusion attacks
+//! - **No unsafe code**: `#![deny(unsafe_code)]`
+//! - **No hardcoded keys**: Production and development use separate strategies
+//!
+//! # Examples
+//!
+//! See the examples in the `webgates-codecs` crate:
+//! - `examples/dev_keygen.rs`: Development auto-generation patterns
+//! - `examples/production_keygen.rs`: Production file-based persistence
 //!
 //! The implementation is framework-agnostic and depends only on shared types
 //! from `webgates-core` plus the codec abstractions from this crate.
@@ -165,6 +243,66 @@ impl Es384KeyPairLoader {
         }
     }
 
+    /// Creates a new loader from a private key path, deriving the public key path automatically.
+    ///
+    /// The public key path is derived by appending `.pub` to the private key path.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // Private key: /etc/jwt/key
+    /// // Public key:  /etc/jwt/key.pub (derived automatically)
+    /// let loader = Es384KeyPairLoader::from_private_key_path("/etc/jwt/key")?;
+    ///
+    /// // Initialize: loads existing keys or generates + saves new ones
+    /// let key_pair = loader.initialize_if_required().await?;
+    ///
+    /// // Use with JsonWebTokenOptions
+    /// let options = JsonWebTokenOptions::from_es384_pem(
+    ///     key_pair.private_key_pem(),
+    ///     key_pair.public_key_pem()
+    /// )?;
+    /// ```
+    ///
+    /// # Behavior
+    ///
+    /// - If both files exist: loads them from disk
+    /// - If neither file exists: generates fresh keys and saves them
+    /// - If only one exists: returns an error (prevents misconfiguration)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Only one of the key files exists
+    /// - Files cannot be read/written
+    /// - Keys cannot be parsed as valid ES384
+    ///
+    /// # Production Use
+    ///
+    /// This is ideal for production deployments:
+    /// ```bash
+    /// # First run: automatically generates keys
+    /// $ ./my-server
+    /// # Creates:
+    /// #   /etc/jwt/key
+    /// #   /etc/jwt/key.pub
+    ///
+    /// # Subsequent runs: reuses existing keys
+    /// $ ./my-server
+    /// ```
+    pub fn from_private_key_path(private_key_path: impl Into<PathBuf>) -> Self {
+        let private_path: PathBuf = private_key_path.into();
+        let mut public_path = private_path.clone();
+        let filename = match private_path.file_name() {
+            Some(name) => match name.to_string_lossy().to_string() {
+                s => format!("{}.pub", s),
+            },
+            None => "key.pub".to_string(),
+        };
+        public_path.set_file_name(&filename);
+        Self::new(private_path, public_path)
+    }
+
     /// Returns the configured key paths.
     pub fn paths(&self) -> &Es384KeyPairPaths {
         &self.paths
@@ -304,7 +442,15 @@ impl Es384KeyPairLoader {
     }
 }
 
-fn generate_es384_key_pair_pem() -> Result<(Vec<u8>, Vec<u8>)> {
+/// Generates a fresh ES384 key pair using cryptographically secure randomness.
+///
+/// Returns both private and public keys in PEM format.
+/// Each call produces a unique key pair.
+///
+/// # Errors
+///
+/// Returns an error if the cryptographic key generation or PEM encoding fails.
+pub fn generate_es384_key_pair_pem() -> Result<(Vec<u8>, Vec<u8>)> {
     let signing_key = p384::ecdsa::SigningKey::generate();
     let verifying_key = signing_key.verifying_key();
 
@@ -439,31 +585,28 @@ pub struct JsonWebTokenOptions {
     validation: Validation,
 }
 
-const DEV_ES384_PRIVATE_KEY_PEM: &[u8] = br#"-----BEGIN PRIVATE KEY-----
-MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCFT7MfRqWZfNgVX/cH
-bxFTlPkBeCKqjsLkZXD/J3ZYHV1EtQksdrKtOzTr2hMs6pmhZANiAASyND9eQ5Qk
-7ZteSEPMpExbVJenRWwyobExJMb62mmp3eA7Fszy8uBbLj8HRB16y3QbLcTxCBoo
-ldBXfNFzM133OuTV2bBWXq5h34l+A0h4gU/odZ678LfAgnrRYMG4ZjU=
------END PRIVATE KEY-----
-"#;
-
-const DEV_ES384_PUBLIC_KEY_PEM: &[u8] = br#"-----BEGIN PUBLIC KEY-----
-MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEsjQ/XkOUJO2bXkhDzKRMW1SXp0VsMqGx
-MSTG+tppqd3gOxbM8vLgWy4/B0Qdest0Gy3E8QgaKJXQV3zRczNd9zrk1dmwVl6u
-Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
------END PUBLIC KEY-----
-"#;
-
 impl Default for JsonWebTokenOptions {
-    /// Creates ES384 encoding and decoding keys from built-in development keys.
+    /// Generates a fresh ES384 key pair on each call.
     ///
-    /// This default is intended for tests and local development only. Production
-    /// deployments should provide explicit key material with
-    /// [`JsonWebTokenOptions::from_es384_pem`].
+    /// This provides convenient development experience:
+    /// - **Debug builds**: Always generates a fresh, unique key pair
+    /// - **Release builds**: Still works, generates fresh keys (no hardcoded keys to leak)
+    ///
+    /// # Perfect for
+    ///
+    /// - Unit tests: Each test gets isolated key material
+    /// - Integration tests: Fresh keys prevent cross-test pollution
+    /// - Examples and quick prototypes: One-liner setup
+    /// - Local development: No key files to manage
+    ///
+    /// # Production Note
+    ///
+    /// For production, use [`JsonWebTokenOptions::from_es384_pem`] to load keys from
+    /// a secure key management system (HashiCorp Vault, AWS KMS, encrypted files, etc.).
     fn default() -> Self {
-        match Self::from_es384_pem(DEV_ES384_PRIVATE_KEY_PEM, DEV_ES384_PUBLIC_KEY_PEM) {
+        match Self::generate_for_testing() {
             Ok(options) => options,
-            Err(error) => panic!("failed to initialize default ES384 JWT options: {error}"),
+            Err(error) => panic!("failed to generate ES384 JWT options: {error}"),
         }
     }
 }
@@ -501,6 +644,61 @@ impl JsonWebTokenOptions {
             header,
             validation,
         })
+    }
+
+    /// Loads or generates ES384 JWT options from a private key file path.
+    ///
+    /// The public key path is derived by appending `.pub` to the private key path.
+    ///
+    /// # Behavior
+    ///
+    /// - **Both files exist**: Loads keys from disk and returns options
+    /// - **Neither file exists**: Generates fresh keys, saves both files, returns options
+    /// - **Only one file exists**: Returns an error (prevents misconfiguration)
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // First run: generates and saves keys
+    /// let options = JsonWebTokenOptions::from_private_key_path("/etc/jwt/key").await?;
+    ///
+    /// // Subsequent runs: reuses existing keys
+    /// let options = JsonWebTokenOptions::from_private_key_path("/etc/jwt/key").await?;
+    /// ```
+    ///
+    /// # Production Use
+    ///
+    /// This is perfect for production server startup:
+    ///
+    /// ```ignore
+    /// #[tokio::main]
+    /// async fn main() -> Result<()> {
+    ///     // Loads existing keys or generates new ones on first run
+    ///     let options = JsonWebTokenOptions::from_private_key_path(
+    ///         "/etc/jwt/server.key"
+    ///     ).await?;
+    ///
+    ///     let codec = JsonWebToken::new_with_options(options);
+    ///     // Start server with codec...
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Only one key file exists
+    /// - Files cannot be read/written/created
+    /// - Invalid key material is found
+    ///
+    /// # Security
+    ///
+    /// The generated private key files have restrictive permissions on Unix systems.
+    /// Consider using proper file system ACLs or a key management system for sensitive deployments.
+    pub async fn from_private_key_path(private_key_path: impl Into<PathBuf>) -> Result<Self> {
+        let loader = Es384KeyPairLoader::from_private_key_path(private_key_path);
+        let key_pair = loader.initialize_if_required().await?;
+        Self::from_es384_pem(key_pair.private_key_pem(), key_pair.public_key_pem())
     }
 
     /// Creates verification-only ES384 JWT options from a PEM public key.
@@ -629,6 +827,63 @@ impl JsonWebTokenOptions {
         validation.algorithms = vec![Algorithm::ES384];
 
         Self { validation, ..self }
+    }
+
+    /// Generates a fresh ES384 key pair suitable for testing and development.
+    ///
+    /// # Behavior
+    ///
+    /// This function generates a new ES384 key pair using cryptographically secure randomness
+    /// and returns it as JWT-ready options. Each call produces a unique key pair.
+    ///
+    /// # When to Use
+    ///
+    /// - **Integration tests**: Each test gets a fresh key pair, preventing key reuse
+    /// - **Development**: Convenient one-liner for local setup
+    /// - **Examples**: Quick prototyping without key management overhead
+    /// - **CI/CD**: Automatic key generation in ephemeral environments
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let jwt_options = JsonWebTokenOptions::generate_for_testing()?;
+    /// let codec = JsonWebToken::new_with_options(jwt_options);
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns a JWT processing error if key generation or PEM encoding fails.
+    pub fn generate_for_testing() -> Result<Self> {
+        let (private_key_pem, public_key_pem) = generate_es384_key_pair_pem()?;
+        Self::from_es384_pem(&private_key_pem, &public_key_pem)
+    }
+
+    /// Generates a fresh ES384 key pair and returns a signing authority.
+    ///
+    /// # Behavior
+    ///
+    /// Convenience method that combines key generation with [`JwtAuthority`] construction.
+    /// Each call produces unique key material.
+    ///
+    /// # When to Use
+    ///
+    /// Use this for quick development setup when you need both token signing and verification:
+    ///
+    /// ```ignore
+    /// let authority = JwtAuthority::<MyClaims>::generate_for_testing()?;
+    /// let verifier = authority.codec();        // For verification
+    /// let issuer = authority.to_issuer();      // For token signing
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns a JWT processing error if key generation or authority initialization fails.
+    pub fn generate_authority_for_testing<P>() -> Result<JwtAuthority<P>>
+    where
+        P: Serialize + DeserializeOwned + Clone,
+    {
+        let (private_key_pem, public_key_pem) = generate_es384_key_pair_pem()?;
+        JwtAuthority::from_es384_pem(&private_key_pem, &public_key_pem)
     }
 }
 
