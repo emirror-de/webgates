@@ -220,21 +220,43 @@ where
     async fn bootstrap(&self) -> Result<()> {
         let repo = self.use_ns_db().await?;
 
-        let table_name = TableName::WebgatesAccounts.to_string();
-        let query = "DEFINE TABLE IF NOT EXISTS $table SCHEMALESS;";
+        repo.account_schema_initialized
+            .get_or_try_init(|| async {
+                let table_name = repo.scope_settings.accounts.clone();
+                let query = "DEFINE TABLE IF NOT EXISTS $table SCHEMALESS;";
 
-        repo.db
-            .query(query)
-            .bind(("table", table_name.clone()))
-            .await
-            .map_err(|error| {
-                RepoError::Database(DatabaseError::with_context(
-                    DatabaseOperation::Insert,
-                    format!("Failed to bootstrap account table: {error}"),
-                    Some(table_name),
-                    None,
-                ))
-            })?;
+                repo.db
+                    .query(query)
+                    .bind(("table", table_name.clone()))
+                    .await
+                    .map_err(|error| {
+                        RepoError::Database(DatabaseError::with_context(
+                            DatabaseOperation::Insert,
+                            format!("Failed to bootstrap account table: {error}"),
+                            Some(table_name.clone()),
+                            None,
+                        ))
+                    })?;
+
+                let define_user_id_index = format!(
+                    "DEFINE INDEX IF NOT EXISTS webgates_accounts_user_id_idx ON {} FIELDS user_id UNIQUE",
+                    table_name
+                );
+                repo.db
+                    .query(define_user_id_index)
+                    .await
+                    .map_err(|error| {
+                        RepoError::Database(DatabaseError::with_context(
+                            DatabaseOperation::Insert,
+                            format!("Failed to bootstrap account user_id index: {error}"),
+                            Some(table_name),
+                            None,
+                        ))
+                    })?;
+
+                Ok::<(), RepoError>(())
+            })
+            .await?;
 
         Ok(())
     }

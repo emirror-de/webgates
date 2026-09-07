@@ -5,7 +5,7 @@
 //! operations used to store, query, and remove permission mappings.
 
 use super::SurrealDbRepository;
-use crate::TableName;
+
 use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result as RepoResult};
 use crate::permission_mapping_repository::{
     PermissionMappingRepository, PermissionMappingRepositoryBulk,
@@ -82,91 +82,97 @@ where
     async fn bootstrap(&self) -> RepoResult<()> {
         let repo = self.use_ns_db().await?;
 
-        let table_name = TableName::WebgatesPermissionMappings.to_string();
+        repo.permission_mapping_schema_initialized
+            .get_or_try_init(|| async {
+                let table_name = repo.scope_settings.permission_mappings.clone();
 
-        let define_table = "DEFINE TABLE IF NOT EXISTS $table SCHEMALESS;";
-        repo.db
-            .query(define_table)
-            .bind(("table", table_name.clone()))
-            .await
-            .map_err(|e| {
-                RepoError::Database(DatabaseError::with_context(
-                    DatabaseOperation::Insert,
-                    format!("Failed to define permission mappings table: {}", e),
-                    Some(table_name.clone()),
-                    None,
-                ))
-            })?;
+                let define_table = "DEFINE TABLE IF NOT EXISTS $table SCHEMALESS;";
+                repo.db
+                    .query(define_table)
+                    .bind(("table", table_name.clone()))
+                    .await
+                    .map_err(|e| {
+                        RepoError::Database(DatabaseError::with_context(
+                            DatabaseOperation::Insert,
+                            format!("Failed to define permission mappings table: {}", e),
+                            Some(table_name.clone()),
+                            None,
+                        ))
+                    })?;
 
-        let define_normalized_field = format!(
-            "DEFINE FIELD IF NOT EXISTS normalized_string ON {} TYPE string ASSERT string::len($value) > 0",
-            table_name
-        );
-        repo.db.query(define_normalized_field).await.map_err(|e| {
-            RepoError::Database(DatabaseError::with_context(
-                DatabaseOperation::Insert,
-                format!(
-                    "Failed to define permission mappings normalized_string field: {}",
-                    e
-                ),
-                Some(table_name.clone()),
-                None,
-            ))
-        })?;
+                let define_normalized_field = format!(
+                    "DEFINE FIELD IF NOT EXISTS normalized_string ON {} TYPE string ASSERT string::len($value) > 0",
+                    table_name
+                );
+                repo.db.query(define_normalized_field).await.map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Insert,
+                        format!(
+                            "Failed to define permission mappings normalized_string field: {}",
+                            e
+                        ),
+                        Some(table_name.clone()),
+                        None,
+                    ))
+                })?;
 
-        let define_permission_id_field = format!(
-            "DEFINE FIELD IF NOT EXISTS permission_id ON {} TYPE string ASSERT string::len($value) > 0",
-            table_name
-        );
-        repo.db
-            .query(define_permission_id_field)
-            .await
-            .map_err(|e| {
-                RepoError::Database(DatabaseError::with_context(
-                    DatabaseOperation::Insert,
-                    format!(
-                        "Failed to define permission mappings permission_id field: {}",
-                        e
-                    ),
-                    Some(table_name.clone()),
-                    None,
-                ))
-            })?;
+                let define_permission_id_field = format!(
+                    "DEFINE FIELD IF NOT EXISTS permission_id ON {} TYPE string ASSERT string::len($value) > 0",
+                    table_name
+                );
+                repo.db
+                    .query(define_permission_id_field)
+                    .await
+                    .map_err(|e| {
+                        RepoError::Database(DatabaseError::with_context(
+                            DatabaseOperation::Insert,
+                            format!(
+                                "Failed to define permission mappings permission_id field: {}",
+                                e
+                            ),
+                            Some(table_name.clone()),
+                            None,
+                        ))
+                    })?;
 
-        let define_normalized_index = format!(
-            "DEFINE INDEX IF NOT EXISTS permission_mappings_normalized_string_idx ON {} FIELDS normalized_string UNIQUE",
-            table_name
-        );
-        repo.db.query(define_normalized_index).await.map_err(|e| {
-            RepoError::Database(DatabaseError::with_context(
-                DatabaseOperation::Insert,
-                format!(
-                    "Failed to define permission mappings normalized_string index: {}",
-                    e
-                ),
-                Some(table_name.clone()),
-                None,
-            ))
-        })?;
+                let define_normalized_index = format!(
+                    "DEFINE INDEX IF NOT EXISTS permission_mappings_normalized_string_idx ON {} FIELDS normalized_string UNIQUE",
+                    table_name
+                );
+                repo.db.query(define_normalized_index).await.map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Insert,
+                        format!(
+                            "Failed to define permission mappings normalized_string index: {}",
+                            e
+                        ),
+                        Some(table_name.clone()),
+                        None,
+                    ))
+                })?;
 
-        let define_permission_id_index = format!(
-            "DEFINE INDEX IF NOT EXISTS permission_mappings_permission_id_idx ON {} FIELDS permission_id UNIQUE",
-            table_name
-        );
-        repo.db
-            .query(define_permission_id_index)
-            .await
-            .map_err(|e| {
-                RepoError::Database(DatabaseError::with_context(
-                    DatabaseOperation::Insert,
-                    format!(
-                        "Failed to define permission mappings permission_id index: {}",
-                        e
-                    ),
-                    Some(table_name),
-                    None,
-                ))
-            })?;
+                let define_permission_id_index = format!(
+                    "DEFINE INDEX IF NOT EXISTS permission_mappings_permission_id_idx ON {} FIELDS permission_id UNIQUE",
+                    table_name
+                );
+                repo.db
+                    .query(define_permission_id_index)
+                    .await
+                    .map_err(|e| {
+                        RepoError::Database(DatabaseError::with_context(
+                            DatabaseOperation::Insert,
+                            format!(
+                                "Failed to define permission mappings permission_id index: {}",
+                                e
+                            ),
+                            Some(table_name),
+                            None,
+                        ))
+                    })?;
+
+                Ok::<(), RepoError>(())
+            })
+            .await?;
 
         Ok(())
     }

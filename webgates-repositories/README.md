@@ -39,28 +39,28 @@ Pick only the features you need:
 
 ```toml
 [dependencies]
-webgates-repositories = { version = "1.0.0" }
+webgates-repositories = { version = "1.1.1" }
 ```
 
 Session-backed auth without a persistent backend, useful for tests or local development:
 
 ```toml
 [dependencies]
-webgates-repositories = { version = "1.0.0", features = ["sessions"] }
+webgates-repositories = { version = "1.1.1", features = ["sessions"] }
 ```
 
 SeaORM backend:
 
 ```toml
 [dependencies]
-webgates-repositories = { version = "1.0.0", features = ["sea-orm"] }
+webgates-repositories = { version = "1.1.1", features = ["sea-orm"] }
 ```
 
 SurrealDB backend:
 
 ```toml
 [dependencies]
-webgates-repositories = { version = "1.0.0", features = ["surrealdb"] }
+webgates-repositories = { version = "1.1.1", features = ["surrealdb"] }
 ```
 
 Minimum supported Rust version: `1.94`.
@@ -166,7 +166,7 @@ assert!(account.is_some());
 ### SeaORM backend
 
 ```toml
-webgates-repositories = { version = "1.0.0", features = ["sea-orm"] }
+webgates-repositories = { version = "1.1.1", features = ["sea-orm"] }
 sea-orm = { version = "2", features = ["sqlx-postgres", "runtime-tokio-rustls"] }
 ```
 
@@ -184,7 +184,7 @@ let repo = SeaOrmRepository::new(&db).unwrap();
 ### SurrealDB backend
 
 ```toml
-webgates-repositories = { version = "1.0.0", features = ["surrealdb"] }
+webgates-repositories = { version = "1.1.1", features = ["surrealdb"] }
 ```
 
 ```rust
@@ -198,6 +198,22 @@ let repo = SurrealDbRepository::new(db, DatabaseScope::default()).unwrap();
 # let _ = repo;
 # });
 ```
+
+Call the relevant repository `bootstrap` methods once during application startup,
+before serving requests. SurrealDB bootstrap creates the configured tables and
+hot-path indexes, and the session backend initializes its schema on first use.
+Existing databases should run this as a forward migration and resolve duplicate
+account user IDs before creating the unique account index.
+
+The adapter benchmark can be run with:
+
+```text
+cargo bench --bench surrealdb_repository --features surrealdb
+```
+
+It measures steady-state repository lookups against the deterministic in-memory
+engine. Use a representative remote SurrealDB deployment for network-latency
+measurements before making production capacity decisions.
 
 Combine the `surrealdb` and `sessions` features together to also enable the SurrealDB session repository backend for `webgates-sessions`.
 

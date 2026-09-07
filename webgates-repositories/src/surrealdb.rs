@@ -13,7 +13,9 @@
 use super::TableName;
 use crate::errors::{DatabaseError, DatabaseOperation, Error, Result};
 use std::default::Default;
+use std::sync::Arc;
 use surrealdb::{Connection, Surreal};
+use tokio::sync::OnceCell;
 use webgates_secrets::hashing::{
     argon2::Argon2Hasher,
     errors::{HashingError, HashingOperation},
@@ -64,7 +66,6 @@ impl Default for DatabaseScope {
 /// mappings, and secrets plus constant-time credential verification.
 ///
 /// Use `SurrealDbRepository::new(db, DatabaseScope::default())` for standard setups.
-#[derive(Clone)]
 pub struct SurrealDbRepository<S>
 where
     S: Connection,
@@ -74,6 +75,19 @@ where
     /// Precomputed dummy Argon2 hash used when a user's secret does not exist.
     /// Ensures the Argon2 verification path is always exercised.
     pub(crate) dummy_hash: String,
+    /// Ensures namespace/database selection is performed once per repository.
+    scope_initialized: Arc<OnceCell<()>>,
+    /// Ensures the account schema is bootstrapped once per repository.
+    account_schema_initialized: Arc<OnceCell<()>>,
+    /// Ensures the credential schema is bootstrapped once per repository.
+    credential_schema_initialized: Arc<OnceCell<()>>,
+    /// Ensures the group schema is bootstrapped once per repository.
+    group_schema_initialized: Arc<OnceCell<()>>,
+    /// Ensures the permission-mapping schema is bootstrapped once per repository.
+    permission_mapping_schema_initialized: Arc<OnceCell<()>>,
+    /// Ensures the session schema is bootstrapped once per repository.
+    #[cfg(feature = "sessions")]
+    pub(crate) session_schema_initialized: Arc<OnceCell<()>>,
 }
 
 impl<S> SurrealDbRepository<S>
@@ -98,30 +112,71 @@ where
             db,
             scope_settings,
             dummy_hash,
+            scope_initialized: Arc::new(OnceCell::new()),
+            account_schema_initialized: Arc::new(OnceCell::new()),
+            credential_schema_initialized: Arc::new(OnceCell::new()),
+            group_schema_initialized: Arc::new(OnceCell::new()),
+            permission_mapping_schema_initialized: Arc::new(OnceCell::new()),
+            #[cfg(feature = "sessions")]
+            session_schema_initialized: Arc::new(OnceCell::new()),
         })
     }
 
-    /// Sets the namespace and database for the SurrealDB connection.
+    /// Ensures the shared SurrealDB connection is scoped to the configured
+    /// namespace and database.
     ///
-    /// Returns a new instance to use a new SurrealDB session.
+    /// Scope selection is performed once for all clones of this repository.
+    /// The returned clone reuses initialized repository state and shared
+    /// initialization state; it does not reconstruct the repository.
     pub(crate) async fn use_ns_db(&self) -> Result<Self> {
-        let new = Self::new(self.db.clone(), self.scope_settings.clone())?;
-        new.db
-            .use_ns(&self.scope_settings.namespace)
-            .use_db(&self.scope_settings.database)
-            .await
-            .map(|_| ())
-            .map_err(|error| {
-                Error::Database(DatabaseError::with_context(
-                    DatabaseOperation::Connect,
-                    format!("Failed to set namespace/database: {error}"),
-                    None,
-                    None,
-                ))
-            })?;
-        Ok(new)
-    }
+        self.scope_initialized
+            .get_or_try_init(|| async {
+                self.db
+                    .use_ns(&self.scope_settings.namespace)
+                    .use_db(&self.scope_settings.database)
+                    .await
+                    .map(|_| ())
+                    .map_err(|error| {
+                        Error::Database(DatabaseError::with_context(
+                            DatabaseOperation::Connect,
+                            format!("Failed to set namespace/database: {error}"),
+                            None,
+                            None,
+                        ))
+                    })
+            })
+            .await?;
 
+        Ok(self.clone())
+    }
+}
+
+impl<S> Clone for SurrealDbRepository<S>
+where
+    S: Connection,
+{
+    fn clone(&self) -> Self {
+        Self {
+            db: self.db.clone(),
+            scope_settings: self.scope_settings.clone(),
+            dummy_hash: self.dummy_hash.clone(),
+            scope_initialized: Arc::clone(&self.scope_initialized),
+            account_schema_initialized: Arc::clone(&self.account_schema_initialized),
+            credential_schema_initialized: Arc::clone(&self.credential_schema_initialized),
+            group_schema_initialized: Arc::clone(&self.group_schema_initialized),
+            permission_mapping_schema_initialized: Arc::clone(
+                &self.permission_mapping_schema_initialized,
+            ),
+            #[cfg(feature = "sessions")]
+            session_schema_initialized: Arc::clone(&self.session_schema_initialized),
+        }
+    }
+}
+
+impl<S> SurrealDbRepository<S>
+where
+    S: Connection,
+{
     /// Builds a table-aware database error for SurrealDB adapter operations.
     pub(crate) fn database_error(
         &self,
@@ -147,5 +202,30 @@ where
         record_id: Option<String>,
     ) -> Error {
         self.database_error(operation, table_name.to_string(), message, record_id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DatabaseScope, SurrealDbRepository};
+    use surrealdb::Surreal;
+    use surrealdb::engine::local::Mem;
+
+    #[tokio::test]
+    async fn use_ns_db_preserves_cached_repository_state() {
+        let db = Surreal::new::<Mem>(())
+            .await
+            .expect("in-memory SurrealDB setup should succeed");
+        let repository = SurrealDbRepository::new(db, DatabaseScope::default())
+            .expect("repository construction should succeed");
+        // Reconstructing via `Self::new` would generate a new salted hash.
+        let original_hash = repository.dummy_hash.clone();
+
+        let scoped = repository
+            .use_ns_db()
+            .await
+            .expect("namespace/database selection should succeed");
+
+        assert_eq!(scoped.dummy_hash, original_hash);
     }
 }

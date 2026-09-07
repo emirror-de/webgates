@@ -586,11 +586,35 @@ where
     async fn bootstrap_session_tables(&self) -> RepositoryResult<SurrealDbRepository<S>> {
         let repo = self.use_ns_db().await.map_err(map_backend_error)?;
 
-        let family_table = sessions_family_table_name();
-        let session_table = sessions_table_name();
+        repo.session_schema_initialized
+            .get_or_try_init(|| async {
+                let family_table = sessions_family_table_name();
+                let session_table = sessions_table_name();
 
-        repo.define_schemaless_table(&family_table).await?;
-        repo.define_schemaless_table(&session_table).await?;
+                repo.define_schemaless_table(&family_table).await?;
+                repo.define_schemaless_table(&session_table).await?;
+
+                let define_refresh_hash_index = format!(
+                    "DEFINE INDEX IF NOT EXISTS webgates_sessions_refresh_token_hash_idx ON {} FIELDS active_refresh_token_hash UNIQUE",
+                    session_table
+                );
+                repo.db
+                    .query(define_refresh_hash_index)
+                    .await
+                    .map_err(map_backend_error)?;
+
+                let define_family_id_index = format!(
+                    "DEFINE INDEX IF NOT EXISTS webgates_sessions_family_id_idx ON {} FIELDS family_id",
+                    session_table
+                );
+                repo.db
+                    .query(define_family_id_index)
+                    .await
+                    .map_err(map_backend_error)?;
+
+                Ok(())
+            })
+            .await?;
 
         Ok(repo)
     }

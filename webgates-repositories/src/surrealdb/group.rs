@@ -4,7 +4,7 @@
 //! adapter implementation of `GroupRepository` for `SurrealDbRepository`.
 
 use super::SurrealDbRepository;
-use crate::TableName;
+
 use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result as RepoResult};
 use crate::group_repository::GroupRepository;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
@@ -74,21 +74,27 @@ where
     async fn bootstrap(&self) -> RepoResult<()> {
         let repo = self.use_ns_db().await?;
 
-        let table_name = TableName::WebgatesGroups.to_string();
-        let query = "DEFINE TABLE IF NOT EXISTS $table SCHEMALESS;";
+        repo.group_schema_initialized
+            .get_or_try_init(|| async {
+                let table_name = repo.scope_settings.groups.clone();
+                let query = "DEFINE TABLE IF NOT EXISTS $table SCHEMALESS;";
 
-        repo.db
-            .query(query)
-            .bind(("table", table_name.clone()))
-            .await
-            .map_err(|error| {
-                RepoError::Database(DatabaseError::with_context(
-                    DatabaseOperation::Insert,
-                    format!("Failed to bootstrap group table: {}", error),
-                    Some(table_name),
-                    None,
-                ))
-            })?;
+                repo.db
+                    .query(query)
+                    .bind(("table", table_name.clone()))
+                    .await
+                    .map_err(|error| {
+                        RepoError::Database(DatabaseError::with_context(
+                            DatabaseOperation::Insert,
+                            format!("Failed to bootstrap group table: {}", error),
+                            Some(table_name),
+                            None,
+                        ))
+                    })?;
+
+                Ok::<(), RepoError>(())
+            })
+            .await?;
 
         Ok(())
     }
