@@ -80,7 +80,6 @@ where
     type Error = RepoError;
 
     async fn bootstrap(&self) -> RepoResult<()> {
-
         self.permission_mapping_schema_initialized
             .get_or_try_init(|| async {
                 let table_name = self.scope_settings.permission_mappings.clone();
@@ -178,7 +177,6 @@ where
                 )));
             }
 
-
             let record_id = RecordId::new(
                 self.scope_settings.permission_mappings.clone(),
                 mapping.permission_id().as_u64().to_string(),
@@ -226,7 +224,6 @@ where
         id: PermissionId,
     ) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
-
             let record_id = RecordId::new(
                 self.scope_settings.permission_mappings.clone(),
                 id.as_u64().to_string(),
@@ -275,7 +272,6 @@ where
         permission: &str,
     ) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
-
             let normalized = PermissionMapping::from(permission)
                 .normalized_string()
                 .to_string();
@@ -375,7 +371,6 @@ where
 
     async fn query_mapping_by_id(&self, id: PermissionId) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
-
             let record_id = RecordId::new(
                 self.scope_settings.permission_mappings.clone(),
                 id.as_u64().to_string(),
@@ -425,7 +420,6 @@ where
         permission: &str,
     ) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
-
             let normalized = PermissionMapping::from(permission)
                 .normalized_string()
                 .to_string();
@@ -475,7 +469,6 @@ where
 
     async fn list_all_mappings(&self) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {
-
             let mut response = self
                 .db
                 .query("SELECT * FROM type::table($table)")
@@ -525,7 +518,6 @@ where
         mappings: Vec<PermissionMapping>,
     ) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {
-
             if mappings.is_empty() {
                 return Ok(Vec::new());
             }
@@ -596,7 +588,6 @@ where
         ids: Vec<PermissionId>,
     ) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {
-
             if ids.is_empty() {
                 return Ok(Vec::new());
             }
@@ -704,7 +695,6 @@ where
         ids: Vec<PermissionId>,
     ) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {
-
             if ids.is_empty() {
                 return Ok(Vec::new());
             }

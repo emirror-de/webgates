@@ -256,7 +256,6 @@ where
 
     async fn query_account_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
         let res: Result<_> = {
-
             let query = "SELECT * FROM type::table($table) WHERE user_id = $uid LIMIT 1";
             let mut db_res = self
                 .db
@@ -291,7 +290,6 @@ where
 
     async fn query_account_by_id(&self, account_id: &Uuid) -> Result<Option<Account<R, G>>> {
         let res: Result<_> = {
-
             let record_id = account_record_id(&self.scope_settings.accounts, *account_id);
             let mut response = self
                 .db
@@ -324,7 +322,6 @@ where
 
     async fn store_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
         let res: Result<_> = {
-
             let record = SurrealAccountRecord::try_from(account)?;
             let account_id = record.account_id;
             let user_id = record.user_id.clone();
@@ -426,7 +423,6 @@ where
 
     async fn delete_account(&self, account_id: &Uuid) -> Result<Option<Account<R, G>>> {
         let res: Result<_> = {
-
             let record_id = account_record_id(&self.scope_settings.accounts, *account_id);
             let mut response = self
                 .db
@@ -459,7 +455,6 @@ where
 
     async fn update_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
         let res: Result<_> = {
-
             let record = SurrealAccountRecord::try_from(account)?;
             let record_account_id = record.account_id;
             let record_id = account_record_id(&self.scope_settings.accounts, record_account_id);
@@ -495,7 +490,6 @@ where
 
     async fn query_all_accounts(&self) -> Result<Vec<Account<R, G>>> {
         let res: Result<_> = {
-
             let mut response = self
                 .db
                 .query("SELECT * FROM type::table($table)")

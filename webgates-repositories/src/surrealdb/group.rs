@@ -72,7 +72,6 @@ where
     type Error = RepoError;
 
     async fn bootstrap(&self) -> RepoResult<()> {
-
         self.group_schema_initialized
             .get_or_try_init(|| async {
                 let table_name = self.scope_settings.groups.clone();
@@ -97,7 +96,6 @@ where
     }
 
     async fn store_group(&self, group: T) -> RepoResult<bool> {
-
         let record = group_to_record(group, &self.scope_settings.groups)?;
         let group_id = record.group_id.clone();
         let recid = RecordId::new(self.scope_settings.groups.clone(), group_id.clone());
@@ -159,7 +157,6 @@ where
     }
 
     async fn delete_group(&self, id: &str) -> RepoResult<Option<T>> {
-
         let recid = RecordId::new(self.scope_settings.groups.clone(), id.to_string());
         let mut response = self
             .db
@@ -191,7 +188,6 @@ where
     }
 
     async fn update_group(&self, group: T) -> RepoResult<Option<T>> {
-
         let record = group_to_record(group, &self.scope_settings.groups)?;
         let group_id = record.group_id.clone();
         let recid = RecordId::new(self.scope_settings.groups.clone(), group_id.clone());
@@ -227,7 +223,6 @@ where
     }
 
     async fn query_group_by_id(&self, id: &str) -> RepoResult<Option<T>> {
-
         let recid = RecordId::new(self.scope_settings.groups.clone(), id.to_string());
         let mut response = self
             .db
@@ -259,7 +254,6 @@ where
     }
 
     async fn query_all_groups(&self) -> RepoResult<Vec<T>> {
-
         let mut response = self
             .db
             .query("SELECT * FROM type::table($table)")

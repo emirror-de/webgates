@@ -62,7 +62,6 @@ where
     type Error = crate::errors::Error;
 
     async fn bootstrap(&self) -> RepoResult<()> {
-
         self.credential_schema_initialized
             .get_or_try_init(|| async {
                 let table_name = self.scope_settings.credentials.clone();
@@ -233,7 +232,6 @@ where
         let result: RepoResult<_> = {
             let table_name = self.scope_settings.credentials.clone();
             let record_id = secret_record_id(&table_name, id);
-
 
             let query = "SELECT VALUE secret FROM ONLY $record_id";
             let mut response = self
