@@ -395,8 +395,8 @@ impl IssuedSessionTokens {
 /// let refresh = RefreshTokenPlaintext::new("a".repeat(64)).unwrap();
 /// let pair = IssuedTokenPair::new(auth.clone(), refresh.clone());
 ///
-/// assert_eq!(pair.auth_token, auth);
-/// assert_eq!(pair.refresh_token, refresh);
+/// assert!(pair.auth_token == auth);
+/// assert!(pair.refresh_token == refresh);
 /// ```
 #[derive(Clone, PartialEq, Eq)]
 pub struct IssuedTokenPair {
