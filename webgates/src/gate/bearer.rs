@@ -132,7 +132,7 @@ where
 }
 
 /// Static token mode configuration (compile-time).
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct StaticTokenConfig {
     /// Exact static bearer token to match.
     token: String,
@@ -143,7 +143,7 @@ pub struct StaticTokenConfig {
 /// Static bearer gate configuration.
 ///
 /// This gate is independent of JWT codecs, roles, groups, and issuers.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct StaticBearerGate {
     token: String,
     optional: bool,
@@ -176,7 +176,7 @@ impl StaticBearerGate {
 }
 
 /// Generic bearer gate with compile-time mode parameter.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct BearerGate<C, R, G, M>
 where
     C: Codec,
@@ -336,7 +336,7 @@ where
 }
 
 /// Outcome of evaluating bearer authentication/authorization independent of any HTTP framework.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum BearerEvaluation<R, G>
 where
     R: AccessHierarchy + Eq + Display + Clone,
@@ -388,7 +388,7 @@ where
 }
 
 /// Runtime evaluator for JWT bearer gates.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct JwtBearerRuntime<C, R, G>
 where
     C: Codec,
@@ -464,7 +464,7 @@ where
 }
 
 /// Runtime evaluator for static bearer token gates.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct StaticTokenRuntime<R, G>
 where
     R: AccessHierarchy + Eq + Display + Clone,
@@ -621,7 +621,7 @@ mod tests {
                 assert_eq!(acc.user_id, account.user_id);
                 assert_eq!(registered_claims.issuer, "issuer");
             }
-            other => return Err(format!("expected JwtAuthorized, got {other:?}").into()),
+            _ => return Err("expected JwtAuthorized".into()),
         }
         Ok(())
     }

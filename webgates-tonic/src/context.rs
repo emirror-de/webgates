@@ -50,7 +50,7 @@ use webgates::codecs::jwt::RegisteredClaims;
 /// Handlers in strict JWT mode can retrieve this type from request extensions
 /// after the gate has validated the bearer token and enforced the access
 /// policy.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct JwtAuthContext<R, G>
 where
     R: AccessHierarchy + Eq + std::fmt::Display + Clone,
@@ -94,7 +94,7 @@ where
 ///
 /// In optional mode the gate does not enforce the access policy automatically.
 /// Handlers must perform any required access checks themselves.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct OptionalJwtAuthContext<R, G>
 where
     R: AccessHierarchy + Eq + std::fmt::Display + Clone,

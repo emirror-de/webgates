@@ -7,7 +7,7 @@ use webgates::gate::Gate as CoreGate;
 use webgates::gate::cookie::{CookieEvaluation, CookieGateRuntime};
 
 use std::convert::Infallible;
-use std::fmt::Debug;
+
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -41,7 +41,7 @@ use webgates::cookie_template::CookieTemplate;
 /// The cookie name and attributes are derived from the provided `CookieBuilder`.
 /// The issuer and JWT validation are configured via the builder that constructs
 /// this service.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct CookieGateService<C, R, G, S>
 where
     C: Codec<Payload = JwtClaims<Account<R, G>>>,

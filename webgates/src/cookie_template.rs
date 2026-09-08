@@ -96,7 +96,7 @@ pub const DEFAULT_COOKIE_NAME: &str = "webgates";
 ///
 /// Convert to `cookie::Cookie` via [`CookieTemplate::builder`] then `.build()`,
 /// or use [`CookieTemplate::validate_and_build`].
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct CookieTemplate {
     name: Cow<'static, str>,
     value: Cow<'static, str>,

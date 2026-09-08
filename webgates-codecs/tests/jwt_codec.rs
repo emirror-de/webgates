@@ -195,7 +195,7 @@ fn jwt_validation_service_accepts_valid_token_with_expected_issuer() {
             assert_eq!(jwt.custom_claims, claims.custom_claims);
             assert_eq!(jwt.registered_claims.issuer, "issuer-a");
         }
-        other => panic!("expected valid token result, got {other:?}"),
+        _ => panic!("expected valid token result"),
     }
 }
 
@@ -225,7 +225,7 @@ fn jwt_validation_service_rejects_token_with_unexpected_issuer() {
             assert_eq!(expected, "issuer-b");
             assert_eq!(actual, "issuer-a");
         }
-        other => panic!("expected invalid issuer result, got {other:?}"),
+        _ => panic!("expected invalid issuer result"),
     }
 }
 
@@ -296,7 +296,7 @@ fn es384_key_pair_loader_initializes_and_loads_missing_key_files() {
     let key_pair = block_on_test_future(loader.initialize_if_required())
         .unwrap_or_else(|error| panic!("key initialization should succeed: {error}"));
 
-    assert_eq!(key_pair.paths(), &paths);
+    assert!(key_pair.paths() == &paths);
     assert!(key_pair.private_key_path().is_file());
     assert!(key_pair.public_key_path().is_file());
     JsonWebTokenOptions::from_es384_pem(key_pair.private_key_pem(), key_pair.public_key_pem())
@@ -334,7 +334,7 @@ fn es384_key_pair_loader_reuses_existing_key_files() {
     let key_pair = block_on_test_future(loader.initialize_if_required())
         .unwrap_or_else(|error| panic!("existing keys should be reused: {error}"));
 
-    assert_eq!(key_pair.paths(), &paths);
+    assert!(key_pair.paths() == &paths);
     assert_eq!(key_pair.private_key_pem(), TEST_ES384_PRIVATE_KEY_PEM);
     assert_eq!(key_pair.public_key_pem(), TEST_ES384_PUBLIC_KEY_PEM);
 

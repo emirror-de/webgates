@@ -13,7 +13,7 @@ use webgates_core::authz::access_hierarchy::AccessHierarchy;
 use sea_orm::{ActiveValue, entity::prelude::*};
 
 /// SeaORM entity for an account.
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[derive(Clone, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "webgates_accounts")]
 pub struct Model {
     /// Surrogate primary key (auto‑increment). Not exposed at domain level.
@@ -34,6 +34,14 @@ pub struct Model {
 /// Relation definition placeholder (no outbound relations defined for this model).
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
+
+impl std::fmt::Debug for Model {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("AccountModel")
+            .finish_non_exhaustive()
+    }
+}
 
 impl ActiveModelBehavior for ActiveModel {}
 

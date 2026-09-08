@@ -11,7 +11,7 @@ use super::JwtClaims;
 /// categories exposed by this crate:
 /// - the token could not be decoded or validated
 /// - the token decoded successfully but did not match the expected issuer
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum JwtValidationResult<T> {
     /// Token is valid and contains decoded claims.
     Valid(JwtClaims<T>),

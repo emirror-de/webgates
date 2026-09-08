@@ -155,7 +155,7 @@ fn canonical_es384_header_with_kid(kid: &str) -> Header {
 }
 
 /// File paths for an ES384 key pair managed on disk.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Es384KeyPairPaths {
     private_key_path: PathBuf,
     public_key_path: PathBuf,
@@ -187,7 +187,7 @@ impl Es384KeyPairPaths {
 }
 
 /// In-memory ES384 key material loaded from disk or generated on startup.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Es384KeyPair {
     paths: Es384KeyPairPaths,
     private_key_pem: Vec<u8>,
@@ -253,7 +253,7 @@ impl Es384KeyPair {
 }
 
 /// Loads or initializes an ES384 key pair from the filesystem.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Es384KeyPairLoader {
     paths: Es384KeyPairPaths,
 }
@@ -520,7 +520,7 @@ pub fn generate_es384_key_pair_pem() -> Result<(Vec<u8>, Vec<u8>)> {
 ///
 /// These are the standard metadata fields that travel alongside your
 /// application-specific payload in a JWT.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[skip_serializing_none]
 pub struct RegisteredClaims {
     /// Issuer of the JWT.
@@ -579,7 +579,7 @@ impl RegisteredClaims {
 /// Combined registered and application-specific JWT claims.
 ///
 /// This is the main typed claim container used with [`JsonWebToken<T>`].
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct JwtClaims<CustomClaims> {
     /// Standard JWT registered claims.
     #[serde(flatten)]
@@ -608,7 +608,7 @@ impl<CustomClaims> JwtClaims<CustomClaims> {
 ///
 /// Use this when you need explicit control over signing keys, verification keys,
 /// key identifiers, or validation settings.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct JsonWebTokenOptions {
     /// Key for ES384 encoding.
     encoding_key: Option<EncodingKey>,

@@ -150,7 +150,7 @@ use crate::cookie_template::{CookieTemplate, CookieTemplateBuilderError};
 use uuid::Uuid;
 
 /// Builder/configuration for cookie-backed JWT gates (framework-agnostic).
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct CookieGate<C, R, G>
 where
     C: Codec,
@@ -299,7 +299,7 @@ where
 ///
 /// This enables adapters (e.g., Axum, Warp) to perform authentication and
 /// authorization in the core crate and then map the outcome to their transport.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum CookieEvaluation<R, G>
 where
     R: AccessHierarchy + Eq + Display + Clone,
@@ -343,7 +343,7 @@ where
 
 /// Runtime evaluator built from a `CookieGate` that executes validation and
 /// authorization independent of any HTTP framework.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct CookieGateRuntime<C, R, G>
 where
     C: Codec,

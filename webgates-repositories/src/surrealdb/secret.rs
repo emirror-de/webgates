@@ -27,7 +27,7 @@ use webgates_secrets::Secret;
 ///
 /// This type is the serialized adapter-layer representation used by
 /// `webgates-repositories` when storing secrets in SurrealDB.
-#[derive(Clone, Debug, Serialize, Deserialize, SurrealValue)]
+#[derive(Clone, Serialize, Deserialize, SurrealValue)]
 pub struct SecretRecord {
     account_id: Uuid,
     secret: String,

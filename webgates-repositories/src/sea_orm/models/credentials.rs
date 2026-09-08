@@ -9,7 +9,7 @@ use webgates_secrets::Secret;
 use sea_orm::{ActiveValue, entity::prelude::*};
 
 /// Credentials persistence entity (stores Argon2 hash).
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[derive(Clone, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "webgates_credentials")]
 pub struct Model {
     /// Internal surrogate primary key.
@@ -25,6 +25,14 @@ pub struct Model {
 /// No declared relations.
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
+
+impl std::fmt::Debug for Model {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("CredentialsModel")
+            .finish_non_exhaustive()
+    }
+}
 
 impl ActiveModelBehavior for ActiveModel {}
 

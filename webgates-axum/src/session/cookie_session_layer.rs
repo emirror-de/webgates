@@ -169,11 +169,7 @@ where
     Repo: webgates::sessions::repository::SessionRepository + Clone,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CookieSessionLayer")
-            .field("auth_cookie_template", &self.auth_cookie_template)
-            .field("refresh_cookie_template", &self.refresh_cookie_template)
-            .field("session_config", &self.session_config)
-            .finish_non_exhaustive()
+        f.debug_struct("CookieSessionLayer").finish_non_exhaustive()
     }
 }
 

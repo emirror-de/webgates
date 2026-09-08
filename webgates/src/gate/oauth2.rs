@@ -185,7 +185,7 @@ type AccountPersistFn<R, G> = Arc<
 type AccountEncoderFn<R, G> = Arc<dyn Fn(Account<R, G>) -> OAuth2Result<String> + Send + Sync>;
 
 /// Minimal token request data passed to the exchanger.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct TokenRequest {
     /// Authorization code returned by the provider.
     pub code: String,
@@ -208,7 +208,7 @@ pub trait TokenExchanger: Send + Sync {
 }
 
 /// Prepared login data: redirect target and cookies to set.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct LoginPreparation {
     /// Provider authorization URL to redirect the user to.
     pub redirect_url: String,
@@ -219,7 +219,7 @@ pub struct LoginPreparation {
 }
 
 /// Callback input received from the transport adapter.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct CallbackInput {
     /// Authorization code from provider (if any).
     pub code: Option<String>,
@@ -236,7 +236,7 @@ pub struct CallbackInput {
 }
 
 /// Callback evaluation outcome for adapters to map into HTTP responses.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum CallbackOutcome {
     /// Success with optional JWT cookie and optional redirect.
     Success {
@@ -961,7 +961,7 @@ where
 
 /// Internal representation of provider tokens used by some adapters.
 /// This mirrors `oauth2` crate types for serialization if needed.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct ProviderTokenResponse {
     /// Access token string.
     pub access_token: String,

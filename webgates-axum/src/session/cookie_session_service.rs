@@ -70,9 +70,6 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CookieSessionService")
-            .field("session_config", &self.session_config)
-            .field("auth_cookie_template", &self.auth_cookie_template)
-            .field("refresh_cookie_template", &self.refresh_cookie_template)
             .finish_non_exhaustive()
     }
 }

@@ -319,7 +319,7 @@ where
     exchanger: Arc<dyn TokenExchanger>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct CallbackQuery {
     code: Option<String>,
     state: Option<String>,

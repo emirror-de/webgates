@@ -229,7 +229,7 @@ mod tests {
                 assert_eq!(jwt.custom_claims.user_id, "test_user");
                 assert_eq!(jwt.registered_claims.issuer, "test-issuer");
             }
-            other => panic!("Expected valid token result, got {other:?}"),
+            _ => panic!("Expected valid token result"),
         }
     }
 
@@ -255,7 +255,7 @@ mod tests {
                 assert_eq!(expected, "expected-issuer");
                 assert_eq!(actual, "different-issuer");
             }
-            other => panic!("Expected invalid issuer result, got {other:?}"),
+            _ => panic!("Expected invalid issuer result"),
         }
     }
 }

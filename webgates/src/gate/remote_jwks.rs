@@ -11,7 +11,7 @@ use crate::codecs::jwt::{JwtClaims, validation_result::JwtValidationResult};
 use uuid::Uuid;
 
 /// Outcome of evaluating a cookie token against a remote-JWKS verifier.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum RemoteCookieEvaluation<R, G>
 where
     R: AccessHierarchy + Eq + Display + Clone,

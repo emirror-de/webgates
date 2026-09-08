@@ -66,7 +66,7 @@ use crate::tokens::{
 /// let issued = IssuedSession::new(session.clone(), tokens);
 /// assert_eq!(issued.session, session);
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct IssuedSession {
     /// Newly created session state.
     pub session: Session,
@@ -774,7 +774,7 @@ mod tests {
             Err(error) => panic!("expected successful renewal evaluation: {error}"),
         };
 
-        assert_eq!(outcome, RenewalOutcome::NotNeeded);
+        assert!(outcome == RenewalOutcome::NotNeeded);
         assert_eq!(repository.state.lock().await.lookup_calls, 0);
     }
 
@@ -825,7 +825,7 @@ mod tests {
                 assert_eq!(guard.rotate_inputs.len(), 1);
                 assert_eq!(guard.rotate_inputs[0].next_session, session);
             }
-            other => panic!("expected renewed outcome, got {other:?}"),
+            _ => panic!("expected renewed outcome"),
         }
     }
 
@@ -863,11 +863,11 @@ mod tests {
             Err(error) => panic!("expected renewal outcome: {error}"),
         };
 
-        assert_eq!(
-            outcome,
-            RenewalOutcome::LeaseUnavailable {
-                acquisition: LeaseAcquisition::HeldByOther { active_lease },
-            }
+        assert!(
+            outcome
+                == RenewalOutcome::LeaseUnavailable {
+                    acquisition: LeaseAcquisition::HeldByOther { active_lease },
+                }
         );
     }
 
@@ -908,11 +908,11 @@ mod tests {
             Err(error) => panic!("expected replay outcome: {error}"),
         };
 
-        assert_eq!(
-            outcome,
-            RenewalOutcome::ReplayDetected {
-                session_id: lookup.session.session_id,
-            }
+        assert!(
+            outcome
+                == RenewalOutcome::ReplayDetected {
+                    session_id: lookup.session.session_id,
+                }
         );
         assert_eq!(
             repository.state.lock().await.revoked_families,

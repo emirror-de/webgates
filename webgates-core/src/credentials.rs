@@ -100,7 +100,7 @@ pub mod credentials_verifier;
 ///
 /// assert_eq!(credentials.id, user_id);
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Credentials<Id> {
     /// User identifier, such as a username, email address, or UUID.
     pub id: Id,

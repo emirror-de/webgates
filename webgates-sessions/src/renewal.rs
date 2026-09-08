@@ -195,7 +195,7 @@ impl RenewalAttempt {
 }
 
 /// Outcome returned by the renewal orchestration layer.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum RenewalOutcome {
     /// No renewal was necessary.
     NotNeeded,

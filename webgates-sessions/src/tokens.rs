@@ -27,7 +27,7 @@ use webgates_codecs::Codec;
 /// let raw = token.into_inner();
 /// assert_eq!(raw, "eyJhbGciOiJIUzI1NiJ9.payload.sig");
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct AuthToken {
     value: String,
 }
@@ -78,7 +78,7 @@ impl AuthToken {
 /// // Empty or whitespace-only strings are rejected.
 /// assert!(RefreshTokenPlaintext::new("   ").is_err());
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct RefreshTokenPlaintext {
     value: String,
 }
@@ -358,7 +358,7 @@ impl RefreshTokenHasher for Sha256RefreshTokenHasher {
 ///
 /// assert_eq!(issued.refresh_token_hash, hash);
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct IssuedSessionTokens {
     /// Newly issued client-facing auth and refresh tokens.
     pub token_pair: IssuedTokenPair,
@@ -398,7 +398,7 @@ impl IssuedSessionTokens {
 /// assert_eq!(pair.auth_token, auth);
 /// assert_eq!(pair.refresh_token, refresh);
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct IssuedTokenPair {
     /// Newly issued short-lived auth token.
     pub auth_token: AuthToken,
@@ -761,8 +761,8 @@ mod tests {
 
         let pair = IssuedTokenPair::new(auth_token.clone(), refresh_token.clone());
 
-        assert_eq!(pair.auth_token, auth_token);
-        assert_eq!(pair.refresh_token, refresh_token);
+        assert!(pair.auth_token == auth_token);
+        assert!(pair.refresh_token == refresh_token);
     }
 
     #[tokio::test]

@@ -40,7 +40,6 @@ use webgates_sessions::tokens::{
 /// deliberately avoid revealing whether an account exists. Both an unknown user
 /// and an incorrect password are collapsed into
 /// [`LoginResult::InvalidCredentials`].
-#[derive(Debug)]
 pub enum LoginResult {
     /// Authentication succeeded and returned the issued auth token plus typed expiry metadata.
     Success {
@@ -140,7 +139,6 @@ impl LoginResult {
 ///
 /// This type is returned by
 /// [`SessionLoginService::authenticate_with_sessions`].
-#[derive(Debug)]
 #[cfg(feature = "sessions")]
 pub enum SessionLoginResult {
     /// Authentication succeeded and returned an issued session plus client-facing
