@@ -160,6 +160,10 @@ impl<S> SessionRepository for SurrealDbRepository<S>
 where
     S: Connection,
 {
+    async fn bootstrap(&self) -> RepositoryResult<()> {
+        self.bootstrap_session_tables().await.map(|_| ())
+    }
+
     async fn create_session(&self, input: CreateSession) -> RepositoryResult<()> {
         let repo = self.bootstrap_session_tables().await?;
 
@@ -584,7 +588,7 @@ where
     S: Connection,
 {
     async fn bootstrap_session_tables(&self) -> RepositoryResult<SurrealDbRepository<S>> {
-        let repo = self.use_ns_db().await.map_err(map_backend_error)?;
+        let repo = self.use_ns_db().await.map_err(map_bootstrap_error)?;
 
         repo.session_schema_initialized
             .get_or_try_init(|| async {
@@ -601,7 +605,7 @@ where
                 repo.db
                     .query(define_refresh_hash_index)
                     .await
-                    .map_err(map_backend_error)?;
+                    .map_err(map_bootstrap_error)?;
 
                 let define_family_id_index = format!(
                     "DEFINE INDEX IF NOT EXISTS webgates_sessions_family_id_idx ON {} FIELDS family_id",
@@ -610,7 +614,7 @@ where
                 repo.db
                     .query(define_family_id_index)
                     .await
-                    .map_err(map_backend_error)?;
+                    .map_err(map_bootstrap_error)?;
 
                 Ok(())
             })
@@ -627,7 +631,7 @@ where
             .bind(("table", table_name.to_string()))
             .await
             .map(|_| ())
-            .map_err(map_backend_error)
+            .map_err(map_bootstrap_error)
     }
 }
 
@@ -665,6 +669,12 @@ fn system_time_to_unix_seconds_lossy(value: SystemTime) -> u64 {
 
 fn unix_seconds_to_system_time(value: u64) -> SystemTime {
     UNIX_EPOCH + Duration::from_secs(value)
+}
+
+fn map_bootstrap_error(error: impl std::fmt::Display) -> RepositoryError {
+    RepositoryError::bootstrap(format!(
+        "surrealdb session repository bootstrap failed: {error}"
+    ))
 }
 
 fn map_backend_error(error: impl std::fmt::Display) -> RepositoryError {
@@ -754,6 +764,25 @@ mod tests {
             .await;
 
         assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn bootstrap_error_mapper_uses_bootstrap_variant() {
+        let mapped = map_bootstrap_error("boom");
+
+        assert_eq!(
+            mapped,
+            RepositoryError::Bootstrap {
+                message: String::from("surrealdb session repository bootstrap failed: boom"),
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn bootstrap_initializes_session_storage() {
+        let repository = repository().await;
+
+        assert_eq!(repository.bootstrap().await, Ok(()));
     }
 
     #[tokio::test]

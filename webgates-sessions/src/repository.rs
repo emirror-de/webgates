@@ -40,6 +40,13 @@ pub enum RepositoryError {
     #[error("invalid persisted session state")]
     InvalidState,
 
+    /// Preparing the repository backend for session operations failed.
+    #[error("{message}")]
+    Bootstrap {
+        /// Safe bootstrap failure summary.
+        message: String,
+    },
+
     /// The backend returned a safe, caller-facing error summary.
     #[error("{message}")]
     Backend {
@@ -49,6 +56,14 @@ pub enum RepositoryError {
 }
 
 impl RepositoryError {
+    /// Creates a bootstrap error with a safe, caller-facing message.
+    #[must_use]
+    pub fn bootstrap(message: impl Into<String>) -> Self {
+        Self::Bootstrap {
+            message: message.into(),
+        }
+    }
+
     /// Creates a backend error with a safe, caller-facing message.
     #[must_use]
     pub fn backend(message: impl Into<String>) -> Self {
@@ -183,6 +198,15 @@ pub enum RevokeSessionScope {
 /// as an expected not-found result, reserve `Err(..)` for backend or state
 /// failures, and avoid leaking backend-specific details in error messages.
 pub trait SessionRepository: Send + Sync {
+    /// Prepares the repository backend for use.
+    ///
+    /// Implementations may use this hook to create tables, indexes, or other
+    /// storage-specific structures required for subsequent session operations.
+    ///
+    /// Failures in this preparation step should be returned as
+    /// [`RepositoryError::Bootstrap`].
+    fn bootstrap(&self) -> impl std::future::Future<Output = RepositoryResult<()>> + Send;
+
     /// Creates a new persisted session and stores its active refresh-token hash.
     fn create_session(
         &self,
@@ -257,6 +281,10 @@ mod tests {
     struct ContractRepository;
 
     impl SessionRepository for ContractRepository {
+        async fn bootstrap(&self) -> RepositoryResult<()> {
+            Ok(())
+        }
+
         async fn create_session(&self, _input: CreateSession) -> RepositoryResult<()> {
             Ok(())
         }
@@ -355,6 +383,18 @@ mod tests {
     }
 
     #[test]
+    fn bootstrap_error_constructor_keeps_message() {
+        let error = RepositoryError::bootstrap("safe bootstrap summary");
+
+        assert_eq!(
+            error,
+            RepositoryError::Bootstrap {
+                message: String::from("safe bootstrap summary"),
+            }
+        );
+    }
+
+    #[test]
     fn backend_error_constructor_keeps_message() {
         let error = RepositoryError::backend("safe backend summary");
 
@@ -391,6 +431,7 @@ mod tests {
         };
         let touch = SessionTouch::new(session.session_id, sample_time() + Duration::from_secs(20));
 
+        assert_eq!(repository.bootstrap().await, Ok(()));
         assert_eq!(repository.create_session(create_input).await, Ok(()));
         assert!(matches!(
             repository

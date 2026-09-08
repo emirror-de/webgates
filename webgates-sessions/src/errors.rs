@@ -123,6 +123,13 @@ pub enum RepositoryError {
     #[error("invalid persisted session state")]
     InvalidState,
 
+    /// Preparing the repository backend for session operations failed.
+    #[error("{message}")]
+    Bootstrap {
+        /// Safe, caller-facing bootstrap failure summary.
+        message: String,
+    },
+
     /// A backend-specific operation failed.
     #[error("{message}")]
     Backend {
@@ -132,6 +139,13 @@ pub enum RepositoryError {
 }
 
 impl RepositoryError {
+    /// Creates a bootstrap error with a safe, caller-facing message.
+    pub fn bootstrap(message: impl Into<String>) -> Self {
+        Self::Bootstrap {
+            message: message.into(),
+        }
+    }
+
     /// Creates a backend error with a safe, caller-facing message.
     pub fn backend(message: impl Into<String>) -> Self {
         Self::Backend {
@@ -149,6 +163,9 @@ impl From<crate::repository::RepositoryError> for RepositoryError {
             }
             crate::repository::RepositoryError::Conflict => Self::Conflict,
             crate::repository::RepositoryError::InvalidState => Self::InvalidState,
+            crate::repository::RepositoryError::Bootstrap { message } => {
+                Self::Bootstrap { message }
+            }
             crate::repository::RepositoryError::Backend { message } => Self::Backend { message },
         }
     }
@@ -174,4 +191,23 @@ pub enum RevocationError {
     /// The revocation operation could not be completed.
     #[error("revocation failed")]
     Failed,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RepositoryError;
+
+    #[test]
+    fn repository_error_conversion_preserves_bootstrap_variant() {
+        let converted = RepositoryError::from(crate::repository::RepositoryError::bootstrap(
+            "safe bootstrap summary",
+        ));
+
+        assert_eq!(
+            converted,
+            RepositoryError::Bootstrap {
+                message: String::from("safe bootstrap summary"),
+            }
+        );
+    }
 }

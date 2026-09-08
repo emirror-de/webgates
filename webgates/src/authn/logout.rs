@@ -79,6 +79,10 @@ mod tests {
     }
 
     impl SessionRepository for DummySessionRepository {
+        async fn bootstrap(&self) -> RepositoryResult<()> {
+            Ok(())
+        }
+
         async fn create_session(&self, _input: CreateSession) -> RepositoryResult<()> {
             Ok(())
         }

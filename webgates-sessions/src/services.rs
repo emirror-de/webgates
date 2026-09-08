@@ -116,6 +116,7 @@ impl IssuedSession {
 /// # use webgates_sessions::session::*;
 /// # #[derive(Clone)] struct Noop;
 /// # impl SessionRepository for Noop {
+/// #     fn bootstrap(&self) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
 /// #     fn create_session(&self, _: CreateSession) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
 /// #     fn find_session_by_refresh_token_hash<'a>(&'a self, _: webgates_sessions::tokens::RefreshTokenHashRef<'a>) -> impl std::future::Future<Output = RepositoryResult<Option<SessionLookup>>> + Send + 'a { async { Ok(None) } }
 /// #     fn find_session(&self, _: SessionId) -> impl std::future::Future<Output = RepositoryResult<Option<SessionRecord>>> + Send { async { Ok(None) } }
@@ -244,6 +245,7 @@ where
 /// # use webgates_sessions::session::*;
 /// # #[derive(Clone)] struct Noop;
 /// # impl SessionRepository for Noop {
+/// #     fn bootstrap(&self) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
 /// #     fn create_session(&self, _: CreateSession) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
 /// #     fn find_session_by_refresh_token_hash<'a>(&'a self, _: webgates_sessions::tokens::RefreshTokenHashRef<'a>) -> impl std::future::Future<Output = RepositoryResult<Option<SessionLookup>>> + Send + 'a { async { Ok(None) } }
 /// #     fn find_session(&self, _: SessionId) -> impl std::future::Future<Output = RepositoryResult<Option<SessionRecord>>> + Send { async { Ok(None) } }
@@ -432,6 +434,7 @@ where
 /// # use webgates_sessions::session::*;
 /// # #[derive(Clone)] struct Noop;
 /// # impl SessionRepository for Noop {
+/// #     fn bootstrap(&self) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
 /// #     fn create_session(&self, _: CreateSession) -> impl std::future::Future<Output = RepositoryResult<()>> + Send { async { Ok(()) } }
 /// #     fn find_session_by_refresh_token_hash<'a>(&'a self, _: webgates_sessions::tokens::RefreshTokenHashRef<'a>) -> impl std::future::Future<Output = RepositoryResult<Option<SessionLookup>>> + Send + 'a { async { Ok(None) } }
 /// #     fn find_session(&self, _: SessionId) -> impl std::future::Future<Output = RepositoryResult<Option<SessionRecord>>> + Send { async { Ok(None) } }
@@ -556,6 +559,13 @@ mod tests {
     }
 
     impl SessionRepository for MockRepository {
+        fn bootstrap(
+            &self,
+        ) -> impl std::future::Future<Output = crate::repository::RepositoryResult<()>> + Send
+        {
+            async { Ok(()) }
+        }
+
         fn create_session(
             &self,
             input: CreateSession,

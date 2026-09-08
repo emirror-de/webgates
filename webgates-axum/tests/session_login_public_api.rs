@@ -37,6 +37,10 @@ use webgates_repositories::memory::secret::MemorySecretRepository;
 struct StubSessionRepository;
 
 impl webgates::sessions::repository::SessionRepository for StubSessionRepository {
+    async fn bootstrap(&self) -> RepositoryResult<()> {
+        Ok(())
+    }
+
     async fn create_session(&self, _input: CreateSession) -> RepositoryResult<()> {
         Ok(())
     }
