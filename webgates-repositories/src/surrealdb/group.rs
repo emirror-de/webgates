@@ -72,7 +72,13 @@ where
     type Error = RepoError;
 
     async fn bootstrap(&self) -> RepoResult<()> {
-        let repo = self.use_ns_db().await?;
+        let table_name = self.scope_settings.groups.clone();
+        let repo = self.use_ns_db().await.map_err(|error| {
+            RepoError::Database(DatabaseError::bootstrap(
+                format!("Failed to bootstrap group repository scope: {error}"),
+                Some(table_name.clone()),
+            ))
+        })?;
 
         repo.group_schema_initialized
             .get_or_try_init(|| async {
@@ -84,11 +90,9 @@ where
                     .bind(("table", table_name.clone()))
                     .await
                     .map_err(|error| {
-                        RepoError::Database(DatabaseError::with_context(
-                            DatabaseOperation::Insert,
+                        RepoError::Database(DatabaseError::bootstrap(
                             format!("Failed to bootstrap group table: {}", error),
                             Some(table_name),
-                            None,
                         ))
                     })?;
 

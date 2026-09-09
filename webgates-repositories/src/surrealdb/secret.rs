@@ -11,7 +11,7 @@
 
 use super::SurrealDbRepository;
 
-use crate::errors::{DatabaseOperation, Result as RepoResult};
+use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result as RepoResult};
 use crate::secret_repository::SecretRepository;
 use serde::{Deserialize, Serialize};
 use surrealdb::Connection;
@@ -62,7 +62,13 @@ where
     type Error = crate::errors::Error;
 
     async fn bootstrap(&self) -> RepoResult<()> {
-        let repo = self.use_ns_db().await?;
+        let table_name = self.scope_settings.credentials.clone();
+        let repo = self.use_ns_db().await.map_err(|error| {
+            RepoError::Database(DatabaseError::bootstrap(
+                format!("Failed to bootstrap secret repository scope: {error}"),
+                Some(table_name.clone()),
+            ))
+        })?;
 
         repo.credential_schema_initialized
             .get_or_try_init(|| async {
@@ -74,12 +80,10 @@ where
                     .bind(("table", table_name.clone()))
                     .await
                     .map_err(|error| {
-                        repo.scoped_database_error(
-                            DatabaseOperation::Insert,
-                            &table_name,
+                        RepoError::Database(DatabaseError::bootstrap(
                             format!("Failed to bootstrap secret repository: {error}"),
-                            None,
-                        )
+                            Some(table_name.clone()),
+                        ))
                     })?;
 
                 Ok::<(), crate::errors::Error>(())

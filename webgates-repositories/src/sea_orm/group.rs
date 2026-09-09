@@ -27,11 +27,9 @@ where
         }
 
         self.db.execute(&statement).await.map_err(|e| {
-            RepoError::Database(DatabaseError::with_context(
-                DatabaseOperation::Insert,
+            RepoError::Database(DatabaseError::bootstrap(
                 format!("Failed to bootstrap group repository: {}", e),
                 Some(TableName::WebgatesGroups.to_string()),
-                None,
             ))
         })?;
 

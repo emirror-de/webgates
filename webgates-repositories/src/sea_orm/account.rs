@@ -74,11 +74,9 @@ where
 
         let statement = schema.create_table_from_entity(seaorm_account::Entity);
         self.db.execute(&statement).await.map_err(|error| {
-            RepoError::Database(DatabaseError::with_context(
-                DatabaseOperation::Insert,
+            RepoError::Database(DatabaseError::bootstrap(
                 format!("Failed to bootstrap account table: {}", error),
                 Some(TableName::WebgatesAccounts.to_string()),
-                None,
             ))
         })?;
 

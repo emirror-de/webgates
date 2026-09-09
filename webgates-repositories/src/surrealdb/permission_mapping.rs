@@ -80,7 +80,13 @@ where
     type Error = RepoError;
 
     async fn bootstrap(&self) -> RepoResult<()> {
-        let repo = self.use_ns_db().await?;
+        let table_name = self.scope_settings.permission_mappings.clone();
+        let repo = self.use_ns_db().await.map_err(|error| {
+            RepoError::Database(DatabaseError::bootstrap(
+                format!("Failed to bootstrap permission-mapping repository scope: {error}"),
+                Some(table_name.clone()),
+            ))
+        })?;
 
         repo.permission_mapping_schema_initialized
             .get_or_try_init(|| async {
@@ -92,11 +98,9 @@ where
                     .bind(("table", table_name.clone()))
                     .await
                     .map_err(|e| {
-                        RepoError::Database(DatabaseError::with_context(
-                            DatabaseOperation::Insert,
+                        RepoError::Database(DatabaseError::bootstrap(
                             format!("Failed to define permission mappings table: {}", e),
                             Some(table_name.clone()),
-                            None,
                         ))
                     })?;
 
@@ -105,14 +109,12 @@ where
                     table_name
                 );
                 repo.db.query(define_normalized_field).await.map_err(|e| {
-                    RepoError::Database(DatabaseError::with_context(
-                        DatabaseOperation::Insert,
+                    RepoError::Database(DatabaseError::bootstrap(
                         format!(
                             "Failed to define permission mappings normalized_string field: {}",
                             e
                         ),
                         Some(table_name.clone()),
-                        None,
                     ))
                 })?;
 
@@ -124,14 +126,12 @@ where
                     .query(define_permission_id_field)
                     .await
                     .map_err(|e| {
-                        RepoError::Database(DatabaseError::with_context(
-                            DatabaseOperation::Insert,
+                        RepoError::Database(DatabaseError::bootstrap(
                             format!(
                                 "Failed to define permission mappings permission_id field: {}",
                                 e
                             ),
                             Some(table_name.clone()),
-                            None,
                         ))
                     })?;
 
@@ -140,14 +140,12 @@ where
                     table_name
                 );
                 repo.db.query(define_normalized_index).await.map_err(|e| {
-                    RepoError::Database(DatabaseError::with_context(
-                        DatabaseOperation::Insert,
+                    RepoError::Database(DatabaseError::bootstrap(
                         format!(
                             "Failed to define permission mappings normalized_string index: {}",
                             e
                         ),
                         Some(table_name.clone()),
-                        None,
                     ))
                 })?;
 
@@ -159,14 +157,12 @@ where
                     .query(define_permission_id_index)
                     .await
                     .map_err(|e| {
-                        RepoError::Database(DatabaseError::with_context(
-                            DatabaseOperation::Insert,
+                        RepoError::Database(DatabaseError::bootstrap(
                             format!(
                                 "Failed to define permission mappings permission_id index: {}",
                                 e
                             ),
-                            Some(table_name),
-                            None,
+                            Some(table_name.clone()),
                         ))
                     })?;
 

@@ -520,6 +520,15 @@ impl fmt::Display for DatabaseOperation {
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum DatabaseError {
+    /// Database bootstrap or repository-initialization failure.
+    #[error("{message}")]
+    Bootstrap {
+        /// Description of the bootstrap failure (non-sensitive).
+        message: String,
+        /// The table/collection involved (if applicable).
+        table: Option<String>,
+    },
+
     /// Database operation failure (driver/engine-side).
     #[error("Database error: {operation} - {message}")]
     Operation {
@@ -535,6 +544,14 @@ pub enum DatabaseError {
 }
 
 impl DatabaseError {
+    /// Construct a database bootstrap error with table context.
+    pub fn bootstrap(message: impl Into<String>, table: Option<String>) -> Self {
+        DatabaseError::Bootstrap {
+            message: message.into(),
+            table,
+        }
+    }
+
     /// Construct a database error without table/record context.
     pub fn new(operation: DatabaseOperation, message: impl Into<String>) -> Self {
         DatabaseError::Operation {
@@ -563,6 +580,10 @@ impl DatabaseError {
     fn support_code_inner(&self) -> String {
         let mut hasher = DefaultHasher::new();
         match self {
+            DatabaseError::Bootstrap { table, .. } => format!("DB-BOOTSTRAP-{:X}", {
+                format!("bootstrap{:?}", table).hash(&mut hasher);
+                hasher.finish() % 10000
+            }),
             DatabaseError::Operation {
                 operation, table, ..
             } => format!("DB-{}-{:X}", operation.to_string().to_uppercase(), {
@@ -576,6 +597,10 @@ impl DatabaseError {
 impl UserFriendlyError for DatabaseError {
     fn user_message(&self) -> String {
         match self {
+            DatabaseError::Bootstrap { .. } => {
+                "Data services are currently being initialized. Please try again shortly."
+                    .to_string()
+            }
             DatabaseError::Operation { operation, .. } => match operation {
                 DatabaseOperation::Connect => {
                     "We’re having trouble connecting to the database. Please try again shortly."
@@ -600,6 +625,13 @@ impl UserFriendlyError for DatabaseError {
 
     fn developer_message(&self) -> String {
         match self {
+            DatabaseError::Bootstrap { message, table } => {
+                let table_context = table
+                    .as_ref()
+                    .map(|t| format!(" [Table: {}]", t))
+                    .unwrap_or_default();
+                format!("Database bootstrap failed: {}{}", message, table_context)
+            }
             DatabaseError::Operation {
                 operation,
                 message,
@@ -628,6 +660,7 @@ impl UserFriendlyError for DatabaseError {
 
     fn severity(&self) -> ErrorSeverity {
         match self {
+            DatabaseError::Bootstrap { .. } => ErrorSeverity::Critical,
             DatabaseError::Operation { operation, .. } => match operation {
                 DatabaseOperation::Connect => ErrorSeverity::Critical,
                 DatabaseOperation::Migration | DatabaseOperation::Backup => ErrorSeverity::Critical,
@@ -638,6 +671,10 @@ impl UserFriendlyError for DatabaseError {
 
     fn suggested_actions(&self) -> Vec<String> {
         match self {
+            DatabaseError::Bootstrap { .. } => vec![
+                "Retry after a short delay".to_string(),
+                "Inspect database setup, permissions, and schema initialization logs".to_string(),
+            ],
             DatabaseError::Operation { operation, .. } => match operation {
                 DatabaseOperation::Connect => vec![
                     "Wait briefly and retry".to_string(),
@@ -663,6 +700,7 @@ impl UserFriendlyError for DatabaseError {
 
     fn is_retryable(&self) -> bool {
         match self {
+            DatabaseError::Bootstrap { .. } => true,
             DatabaseError::Operation { operation, .. } => match operation {
                 DatabaseOperation::Connect => true,
                 DatabaseOperation::Migration | DatabaseOperation::Backup => false,
@@ -765,3 +803,44 @@ impl From<Box<dyn std::error::Error + Send + Sync>> for Error {
 
 /// Convenience alias for results within this crate.
 pub type Result<T> = std::result::Result<T, Error>;
+
+#[cfg(test)]
+mod tests {
+    use super::{DatabaseError, ErrorSeverity, UserFriendlyError};
+
+    #[test]
+    fn bootstrap_database_error_has_distinct_category() {
+        let error = DatabaseError::bootstrap(
+            "Failed to bootstrap account table",
+            Some("webgates_accounts".to_string()),
+        );
+
+        match error {
+            DatabaseError::Bootstrap { message, table } => {
+                assert_eq!(message, "Failed to bootstrap account table");
+                assert_eq!(table.as_deref(), Some("webgates_accounts"));
+            }
+            other => panic!("expected bootstrap database error, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn bootstrap_database_error_reports_critical_bootstrap_metadata() {
+        let error = DatabaseError::bootstrap(
+            "Failed to bootstrap account table",
+            Some("webgates_accounts".to_string()),
+        );
+
+        assert_eq!(
+            error.user_message(),
+            "Data services are currently being initialized. Please try again shortly."
+        );
+        assert_eq!(
+            error.developer_message(),
+            "Database bootstrap failed: Failed to bootstrap account table [Table: webgates_accounts]"
+        );
+        assert_eq!(error.severity(), ErrorSeverity::Critical);
+        assert!(error.is_retryable());
+        assert!(error.support_code().starts_with("DB-BOOTSTRAP-"));
+    }
+}

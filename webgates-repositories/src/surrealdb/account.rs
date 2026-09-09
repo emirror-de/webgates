@@ -218,7 +218,13 @@ where
     type Error = RepoError;
 
     async fn bootstrap(&self) -> Result<()> {
-        let repo = self.use_ns_db().await?;
+        let table_name = self.scope_settings.accounts.clone();
+        let repo = self.use_ns_db().await.map_err(|error| {
+            RepoError::Database(DatabaseError::bootstrap(
+                format!("Failed to bootstrap account repository scope: {error}"),
+                Some(table_name.clone()),
+            ))
+        })?;
 
         repo.account_schema_initialized
             .get_or_try_init(|| async {
@@ -230,11 +236,9 @@ where
                     .bind(("table", table_name.clone()))
                     .await
                     .map_err(|error| {
-                        RepoError::Database(DatabaseError::with_context(
-                            DatabaseOperation::Insert,
+                        RepoError::Database(DatabaseError::bootstrap(
                             format!("Failed to bootstrap account table: {error}"),
                             Some(table_name.clone()),
-                            None,
                         ))
                     })?;
 
@@ -246,11 +250,9 @@ where
                     .query(define_user_id_index)
                     .await
                     .map_err(|error| {
-                        RepoError::Database(DatabaseError::with_context(
-                            DatabaseOperation::Insert,
+                        RepoError::Database(DatabaseError::bootstrap(
                             format!("Failed to bootstrap account user_id index: {error}"),
                             Some(table_name),
-                            None,
                         ))
                     })?;
 

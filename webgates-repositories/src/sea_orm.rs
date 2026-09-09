@@ -11,7 +11,7 @@
 
 use crate::{
     TableName,
-    errors::{DatabaseError, DatabaseOperation, Error, Result},
+    errors::{DatabaseError, Error, Result},
 };
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Schema};
 
@@ -113,11 +113,9 @@ impl SeaOrmRepository {
             .await
             .map(|_| ())
             .map_err(|error| {
-                Error::Database(DatabaseError::with_context(
-                    DatabaseOperation::Insert,
+                Error::Database(DatabaseError::bootstrap(
                     format!("Failed to create table `{table_name}`: {error}"),
                     Some(table_name.to_string()),
-                    None,
                 ))
             })
     }
