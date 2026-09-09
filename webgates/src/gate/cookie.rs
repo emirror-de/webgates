@@ -455,8 +455,12 @@ mod tests {
             "issuer",
             Arc::new(
                 JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
-                    crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
-                        .expect("generating ephemeral ES384 key pair should not fail"),
+                    match crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing() {
+                        Ok(options) => options,
+                        Err(error) => {
+                            panic!("generating ephemeral ES384 key pair should not fail: {error}")
+                        }
+                    },
                 ),
             ),
         )
@@ -474,8 +478,12 @@ mod tests {
             "issuer",
             Arc::new(
                 JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
-                    crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
-                        .expect("generating ephemeral ES384 key pair should not fail"),
+                    match crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing() {
+                        Ok(options) => options,
+                        Err(error) => {
+                            panic!("generating ephemeral ES384 key pair should not fail: {error}")
+                        }
+                    },
                 ),
             ),
         );

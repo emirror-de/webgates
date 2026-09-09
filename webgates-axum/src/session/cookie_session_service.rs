@@ -549,8 +549,12 @@ mod tests {
         fn new() -> Self {
             Self {
                 jwt: JsonWebToken::new_with_options(
-                    JsonWebTokenOptions::generate_for_testing()
-                        .expect("generating ephemeral ES384 key pair should not fail"),
+                    match JsonWebTokenOptions::generate_for_testing() {
+                        Ok(options) => options,
+                        Err(error) => {
+                            panic!("generating ephemeral ES384 key pair should not fail: {error}")
+                        }
+                    },
                 ),
             }
         }

@@ -213,18 +213,21 @@ mod tests {
 
     #[tokio::test]
     async fn use_ns_db_preserves_cached_repository_state() {
-        let db = Surreal::new::<Mem>(())
-            .await
-            .expect("in-memory SurrealDB setup should succeed");
-        let repository = SurrealDbRepository::new(db, DatabaseScope::default())
-            .expect("repository construction should succeed");
+        let db = match Surreal::new::<Mem>(()).await {
+            Ok(db) => db,
+            Err(error) => panic!("in-memory SurrealDB setup should succeed: {error}"),
+        };
+        let repository = match SurrealDbRepository::new(db, DatabaseScope::default()) {
+            Ok(repository) => repository,
+            Err(error) => panic!("repository construction should succeed: {error}"),
+        };
         // Reconstructing via `Self::new` would generate a new salted hash.
         let original_hash = repository.dummy_hash.clone();
 
-        let scoped = repository
-            .use_ns_db()
-            .await
-            .expect("namespace/database selection should succeed");
+        let scoped = match repository.use_ns_db().await {
+            Ok(scoped) => scoped,
+            Err(error) => panic!("namespace/database selection should succeed: {error}"),
+        };
 
         assert_eq!(scoped.dummy_hash, original_hash);
     }

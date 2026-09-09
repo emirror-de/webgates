@@ -804,8 +804,12 @@ mod tests {
     async fn codec_auth_token_issuer_encodes_claims_with_codec() {
         let _ = jsonwebtoken::crypto::rust_crypto::DEFAULT_PROVIDER.install_default();
         let codec = JsonWebToken::<JwtClaims<TestClaims>>::new_with_options(
-            webgates_codecs::jwt::JsonWebTokenOptions::generate_for_testing()
-                .expect("generating ephemeral ES384 key pair should not fail"),
+            match webgates_codecs::jwt::JsonWebTokenOptions::generate_for_testing() {
+                Ok(options) => options,
+                Err(error) => {
+                    panic!("generating ephemeral ES384 key pair should not fail: {error}")
+                }
+            },
         );
         let issuer = CodecAuthTokenIssuer::new(codec.clone(), |subject: &String| {
             JwtClaims::new(

@@ -553,8 +553,12 @@ mod tests {
         install_jwt_crypto_provider();
         let codec = Arc::new(
             JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
-                crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
-                    .expect("generating ephemeral ES384 key pair should not fail"),
+                match crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing() {
+                    Ok(options) => options,
+                    Err(error) => {
+                        panic!("generating ephemeral ES384 key pair should not fail: {error}")
+                    }
+                },
             ),
         );
         let gate = BearerGate::<_, Role, Group, JwtConfig<Role, Group>>::new_with_codec(
@@ -592,8 +596,12 @@ mod tests {
         install_jwt_crypto_provider();
         let codec = Arc::new(
             JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
-                crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
-                    .expect("generating ephemeral ES384 key pair should not fail"),
+                match crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing() {
+                    Ok(options) => options,
+                    Err(error) => {
+                        panic!("generating ephemeral ES384 key pair should not fail: {error}")
+                    }
+                },
             ),
         );
         let gate = BearerGate::<_, Role, Group, JwtConfig<Role, Group>>::new_with_codec(
@@ -627,8 +635,12 @@ mod tests {
         install_jwt_crypto_provider();
         let codec = Arc::new(
             JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
-                crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
-                    .expect("generating ephemeral ES384 key pair should not fail"),
+                match crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing() {
+                    Ok(options) => options,
+                    Err(error) => {
+                        panic!("generating ephemeral ES384 key pair should not fail: {error}")
+                    }
+                },
             ),
         );
         let gate = BearerGate::<_, Role, Group, JwtConfig<Role, Group>>::new_with_codec(
@@ -657,8 +669,12 @@ mod tests {
         install_jwt_crypto_provider();
         let codec = Arc::new(
             JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
-                crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
-                    .expect("generating ephemeral ES384 key pair should not fail"),
+                match crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing() {
+                    Ok(options) => options,
+                    Err(error) => {
+                        panic!("generating ephemeral ES384 key pair should not fail: {error}")
+                    }
+                },
             ),
         );
         let gate = BearerGate::<_, Role, Group, JwtConfig<Role, Group>>::new_with_codec(

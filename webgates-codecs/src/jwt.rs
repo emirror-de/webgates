@@ -332,9 +332,10 @@ impl Es384KeyPairLoader {
         let private_path: PathBuf = private_key_path.into();
         let mut public_path = private_path.clone();
         let filename = match private_path.file_name() {
-            Some(name) => match name.to_string_lossy().to_string() {
-                s => format!("{}.pub", s),
-            },
+            Some(name) => {
+                let s = name.to_string_lossy().to_string();
+                format!("{}.pub", s)
+            }
             None => "key.pub".to_string(),
         };
         public_path.set_file_name(&filename);

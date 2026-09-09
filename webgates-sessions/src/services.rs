@@ -559,11 +559,8 @@ mod tests {
     }
 
     impl SessionRepository for MockRepository {
-        fn bootstrap(
-            &self,
-        ) -> impl std::future::Future<Output = crate::repository::RepositoryResult<()>> + Send
-        {
-            async { Ok(()) }
+        async fn bootstrap(&self) -> crate::repository::RepositoryResult<()> {
+            Ok(())
         }
 
         fn create_session(
