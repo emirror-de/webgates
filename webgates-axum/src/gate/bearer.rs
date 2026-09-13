@@ -114,6 +114,7 @@ use std::sync::Arc;
 
 use axum::{body::Body, extract::Request, http::Response};
 use http::StatusCode;
+use subtle::ConstantTimeEq;
 use tower::{Layer, Service};
 use tracing::warn;
 
@@ -555,7 +556,9 @@ where
 
         if self.optional {
             let provided = Self::bearer_token(&req);
-            let authorized = provided.map(|v| v == self.token).unwrap_or(false);
+            let authorized = provided
+                .map(|v| v.as_bytes().ct_eq(self.token.as_bytes()).into())
+                .unwrap_or(false);
             req.extensions_mut()
                 .insert(StaticTokenAuthorized::new(authorized));
             let fut = self.inner.call(req);
@@ -568,7 +571,7 @@ where
             return Box::pin(async move { Ok(Self::unauthorized()) });
         };
 
-        if provided != self.token {
+        if bool::from(provided.as_bytes().ct_ne(self.token.as_bytes())) {
             #[cfg(feature = "audit-logging")]
             audit::denied(None, "static_token_mismatch");
             return Box::pin(async move { Ok(Self::unauthorized()) });
