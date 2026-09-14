@@ -994,7 +994,7 @@ mod tests {
 
         use webgates::accounts::Account;
         use webgates::authz::access_policy::AccessPolicy;
-        use webgates::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
+        use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
         use webgates::groups::Group;
         use webgates::roles::Role;
 
