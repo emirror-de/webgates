@@ -140,7 +140,7 @@ use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
 
 /// JWT mode configuration (compile-time).
 #[derive(Clone)]
-pub(crate) struct JwtConfig<R, G>
+pub struct JwtConfig<R, G>
 where
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq,
@@ -163,7 +163,7 @@ where
 
 /// Static token mode configuration (compile-time).
 #[derive(Clone)]
-pub(crate) struct StaticTokenConfig {
+pub struct StaticTokenConfig {
     token: String,
     optional: bool,
 }
@@ -343,7 +343,7 @@ where
 ///
 /// This service handles JWT bearer token authentication for protected routes,
 /// validating tokens from the `Authorization: Bearer <token>` header.
-pub(crate) struct JwtBearerService<C, R, G, S>
+pub struct JwtBearerService<C, R, G, S>
 where
     C: Codec<Payload = JwtClaims<Account<R, G>>>,
     R: AccessHierarchy + Eq + std::fmt::Display,
@@ -496,7 +496,7 @@ where
 ///
 /// This service handles authentication using pre-configured static tokens
 /// from the `Authorization: Bearer <token>` header.
-pub(crate) struct StaticTokenService<S> {
+pub struct StaticTokenService<S> {
     inner: S,
     token: String,
     optional: bool,
