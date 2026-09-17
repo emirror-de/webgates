@@ -140,6 +140,41 @@ pub struct StaticTokenConfig {
     optional: bool,
 }
 
+/// Static bearer gate configuration.
+///
+/// This gate is independent of JWT codecs, roles, groups, and issuers.
+#[derive(Clone, Debug)]
+pub struct StaticBearerGate {
+    token: String,
+    optional: bool,
+}
+
+impl StaticBearerGate {
+    /// Creates a strict static bearer gate.
+    pub fn new(token: impl Into<String>) -> Self {
+        Self {
+            token: token.into(),
+            optional: false,
+        }
+    }
+
+    /// Allows unauthenticated requests and reports token matching to adapters.
+    pub fn allow_anonymous_with_optional_user(mut self) -> Self {
+        self.optional = true;
+        self
+    }
+
+    /// Returns the configured static bearer token.
+    pub fn token(&self) -> &str {
+        &self.token
+    }
+
+    /// Returns whether this gate forwards unauthenticated requests.
+    pub fn is_optional(&self) -> bool {
+        self.optional
+    }
+}
+
 /// Generic bearer gate with compile-time mode parameter.
 #[derive(Clone, Debug)]
 pub struct BearerGate<C, R, G, M>

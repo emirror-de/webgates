@@ -54,7 +54,12 @@ impl Gate {
         core.adapt_with(BearerAdapter)
     }
 
-    /// Creates an Axum OAuth2 gate builder adapted from the core OAuth2 configuration.
+    /// Creates a static bearer gate that compares an exact token.
+    pub fn static_bearer(token: impl Into<String>) -> bearer::StaticBearerGate {
+        bearer::StaticBearerGate::new(token)
+    }
+
+    /// Creates an OAuth2 gate builder adapted from the core OAuth2 configuration.
     pub fn oauth2<R, G>() -> oauth2::OAuth2Gate<R, G>
     where
         R: AccessHierarchy + Eq + std::fmt::Display + Send + Sync + 'static,

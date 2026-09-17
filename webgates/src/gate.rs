@@ -64,6 +64,11 @@ impl Gate {
         bearer::BearerGate::new_with_codec(issuer, codec)
     }
 
+    /// Creates a static bearer gate that compares an exact token.
+    pub fn static_bearer(token: impl Into<String>) -> bearer::StaticBearerGate {
+        bearer::StaticBearerGate::new(token)
+    }
+
     /// Creates an OAuth2 gate configuration.
     ///
     /// This builder is available only when the `oauth2` feature is enabled.

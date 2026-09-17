@@ -55,4 +55,9 @@ impl Gate {
     {
         bearer::BearerGate::new_with_codec(issuer, codec)
     }
+
+    /// Creates a static bearer gate that compares an exact token.
+    pub fn static_bearer(token: impl Into<String>) -> bearer::StaticBearerGate {
+        bearer::StaticBearerGate::new(token)
+    }
 }

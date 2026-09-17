@@ -21,9 +21,6 @@ fn bearer_builder_methods_are_available_from_the_public_entry_point() {
     let _jwt_login = Gate::bearer::<_, Role, Group>("service", Arc::clone(&codec)).require_login();
     let _jwt_optional = Gate::bearer::<_, Role, Group>("service", Arc::clone(&codec))
         .allow_anonymous_with_optional_user();
-    let _static_strict =
-        Gate::bearer::<_, Role, Group>("service", Arc::clone(&codec)).with_static_token("token");
-    let _static_optional = Gate::bearer::<_, Role, Group>("service", codec)
-        .with_static_token("token")
-        .allow_anonymous_with_optional_user();
+    let _static_strict = Gate::static_bearer("token");
+    let _static_optional = Gate::static_bearer("token").allow_anonymous_with_optional_user();
 }

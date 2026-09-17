@@ -177,6 +177,31 @@ impl std::fmt::Debug for StaticTokenConfig {
     }
 }
 
+/// Static bearer gate for exact-token authentication.
+///
+/// This gate is independent of JWT codecs, roles, groups, and issuers.
+#[derive(Clone)]
+pub struct StaticBearerGate {
+    token: String,
+    optional: bool,
+}
+
+impl StaticBearerGate {
+    /// Creates a strict static bearer gate.
+    pub fn new(token: impl Into<String>) -> Self {
+        Self {
+            token: token.into(),
+            optional: false,
+        }
+    }
+
+    /// Allows unauthenticated requests and inserts [`StaticTokenAuthorized`].
+    pub fn allow_anonymous_with_optional_user(mut self) -> Self {
+        self.optional = true;
+        self
+    }
+}
+
 /// Generic Axum bearer gate with a compile-time mode parameter.
 #[derive(Clone)]
 pub struct BearerGate<C, R, G, M>
@@ -291,6 +316,18 @@ where
 }
 
 // ===================== LAYER IMPLEMENTATIONS ======================
+
+impl<S> Layer<S> for StaticBearerGate {
+    type Service = StaticTokenService<S>;
+
+    fn layer(&self, inner: S) -> Self::Service {
+        if self.optional {
+            StaticTokenService::new_optional(inner, self.token.clone())
+        } else {
+            StaticTokenService::new(inner, self.token.clone())
+        }
+    }
+}
 
 impl<S, C, R, G> Layer<S> for BearerGate<C, R, G, JwtConfig<R, G>>
 where
