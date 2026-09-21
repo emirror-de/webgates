@@ -41,7 +41,10 @@
 //! use webgates::roles::Role;
 //! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
 //! use webgates_axum::gate::Gate;
-//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+//!     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+//!         .expect("generating ephemeral ES384 key pair should not fail"),
+//! ));
 //!
 //! let router = Router::<()>::new();
 //! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("my-app", codec)
@@ -57,7 +60,10 @@
 //! use webgates::roles::Role;
 //! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
 //! use webgates_axum::gate::Gate;
-//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+//!     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+//!         .expect("generating ephemeral ES384 key pair should not fail"),
+//! ));
 //!
 //! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("my-app", codec)
 //!     .allow_anonymous_with_optional_user(); // Option<Account>, Option<RegisteredClaims>
@@ -71,7 +77,10 @@
 //! use webgates::roles::Role;
 //! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
 //! use webgates_axum::gate::Gate;
-//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+//!     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+//!         .expect("generating ephemeral ES384 key pair should not fail"),
+//! ));
 //!
 //! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("svc-a", codec)
 //!     .with_static_token("internal-static-token"); // now static token mode (no with_policy)
@@ -85,7 +94,10 @@
 //! use webgates::roles::Role;
 //! use webgates_codecs::jwt::{JwtClaims, JsonWebToken};
 //! use webgates_axum::gate::Gate;
-//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+//!     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+//!         .expect("generating ephemeral ES384 key pair should not fail"),
+//! ));
 //!
 //! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("svc-a", codec)
 //!     .with_static_token("internal-static-token")
@@ -129,7 +141,7 @@ use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
 
 /// JWT mode configuration (compile-time).
 #[derive(Clone)]
-pub(crate) struct JwtConfig<R, G>
+pub struct JwtConfig<R, G>
 where
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq,
@@ -152,7 +164,7 @@ where
 
 /// Static token mode configuration (compile-time).
 #[derive(Clone)]
-pub(crate) struct StaticTokenConfig {
+pub struct StaticTokenConfig {
     token: String,
     optional: bool,
 }
@@ -163,6 +175,31 @@ impl std::fmt::Debug for StaticTokenConfig {
             .field("token", &"<redacted>")
             .field("optional", &self.optional)
             .finish_non_exhaustive()
+    }
+}
+
+/// Static bearer gate for exact-token authentication.
+///
+/// This gate is independent of JWT codecs, roles, groups, and issuers.
+#[derive(Clone)]
+pub struct StaticBearerGate {
+    token: String,
+    optional: bool,
+}
+
+impl StaticBearerGate {
+    /// Creates a strict static bearer gate.
+    pub fn new(token: impl Into<String>) -> Self {
+        Self {
+            token: token.into(),
+            optional: false,
+        }
+    }
+
+    /// Allows unauthenticated requests and inserts [`StaticTokenAuthorized`].
+    pub fn allow_anonymous_with_optional_user(mut self) -> Self {
+        self.optional = true;
+        self
     }
 }
 
@@ -281,6 +318,18 @@ where
 
 // ===================== LAYER IMPLEMENTATIONS ======================
 
+impl<S> Layer<S> for StaticBearerGate {
+    type Service = StaticTokenService<S>;
+
+    fn layer(&self, inner: S) -> Self::Service {
+        if self.optional {
+            StaticTokenService::new_optional(inner, self.token.clone())
+        } else {
+            StaticTokenService::new(inner, self.token.clone())
+        }
+    }
+}
+
 impl<S, C, R, G> Layer<S> for BearerGate<C, R, G, JwtConfig<R, G>>
 where
     C: Codec<Payload = JwtClaims<Account<R, G>>>,
@@ -332,7 +381,7 @@ where
 ///
 /// This service handles JWT bearer token authentication for protected routes,
 /// validating tokens from the `Authorization: Bearer <token>` header.
-pub(crate) struct JwtBearerService<C, R, G, S>
+pub struct JwtBearerService<C, R, G, S>
 where
     C: Codec<Payload = JwtClaims<Account<R, G>>>,
     R: AccessHierarchy + Eq + std::fmt::Display,
@@ -485,7 +534,7 @@ where
 ///
 /// This service handles authentication using pre-configured static tokens
 /// from the `Authorization: Bearer <token>` header.
-pub(crate) struct StaticTokenService<S> {
+pub struct StaticTokenService<S> {
     inner: S,
     token: String,
     optional: bool,
@@ -603,9 +652,17 @@ mod tests {
         JwtConfig<Role, Group>,
     >;
 
+    #[allow(clippy::expect_used)]
+    fn make_test_codec() -> Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> {
+        Arc::new(JsonWebToken::new_with_options(
+            webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+                .expect("generating ephemeral ES384 key pair should not fail"),
+        ))
+    }
+
     #[test]
     fn jwt_gate_initial_deny_all() {
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = make_test_codec();
         let gate: BearerGateJsonwebtoken = BearerGate::new_with_codec("issuer", codec);
         assert!(gate.mode.policy.denies_all());
         assert!(!gate.mode.optional);
@@ -613,7 +670,7 @@ mod tests {
 
     #[test]
     fn jwt_gate_policy_set() {
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = make_test_codec();
         let gate =
             BearerGate::new_with_codec("issuer", codec)
                 .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));
@@ -622,7 +679,7 @@ mod tests {
 
     #[test]
     fn transition_to_static_mode() {
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = make_test_codec();
         let static_gate: BearerGate<_, Role, Group, StaticTokenConfig> =
             BearerGate::new_with_codec("issuer", codec).with_static_token("secret");
         assert_eq!(static_gate.mode.token, "secret");
@@ -631,7 +688,7 @@ mod tests {
 
     #[test]
     fn static_optional_mode() {
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = make_test_codec();
         let static_gate: BearerGate<_, Role, Group, StaticTokenConfig> =
             BearerGate::new_with_codec("issuer", codec)
                 .with_static_token("secret")
@@ -646,8 +703,7 @@ mod tests {
             use std::convert::Infallible;
             use tower::ServiceExt;
 
-            let codec =
-                std::sync::Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let codec = make_test_codec();
             let gate: BearerGateJsonwebtoken = BearerGate::new_with_codec("issuer", codec)
                 .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));
 
@@ -674,8 +730,7 @@ mod tests {
             use std::convert::Infallible;
             use tower::ServiceExt;
 
-            let codec =
-                std::sync::Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let codec = make_test_codec();
             let gate: BearerGate<_, Role, Group, StaticTokenConfig> =
                 BearerGate::new_with_codec("issuer", codec).with_static_token("secret");
 

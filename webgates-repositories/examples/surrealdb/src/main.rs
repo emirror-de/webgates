@@ -6,6 +6,8 @@ use webgates::credentials::Credentials;
 use webgates::groups::Group;
 use webgates::roles::Role;
 use webgates_axum::route_handlers;
+use webgates_repositories::account_repository::AccountRepository;
+use webgates_repositories::secret_repository::SecretRepository;
 use webgates_repositories::services::account_insert::AccountInsertService;
 use webgates_repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 
@@ -83,6 +85,14 @@ async fn main() {
     debug!("Account repository initialized.");
     let secrets_repository = Arc::clone(&account_repository);
     debug!("Secrets repository initialized.");
+
+    AccountRepository::<Role, Group>::bootstrap(account_repository.as_ref())
+        .await
+        .unwrap();
+    SecretRepository::bootstrap(secrets_repository.as_ref())
+        .await
+        .unwrap();
+    debug!("SurrealDB repositories bootstrapped.");
 
     AccountInsertService::<Role, Group>::insert("admin@example.com", "admin_password")
         .with_roles(vec![Role::Admin])

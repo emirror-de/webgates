@@ -46,7 +46,10 @@ async fn main() {
     // Only requests bearing a valid JWT that satisfies the configured policy
     // will be forwarded. All others receive UNAUTHENTICATED or PERMISSION_DENIED.
 
-    let codec = Arc::new(JsonWebToken::<Claims>::default());
+    let codec = Arc::new(JsonWebToken::<Claims>::new_with_options(
+        webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+            .expect("generating ephemeral ES384 key pair should not fail"),
+    ));
 
     let _strict_jwt_layer = Gate::bearer("example-svc", Arc::clone(&codec))
         .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));

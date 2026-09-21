@@ -77,6 +77,13 @@ fn grpc_status(resp: &Response<TonicBody>) -> Option<u32> {
         .and_then(|v: &str| v.parse::<u32>().ok())
 }
 
+fn test_codec() -> Arc<JsonWebToken<Claims>> {
+    Arc::new(JsonWebToken::<Claims>::new_with_options(
+        webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+            .expect("generating ephemeral ES384 key pair should not fail"),
+    ))
+}
+
 fn make_valid_token(codec: &JsonWebToken<Claims>, issuer: &str) -> String {
     let account = Account::<Role, Group>::new("user");
     let exp = Utc::now().timestamp() as u64 + 60;
@@ -91,7 +98,7 @@ fn make_valid_token(codec: &JsonWebToken<Claims>, issuer: &str) -> String {
 #[tokio::test]
 async fn gate_bearer_constructs_layer() {
     install_crypto_provider();
-    let codec = Arc::new(JsonWebToken::<Claims>::default());
+    let codec = test_codec();
 
     // Should compile and run without panic — proves the canonical path works.
     let layer = Gate::bearer("svc", Arc::clone(&codec))
@@ -109,7 +116,7 @@ async fn gate_bearer_constructs_layer() {
 #[tokio::test]
 async fn require_login_denies_missing_token() {
     install_crypto_provider();
-    let codec = Arc::new(JsonWebToken::<Claims>::default());
+    let codec = test_codec();
     let layer = Gate::bearer("svc", Arc::clone(&codec)).require_login();
     let svc = layer.layer(echo_svc());
 
@@ -120,7 +127,7 @@ async fn require_login_denies_missing_token() {
 #[tokio::test]
 async fn require_login_allows_valid_token() {
     install_crypto_provider();
-    let codec = Arc::new(JsonWebToken::<Claims>::default());
+    let codec = test_codec();
     let token = make_valid_token(&codec, "svc");
 
     let layer = Gate::bearer("svc", Arc::clone(&codec)).require_login();
@@ -147,7 +154,7 @@ async fn require_login_allows_valid_token() {
 #[tokio::test]
 async fn optional_mode_forwards_unauthenticated_request() {
     install_crypto_provider();
-    let codec = Arc::new(JsonWebToken::<Claims>::default());
+    let codec = test_codec();
     let layer = Gate::bearer("svc", Arc::clone(&codec)).allow_anonymous_with_optional_user();
 
     let svc = layer.layer(tower::service_fn(|req: Request<TonicBody>| async move {
@@ -170,7 +177,7 @@ async fn optional_mode_forwards_unauthenticated_request() {
 #[tokio::test]
 async fn optional_mode_inserts_authenticated_context_for_valid_token() {
     install_crypto_provider();
-    let codec = Arc::new(JsonWebToken::<Claims>::default());
+    let codec = test_codec();
     let token = make_valid_token(&codec, "svc");
     let layer = Gate::bearer("svc", Arc::clone(&codec)).allow_anonymous_with_optional_user();
 
@@ -193,7 +200,7 @@ async fn optional_mode_inserts_authenticated_context_for_valid_token() {
 #[tokio::test]
 async fn optional_mode_is_anonymous_for_invalid_token() {
     install_crypto_provider();
-    let codec = Arc::new(JsonWebToken::<Claims>::default());
+    let codec = test_codec();
     let layer = Gate::bearer("svc", Arc::clone(&codec)).allow_anonymous_with_optional_user();
 
     let svc = layer.layer(tower::service_fn(|req: Request<TonicBody>| async move {
@@ -220,7 +227,7 @@ async fn optional_mode_is_anonymous_for_invalid_token() {
 #[tokio::test]
 async fn static_token_strict_rejects_missing_token() {
     install_crypto_provider();
-    let codec = Arc::new(JsonWebToken::<Claims>::default());
+    let codec = test_codec();
     let layer = Gate::bearer("svc", codec).with_static_token("correct");
 
     let svc = layer.layer(echo_svc());
@@ -232,7 +239,7 @@ async fn static_token_strict_rejects_missing_token() {
 #[tokio::test]
 async fn static_token_strict_rejects_wrong_token() {
     install_crypto_provider();
-    let codec = Arc::new(JsonWebToken::<Claims>::default());
+    let codec = test_codec();
     let layer = Gate::bearer("svc", codec).with_static_token("correct");
 
     let svc = layer.layer(echo_svc());
@@ -247,7 +254,7 @@ async fn static_token_strict_rejects_wrong_token() {
 #[tokio::test]
 async fn static_token_strict_authorizes_correct_token() {
     install_crypto_provider();
-    let codec = Arc::new(JsonWebToken::<Claims>::default());
+    let codec = test_codec();
     let layer = Gate::bearer("svc", codec).with_static_token("secret");
 
     let svc = layer.layer(tower::service_fn(|req: Request<TonicBody>| async move {
@@ -266,7 +273,7 @@ async fn static_token_strict_authorizes_correct_token() {
 #[tokio::test]
 async fn static_token_optional_anonymous_request() {
     install_crypto_provider();
-    let codec = Arc::new(JsonWebToken::<Claims>::default());
+    let codec = test_codec();
     let layer = Gate::bearer("svc", codec)
         .with_static_token("secret")
         .allow_anonymous_with_optional_user();
@@ -285,7 +292,7 @@ async fn static_token_optional_anonymous_request() {
 #[tokio::test]
 async fn static_token_optional_authorized_request() {
     install_crypto_provider();
-    let codec = Arc::new(JsonWebToken::<Claims>::default());
+    let codec = test_codec();
     let layer = Gate::bearer("svc", codec)
         .with_static_token("secret")
         .allow_anonymous_with_optional_user();
@@ -308,7 +315,7 @@ async fn static_token_optional_authorized_request() {
 #[tokio::test]
 async fn strict_jwt_issuer_mismatch_is_unauthenticated() {
     install_crypto_provider();
-    let codec = Arc::new(JsonWebToken::<Claims>::default());
+    let codec = test_codec();
     // Token minted with issuer "other-svc", gate expects "svc".
     let token = make_valid_token(&codec, "other-svc");
 
@@ -332,7 +339,7 @@ async fn strict_jwt_issuer_mismatch_is_unauthenticated() {
 #[tokio::test]
 async fn jwt_auth_context_accessors_end_to_end() {
     install_crypto_provider();
-    let codec = Arc::new(JsonWebToken::<Claims>::default());
+    let codec = test_codec();
 
     let account = Account::<Role, Group>::new("alice");
     let exp = Utc::now().timestamp() as u64 + 60;

@@ -65,7 +65,10 @@
 //! }
 //!
 //! // Usage sketch:
-//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+//!     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+//!         .expect("generating ephemeral ES384 key pair should not fail"),
+//! ));
 //! let jwt_gate = BearerGate::new_with_codec("issuer", Arc::clone(&codec)).require_login();
 //! let jwt_runtime = jwt_gate.adapt_with(JwtRuntimeAdapter);
 //! let eval = jwt_runtime.evaluate(Some("eyJ..."));
@@ -135,6 +138,41 @@ pub struct StaticTokenConfig {
     token: String,
     /// Whether optional (non-blocking) mode is enabled.
     optional: bool,
+}
+
+/// Static bearer gate configuration.
+///
+/// This gate is independent of JWT codecs, roles, groups, and issuers.
+#[derive(Clone, Debug)]
+pub struct StaticBearerGate {
+    token: String,
+    optional: bool,
+}
+
+impl StaticBearerGate {
+    /// Creates a strict static bearer gate.
+    pub fn new(token: impl Into<String>) -> Self {
+        Self {
+            token: token.into(),
+            optional: false,
+        }
+    }
+
+    /// Allows unauthenticated requests and reports token matching to adapters.
+    pub fn allow_anonymous_with_optional_user(mut self) -> Self {
+        self.optional = true;
+        self
+    }
+
+    /// Returns the configured static bearer token.
+    pub fn token(&self) -> &str {
+        &self.token
+    }
+
+    /// Returns whether this gate forwards unauthenticated requests.
+    pub fn is_optional(&self) -> bool {
+        self.optional
+    }
 }
 
 /// Generic bearer gate with compile-time mode parameter.
@@ -548,7 +586,16 @@ mod tests {
     #[test]
     fn jwt_runtime_authorizes_when_policy_allows() -> Result<(), Box<dyn std::error::Error>> {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = Arc::new(
+            JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+                match crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing() {
+                    Ok(options) => options,
+                    Err(error) => {
+                        panic!("generating ephemeral ES384 key pair should not fail: {error}")
+                    }
+                },
+            ),
+        );
         let gate = BearerGate::<_, Role, Group, JwtConfig<Role, Group>>::new_with_codec(
             "issuer",
             Arc::clone(&codec),
@@ -582,7 +629,16 @@ mod tests {
     #[test]
     fn static_runtime_matches_token() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = Arc::new(
+            JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+                match crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing() {
+                    Ok(options) => options,
+                    Err(error) => {
+                        panic!("generating ephemeral ES384 key pair should not fail: {error}")
+                    }
+                },
+            ),
+        );
         let gate = BearerGate::<_, Role, Group, JwtConfig<Role, Group>>::new_with_codec(
             "issuer",
             Arc::clone(&codec),
@@ -612,7 +668,16 @@ mod tests {
     #[test]
     fn static_runtime_rejects_last_byte_different_token() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = Arc::new(
+            JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+                match crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing() {
+                    Ok(options) => options,
+                    Err(error) => {
+                        panic!("generating ephemeral ES384 key pair should not fail: {error}")
+                    }
+                },
+            ),
+        );
         let gate = BearerGate::<_, Role, Group, JwtConfig<Role, Group>>::new_with_codec(
             "issuer",
             Arc::clone(&codec),
@@ -637,7 +702,16 @@ mod tests {
     #[test]
     fn static_optional_runtime_constant_time_comparison() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = Arc::new(
+            JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+                match crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing() {
+                    Ok(options) => options,
+                    Err(error) => {
+                        panic!("generating ephemeral ES384 key pair should not fail: {error}")
+                    }
+                },
+            ),
+        );
         let gate = BearerGate::<_, Role, Group, JwtConfig<Role, Group>>::new_with_codec(
             "issuer",
             Arc::clone(&codec),

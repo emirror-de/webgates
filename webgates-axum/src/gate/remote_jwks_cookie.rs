@@ -292,8 +292,30 @@ mod tests {
 
     type AppClaims = JwtClaims<Account<Role, Group>>;
 
+    const PRIVATE_PEM: &[u8] = br#"-----BEGIN PRIVATE KEY-----
+MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCFT7MfRqWZfNgVX/cH
+bxFTlPkBeCKqjsLkZXD/J3ZYHV1EtQksdrKtOzTr2hMs6pmhZANiAASyND9eQ5Qk
+7ZteSEPMpExbVJenRWwyobExJMb62mmp3eA7Fszy8uBbLj8HRB16y3QbLcTxCBoo
+ldBXfNFzM133OuTV2bBWXq5h34l+A0h4gU/odZ678LfAgnrRYMG4ZjU=
+-----END PRIVATE KEY-----
+"#;
+
+    const PUBLIC_PEM: &[u8] = br#"-----BEGIN PUBLIC KEY-----
+MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEsjQ/XkOUJO2bXkhDzKRMW1SXp0VsMqGx
+MSTG+tppqd3gOxbM8vLgWy4/B0Qdest0Gy3E8QgaKJXQV3zRczNd9zrk1dmwVl6u
+Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
+-----END PUBLIC KEY-----
+"#;
+
     fn install_jwt_crypto_provider() {
         let _ = JWT_CRYPTO_PROVIDER.install_default();
+    }
+
+    fn make_signing_codec() -> Arc<JsonWebToken<AppClaims>> {
+        Arc::new(JsonWebToken::<AppClaims>::new_with_options(
+            webgates::codecs::jwt::JsonWebTokenOptions::from_es384_pem(PRIVATE_PEM, PUBLIC_PEM)
+                .expect("embedded ES384 test key pair should be valid"),
+        ))
     }
 
     /// Build a `RemoteJwksVerifier` that is pre-loaded with the dev key set
@@ -318,13 +340,6 @@ mod tests {
         // `RemoteJwksVerifier` that is bootstrapped from a local JWKS document
         // served by a mock HTTP server.
         use webgates_codecs::jwt::jwks::{EcP384Jwk, JwksDocument};
-
-        const PUBLIC_PEM: &[u8] = br#"-----BEGIN PUBLIC KEY-----
-MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEsjQ/XkOUJO2bXkhDzKRMW1SXp0VsMqGx
-MSTG+tppqd3gOxbM8vLgWy4/B0Qdest0Gy3E8QgaKJXQV3zRczNd9zrk1dmwVl6u
-Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
------END PUBLIC KEY-----
-"#;
 
         // Build a minimal JWKS document and serve it via a local HTTP server.
         let key = EcP384Jwk::from_public_key_pem("dev-kid", PUBLIC_PEM).unwrap();
@@ -360,7 +375,7 @@ Yd+JfgNIeIFP6HWeu/C3wIJ60WDBuGY1
     }
 
     fn make_signed_token(issuer: &str) -> String {
-        let codec = Arc::new(JsonWebToken::<AppClaims>::default());
+        let codec = make_signing_codec();
         let account = Account::<Role, Group>::new("test-user");
         let exp = chrono::Utc::now().timestamp() as u64 + 60;
         let claims = JwtClaims::new(account, RegisteredClaims::new(issuer, exp));

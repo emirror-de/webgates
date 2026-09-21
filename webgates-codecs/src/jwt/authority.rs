@@ -40,7 +40,7 @@ use std::sync::Arc;
 
 use crate::Result;
 use crate::jwt::jwks::JwksProvider;
-use crate::jwt::{JsonWebToken, JsonWebTokenOptions};
+use crate::jwt::{JsonWebToken, JsonWebTokenOptions, generate_es384_key_pair_pem};
 
 use serde::{Serialize, de::DeserializeOwned};
 
@@ -87,6 +87,95 @@ where
         })
     }
 
+    /// Loads or generates an authority bundle from a private key file path.
+    ///
+    /// The public key path is derived by appending `.pub` to the private key path.
+    ///
+    /// # Behavior
+    ///
+    /// - **Both files exist**: Loads keys from disk
+    /// - **Neither file exists**: Generates fresh keys and saves both files
+    /// - **Only one file exists**: Returns an error
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use webgates_codecs::jwt::JwtClaims;
+    /// use webgates_codecs::jwt::authority::JwtAuthority;
+    ///
+    /// # let unique = std::time::SystemTime::now()
+    /// #     .duration_since(std::time::UNIX_EPOCH)?
+    /// #     .as_nanos();
+    /// # let temp_dir = std::env::temp_dir().join(format!("webgates-authority-reuse-docs-{unique}"));
+    /// # std::fs::create_dir_all(&temp_dir)?;
+    /// # let key_path = temp_dir.join("jwt.key");
+    /// # let public_key_path = temp_dir.join("jwt.key.pub");
+    /// # let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
+    /// // First run: generates and saves keys.
+    /// let first = runtime.block_on(async {
+    ///     JwtAuthority::<JwtClaims<()>>::from_private_key_path(&key_path).await
+    /// })?;
+    ///
+    /// // Subsequent runs: reuses existing keys.
+    /// let second = runtime.block_on(async {
+    ///     JwtAuthority::<JwtClaims<()>>::from_private_key_path(&key_path).await
+    /// })?;
+    ///
+    /// assert_eq!(first.key_id(), second.key_id());
+    /// assert!(key_path.is_file());
+    /// assert!(public_key_path.is_file());
+    /// # let _ = std::fs::remove_file(&public_key_path);
+    /// # let _ = std::fs::remove_file(&key_path);
+    /// # let _ = std::fs::remove_dir_all(&temp_dir);
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    ///
+    /// # Production Use
+    ///
+    /// Perfect for auth servers that publish JWKS:
+    ///
+    /// ```rust
+    /// use webgates_codecs::jwt::JwtClaims;
+    /// use webgates_codecs::jwt::authority::JwtAuthority;
+    ///
+    /// # let unique = std::time::SystemTime::now()
+    /// #     .duration_since(std::time::UNIX_EPOCH)?
+    /// #     .as_nanos();
+    /// # let temp_dir = std::env::temp_dir().join(format!("webgates-authority-server-docs-{unique}"));
+    /// # std::fs::create_dir_all(&temp_dir)?;
+    /// # let key_path = temp_dir.join("server.key");
+    /// # let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
+    /// // Loads or generates keys.
+    /// let authority = runtime.block_on(async {
+    ///     JwtAuthority::<JwtClaims<()>>::from_private_key_path(&key_path).await
+    /// })?;
+    ///
+    /// let signing_codec = authority.codec();
+    /// let jwks_provider = authority.jwks_provider();
+    /// assert_eq!(jwks_provider.document().keys.len(), 1);
+    /// assert_eq!(authority.key_id(), jwks_provider.key_id().unwrap());
+    ///
+    /// # let _ = signing_codec;
+    /// # let _ = std::fs::remove_file(temp_dir.join("server.key.pub"));
+    /// # let _ = std::fs::remove_file(&key_path);
+    /// # let _ = std::fs::remove_dir_all(&temp_dir);
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Only one key file exists
+    /// - Files cannot be read/written/created
+    /// - Invalid key material is found
+    pub async fn from_private_key_path(
+        private_key_path: impl Into<std::path::PathBuf>,
+    ) -> Result<Self> {
+        let loader = crate::jwt::Es384KeyPairLoader::from_private_key_path(private_key_path);
+        let key_pair = loader.initialize_if_required().await?;
+        Self::from_es384_pem(key_pair.private_key_pem(), key_pair.public_key_pem())
+    }
+
     /// Returns the signing codec.
     ///
     /// Use this to encode JWTs in login handlers.
@@ -106,6 +195,39 @@ where
     /// This value is identical to the `kid` in the published JWKS document.
     pub fn key_id(&self) -> &str {
         &self.key_id
+    }
+
+    /// Generates a fresh ES384 key pair and builds an authority bundle.
+    ///
+    /// This is a convenience method for testing and development that combines
+    /// [`JsonWebTokenOptions::generate_for_testing`] with [`Self::from_es384_pem`].
+    ///
+    /// Each call produces a unique key pair, making it perfect for:
+    /// - Unit/integration tests that need isolated key material
+    /// - Quick development setups without key management
+    /// - Examples and prototypes
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use webgates_codecs::jwt::JwtClaims;
+    /// use webgates_codecs::jwt::authority::JwtAuthority;
+    ///
+    /// let authority = JwtAuthority::<JwtClaims<()>>::generate_for_testing()?;
+    /// let codec = authority.codec();
+    /// let jwks = authority.jwks_provider();
+    /// assert_eq!(jwks.document().keys.len(), 1);
+    /// assert_eq!(authority.key_id(), jwks.key_id().unwrap());
+    /// # let _ = codec;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if key generation or authority construction fails.
+    pub fn generate_for_testing() -> Result<Self> {
+        let (private_key_pem, public_key_pem) = generate_es384_key_pair_pem()?;
+        Self::from_es384_pem(&private_key_pem, &public_key_pem)
     }
 }
 

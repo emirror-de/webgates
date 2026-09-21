@@ -403,6 +403,10 @@ mod tests {
     }
 
     impl SessionRepository for DummySessionRepository {
+        async fn bootstrap(&self) -> RepositoryResult<()> {
+            Ok(())
+        }
+
         async fn create_session(&self, input: CreateSession) -> RepositoryResult<()> {
             self.created_sessions.write().await.push(input);
             Ok(())

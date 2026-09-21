@@ -455,6 +455,10 @@ mod tests {
     }
 
     impl SessionRepository for RecordingSessionRepository {
+        async fn bootstrap(&self) -> RepositoryResult<()> {
+            Ok(())
+        }
+
         async fn create_session(&self, _input: CreateSession) -> RepositoryResult<()> {
             Ok(())
         }
@@ -544,7 +548,14 @@ mod tests {
     impl SessionCodec {
         fn new() -> Self {
             Self {
-                jwt: JsonWebToken::new_with_options(JsonWebTokenOptions::default()),
+                jwt: JsonWebToken::new_with_options(
+                    match JsonWebTokenOptions::generate_for_testing() {
+                        Ok(options) => options,
+                        Err(error) => {
+                            panic!("generating ephemeral ES384 key pair should not fail: {error}")
+                        }
+                    },
+                ),
             }
         }
     }

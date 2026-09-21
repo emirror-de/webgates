@@ -42,7 +42,10 @@
 //! use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
 //! use webgates_tonic::gate::Gate;
 //!
-//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+//!     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+//!         .expect("generating ephemeral ES384 key pair should not fail"),
+//! ));
 //! let layer = Gate::bearer("my-svc", codec)
 //!     .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));
 //!
@@ -110,6 +113,31 @@ impl std::fmt::Debug for StaticTokenConfig {
             .field("token", &"<redacted>")
             .field("optional", &self.optional)
             .finish_non_exhaustive()
+    }
+}
+
+/// Static bearer gate for exact-token authentication.
+///
+/// This gate is independent of JWT codecs, roles, groups, and issuers.
+#[derive(Clone)]
+pub struct StaticBearerGate {
+    token: String,
+    optional: bool,
+}
+
+impl StaticBearerGate {
+    /// Creates a strict static bearer gate.
+    pub fn new(token: impl Into<String>) -> Self {
+        Self {
+            token: token.into(),
+            optional: false,
+        }
+    }
+
+    /// Allows unauthenticated requests and inserts [`StaticTokenAuthorized`].
+    pub fn allow_anonymous_with_optional_user(mut self) -> Self {
+        self.optional = true;
+        self
     }
 }
 
@@ -245,6 +273,18 @@ where
 }
 
 // ===================== LAYER IMPLEMENTATIONS ======================
+
+impl<S> Layer<S> for StaticBearerGate {
+    type Service = StaticTokenService<S>;
+
+    fn layer(&self, inner: S) -> Self::Service {
+        if self.optional {
+            StaticTokenService::new_optional(inner, self.token.clone())
+        } else {
+            StaticTokenService::new(inner, self.token.clone())
+        }
+    }
+}
 
 impl<S, C, R, G> Layer<S> for BearerGate<C, R, G, JwtConfig<R, G>>
 where
@@ -611,6 +651,13 @@ mod tests {
         let _ = JWT_CRYPTO_PROVIDER.install_default();
     }
 
+    fn test_codec() -> Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> {
+        Arc::new(JsonWebToken::new_with_options(
+            webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+                .expect("generating ephemeral ES384 key pair should not fail"),
+        ))
+    }
+
     fn make_request_no_auth() -> Request<TonicBody> {
         Request::builder()
             .uri("/test.Service/Method")
@@ -641,7 +688,7 @@ mod tests {
     #[tokio::test]
     async fn strict_jwt_missing_token() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = test_codec();
         let gate: TestBearerGateJwt = BearerGate::new_with_codec("issuer", codec)
             .with_policy(AccessPolicy::require_role(Role::Admin));
 
@@ -666,7 +713,7 @@ mod tests {
     #[tokio::test]
     async fn strict_jwt_malformed_token() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = test_codec();
         let gate: TestBearerGateJwt = BearerGate::new_with_codec("issuer", codec)
             .with_policy(AccessPolicy::require_role(Role::Admin));
 
@@ -690,7 +737,7 @@ mod tests {
     #[tokio::test]
     async fn strict_jwt_deny_all_policy() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = test_codec();
         // No policy set — defaults to deny_all.
         let gate: TestBearerGateJwt = BearerGate::new_with_codec("issuer", codec);
 
@@ -712,7 +759,7 @@ mod tests {
     #[tokio::test]
     async fn strict_jwt_authorized() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = test_codec();
         let account = Account::<Role, Group>::new("user");
         let exp = Utc::now().timestamp() as u64 + 60;
         let claims = JwtClaims::new(account.clone(), RegisteredClaims::new("issuer", exp));
@@ -752,7 +799,7 @@ mod tests {
     #[tokio::test]
     async fn optional_jwt_no_token() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = test_codec();
         let gate: TestBearerGateJwt =
             BearerGate::new_with_codec("issuer", codec).allow_anonymous_with_optional_user();
 
@@ -779,7 +826,7 @@ mod tests {
     #[tokio::test]
     async fn optional_jwt_with_valid_token() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = test_codec();
         let account = Account::<Role, Group>::new("user");
         let exp = Utc::now().timestamp() as u64 + 60;
         let claims = JwtClaims::new(account.clone(), RegisteredClaims::new("issuer", exp));
@@ -810,7 +857,7 @@ mod tests {
     #[tokio::test]
     async fn optional_jwt_with_invalid_token() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = test_codec();
         let gate: TestBearerGateJwt =
             BearerGate::new_with_codec("issuer", codec).allow_anonymous_with_optional_user();
 
@@ -836,7 +883,7 @@ mod tests {
     #[tokio::test]
     async fn static_token_strict_missing() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = test_codec();
         let gate: BearerGate<_, Role, Group, StaticTokenConfig> =
             BearerGate::new_with_codec("issuer", codec).with_static_token("secret");
 
@@ -855,7 +902,7 @@ mod tests {
     #[tokio::test]
     async fn static_token_strict_wrong_token() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = test_codec();
         let gate: BearerGate<_, Role, Group, StaticTokenConfig> =
             BearerGate::new_with_codec("issuer", codec).with_static_token("correct-secret");
 
@@ -877,7 +924,7 @@ mod tests {
     #[tokio::test]
     async fn static_token_strict_success() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = test_codec();
         let gate: BearerGate<_, Role, Group, StaticTokenConfig> =
             BearerGate::new_with_codec("issuer", codec).with_static_token("my-secret");
 
@@ -897,7 +944,7 @@ mod tests {
     #[tokio::test]
     async fn static_token_optional_success() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = test_codec();
         let gate: BearerGate<_, Role, Group, StaticTokenConfig> =
             BearerGate::new_with_codec("issuer", codec)
                 .with_static_token("my-secret")
@@ -919,7 +966,7 @@ mod tests {
     #[tokio::test]
     async fn static_token_optional_anonymous() {
         install_jwt_crypto_provider();
-        let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let codec = test_codec();
         let gate: BearerGate<_, Role, Group, StaticTokenConfig> =
             BearerGate::new_with_codec("issuer", codec)
                 .with_static_token("my-secret")
@@ -947,7 +994,7 @@ mod tests {
 
         use webgates::accounts::Account;
         use webgates::authz::access_policy::AccessPolicy;
-        use webgates::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
+        use webgates::codecs::jwt::{JwtClaims, RegisteredClaims};
         use webgates::groups::Group;
         use webgates::roles::Role;
 
@@ -989,7 +1036,7 @@ mod tests {
         #[tokio::test]
         async fn audit_jwt_authorized() {
             install_crypto();
-            let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let codec = test_codec();
             let account = Account::<Role, Group>::new("audit-user");
             let exp = Utc::now().timestamp() as u64 + 60;
             let claims = JwtClaims::new(account.clone(), RegisteredClaims::new("issuer", exp));
@@ -1019,7 +1066,7 @@ mod tests {
         #[tokio::test]
         async fn audit_jwt_policy_denied() {
             install_crypto();
-            let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let codec = test_codec();
             let account = Account::<Role, Group>::new("audit-user");
             let exp = Utc::now().timestamp() as u64 + 60;
             let claims = JwtClaims::new(account.clone(), RegisteredClaims::new("issuer", exp));
@@ -1049,7 +1096,7 @@ mod tests {
         #[tokio::test]
         async fn audit_jwt_invalid_issuer() {
             install_crypto();
-            let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let codec = test_codec();
             let account = Account::<Role, Group>::new("audit-user");
             let exp = Utc::now().timestamp() as u64 + 60;
             // Token issued by "other-issuer", gate expects "issuer".
@@ -1079,7 +1126,7 @@ mod tests {
         #[tokio::test]
         async fn audit_jwt_invalid_token() {
             install_crypto();
-            let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let codec = test_codec();
             let gate: BearerGate<_, Role, Group, JwtConfig<Role, Group>> =
                 BearerGate::new_with_codec("issuer", codec).require_login();
 
@@ -1101,7 +1148,7 @@ mod tests {
         #[tokio::test]
         async fn audit_jwt_missing_auth() {
             install_crypto();
-            let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let codec = test_codec();
             let gate: BearerGate<_, Role, Group, JwtConfig<Role, Group>> =
                 BearerGate::new_with_codec("issuer", codec).require_login();
 
@@ -1120,7 +1167,7 @@ mod tests {
         #[tokio::test]
         async fn audit_static_token_mismatch() {
             install_crypto();
-            let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let codec = test_codec();
             let gate: BearerGate<_, Role, Group, StaticTokenConfig> =
                 BearerGate::new_with_codec("issuer", codec).with_static_token("correct");
 
@@ -1142,7 +1189,7 @@ mod tests {
         #[tokio::test]
         async fn audit_static_token_authorized() {
             install_crypto();
-            let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let codec = test_codec();
             let gate: BearerGate<_, Role, Group, StaticTokenConfig> =
                 BearerGate::new_with_codec("issuer", codec).with_static_token("secret");
 

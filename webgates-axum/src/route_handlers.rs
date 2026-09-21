@@ -82,7 +82,10 @@
 //! let app_state = AppState {
 //!     account_repo: Arc::new(MemoryAccountRepository::<Role, Group>::default()),
 //!     secret_repo: Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap()),
-//!     jwt_codec: Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default()),
+//!     jwt_codec: Arc::new(AppJwtCodec::new_with_options(
+//!         webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+//!             .expect("generating ephemeral ES384 key pair should not fail"),
+//!     )),
 //!     cookie_template: CookieTemplate::recommended().name("auth-token"),
 //! };
 //!

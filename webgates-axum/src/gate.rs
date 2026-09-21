@@ -41,7 +41,10 @@ impl Gate {
     }
 
     /// Creates a bearer-based Axum gate layer using the core configuration model.
-    pub fn bearer<C, R, G>(issuer: &str, codec: Arc<C>) -> bearer::BearerGate<C, R, G, impl Clone>
+    pub fn bearer<C, R, G>(
+        issuer: &str,
+        codec: Arc<C>,
+    ) -> bearer::BearerGate<C, R, G, bearer::JwtConfig<R, G>>
     where
         C: Codec,
         R: AccessHierarchy + Eq + std::fmt::Display + Default + Clone + Send + Sync + 'static,
@@ -51,7 +54,12 @@ impl Gate {
         core.adapt_with(BearerAdapter)
     }
 
-    /// Creates an Axum OAuth2 gate builder adapted from the core OAuth2 configuration.
+    /// Creates a static bearer gate that compares an exact token.
+    pub fn static_bearer(token: impl Into<String>) -> bearer::StaticBearerGate {
+        bearer::StaticBearerGate::new(token)
+    }
+
+    /// Creates an OAuth2 gate builder adapted from the core OAuth2 configuration.
     pub fn oauth2<R, G>() -> oauth2::OAuth2Gate<R, G>
     where
         R: AccessHierarchy + Eq + std::fmt::Display + Send + Sync + 'static,

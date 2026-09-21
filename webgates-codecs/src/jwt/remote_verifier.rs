@@ -18,18 +18,24 @@
 //!
 //! # Example
 //!
-//! ```rust,no_run
-//! use webgates_codecs::jwt::remote_verifier::{RemoteJwksVerifier, RemoteJwksVerifierConfig};
-//! use webgates_codecs::jwt::JwtClaims;
+//! ```rust
+//! use std::time::Duration;
 //!
-//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! use webgates_codecs::jwt::JwtClaims;
+//! use webgates_codecs::jwt::remote_verifier::{RemoteJwksVerifier, RemoteJwksVerifierConfig};
+//!
 //! let config = RemoteJwksVerifierConfig::from_jwks_url(
 //!     "https://auth.example.com/.well-known/jwks.json",
-//! );
-//! let verifier = RemoteJwksVerifier::<JwtClaims<()>>::bootstrap(config).await?;
-//! let _refresh_handle = verifier.start_background_refresh();
-//! # Ok(())
-//! # }
+//! )
+//! .with_http_timeout(Duration::from_secs(5))
+//! .with_refresh_interval(Duration::from_secs(120));
+//!
+//! assert_eq!(config.jwks_url, "https://auth.example.com/.well-known/jwks.json");
+//! assert_eq!(config.http_timeout, Duration::from_secs(5));
+//! assert_eq!(config.refresh_interval, Duration::from_secs(120));
+//!
+//! // The verifier is bootstrapped from this config once a real JWKS endpoint is available.
+//! let _type_name = std::any::type_name::<RemoteJwksVerifier<JwtClaims<()>>>();
 //! ```
 
 use std::path::PathBuf;

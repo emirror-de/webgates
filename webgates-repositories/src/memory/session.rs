@@ -59,6 +59,10 @@ impl MemorySessionRepository {
 }
 
 impl SessionRepository for MemorySessionRepository {
+    async fn bootstrap(&self) -> RepositoryResult<()> {
+        Ok(())
+    }
+
     async fn create_session(&self, input: CreateSession) -> RepositoryResult<()> {
         let mut guard = self.state.lock().await;
 
@@ -418,6 +422,13 @@ mod tests {
             .await;
 
         assert_eq!(result, Ok(()));
+    }
+
+    #[tokio::test]
+    async fn bootstrap_is_a_successful_noop() {
+        let repository = MemorySessionRepository::new();
+
+        assert_eq!(repository.bootstrap().await, Ok(()));
     }
 
     #[tokio::test]

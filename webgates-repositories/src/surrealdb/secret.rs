@@ -10,8 +10,8 @@
 //! - `update_secret` replaces the stored secret for an existing record
 
 use super::SurrealDbRepository;
-use crate::TableName;
-use crate::errors::{DatabaseOperation, Result as RepoResult};
+
+use crate::errors::{DatabaseError, DatabaseOperation, Error as RepoError, Result as RepoResult};
 use crate::secret_repository::SecretRepository;
 use serde::{Deserialize, Serialize};
 use surrealdb::Connection;
@@ -62,23 +62,33 @@ where
     type Error = crate::errors::Error;
 
     async fn bootstrap(&self) -> RepoResult<()> {
-        let repo = self.use_ns_db().await?;
+        let table_name = self.scope_settings.credentials.clone();
+        let repo = self.use_ns_db().await.map_err(|error| {
+            RepoError::Database(DatabaseError::bootstrap(
+                format!("Failed to bootstrap secret repository scope: {error}"),
+                Some(table_name.clone()),
+            ))
+        })?;
 
-        let table_name = TableName::WebgatesCredentials.to_string();
-        let query = "DEFINE TABLE IF NOT EXISTS $table SCHEMALESS;";
+        repo.credential_schema_initialized
+            .get_or_try_init(|| async {
+                let table_name = repo.scope_settings.credentials.clone();
+                let query = "DEFINE TABLE IF NOT EXISTS $table SCHEMALESS;";
 
-        repo.db
-            .query(query)
-            .bind(("table", table_name.clone()))
-            .await
-            .map_err(|error| {
-                repo.scoped_database_error(
-                    DatabaseOperation::Insert,
-                    &table_name,
-                    format!("Failed to bootstrap secret repository: {error}"),
-                    None,
-                )
-            })?;
+                repo.db
+                    .query(query)
+                    .bind(("table", table_name.clone()))
+                    .await
+                    .map_err(|error| {
+                        RepoError::Database(DatabaseError::bootstrap(
+                            format!("Failed to bootstrap secret repository: {error}"),
+                            Some(table_name.clone()),
+                        ))
+                    })?;
+
+                Ok::<(), crate::errors::Error>(())
+            })
+            .await?;
 
         Ok(())
     }
@@ -86,7 +96,7 @@ where
     async fn store_secret(&self, secret: Secret) -> RepoResult<bool> {
         let repo = self.use_ns_db().await?;
 
-        let table_name = TableName::WebgatesCredentials.to_string();
+        let table_name = repo.scope_settings.credentials.clone();
         let account_id = secret.account_id;
         let record_id = secret_record_id(&table_name, account_id);
 
@@ -127,7 +137,7 @@ where
     async fn delete_secret(&self, id: &Uuid) -> RepoResult<Option<Secret>> {
         let repo = self.use_ns_db().await?;
 
-        let table_name = TableName::WebgatesCredentials.to_string();
+        let table_name = repo.scope_settings.credentials.clone();
         let record_id = secret_record_id(&table_name, *id);
 
         let deleted: Option<SecretRecord> = repo.db.delete(record_id).await.map_err(|error| {
@@ -145,7 +155,7 @@ where
     async fn update_secret(&self, secret: Secret) -> RepoResult<()> {
         let repo = self.use_ns_db().await?;
 
-        let table_name = TableName::WebgatesCredentials.to_string();
+        let table_name = repo.scope_settings.credentials.clone();
         let account_id = secret.account_id;
         let record_id = secret_record_id(&table_name, account_id);
 
@@ -180,7 +190,7 @@ where
         let Credentials { id, secret } = credentials;
 
         let result: RepoResult<_> = {
-            let table_name = TableName::WebgatesCredentials.to_string();
+            let table_name = self.scope_settings.credentials.clone();
             let record_id = secret_record_id(&table_name, id);
 
             let repo = self.use_ns_db().await?;

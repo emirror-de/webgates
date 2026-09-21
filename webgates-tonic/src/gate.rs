@@ -28,7 +28,10 @@ pub mod remote_jwks_bearer;
 /// use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
 /// use webgates_tonic::gate::Gate;
 ///
-/// let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+/// let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+///     webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+///         .expect("generating ephemeral ES384 key pair should not fail"),
+/// ));
 /// let layer = Gate::bearer("my-svc", codec)
 ///     .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));
 /// ```
@@ -51,5 +54,10 @@ impl Gate {
         G: Eq + Clone + Send + Sync + 'static,
     {
         bearer::BearerGate::new_with_codec(issuer, codec)
+    }
+
+    /// Creates a static bearer gate that compares an exact token.
+    pub fn static_bearer(token: impl Into<String>) -> bearer::StaticBearerGate {
+        bearer::StaticBearerGate::new(token)
     }
 }

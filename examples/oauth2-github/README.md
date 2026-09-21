@@ -37,36 +37,46 @@ Note: The callback URL must match exactly what you configure in this example.
 Create a `.env` file in your current working directory (see Run section) or export these in your shell:
 
 - GitHub OAuth settings:
-  - GITHUB_CLIENT_ID=…          (required)
-  - GITHUB_CLIENT_SECRET=…      (required)
-  - GITHUB_REDIRECT_URL=http://localhost:3000/auth/callback
+  - `GITHUB_CLIENT_ID=…`          (required)
+  - `GITHUB_CLIENT_SECRET=…`      (required)
+  - `GITHUB_REDIRECT_URL=http://localhost:3000/auth/callback` (optional; defaults to `http://{APP_ADDR}/auth/callback`)
 
 - First‑party JWT/session settings:
-  - JWT_ES384_PRIVATE_KEY_PATH=...           (recommended in production)
-  - JWT_ES384_PUBLIC_KEY_PATH=...            (recommended in production)
-  - JWT_ES384_PRIVATE_KEY_PEM=...            (optional inline fallback)
-  - JWT_ES384_PUBLIC_KEY_PEM=...             (optional inline fallback)
-  - JWT_ISSUER=my-app                        (optional; default example value)
-  - AUTH_COOKIE_NAME=auth-token              (optional; default example value)
-  - JWT_TTL_SECS=900                         (optional; token lifetime in seconds; default 900)
-  - POST_LOGIN_REDIRECT=/                    (optional; where to send the user after login)
+  - `JWT_ES384_PRIVATE_KEY_PATH=...` and `JWT_ES384_PUBLIC_KEY_PATH=...` (optional; set both to load persistent PEM files)
+  - `JWT_ES384_PRIVATE_KEY_PEM=...` and `JWT_ES384_PUBLIC_KEY_PEM=...` (optional; set both to load inline PEM values)
+  - `JWT_ISSUER=my-app`                        (optional; default example value)
+  - `AUTH_COOKIE_NAME=auth-token`              (optional; default example value)
+  - `JWT_TTL_SECS=900`                         (optional; token lifetime in seconds; default `900`)
+  - `POST_LOGIN_REDIRECT=/`                    (optional; where to send the user after login)
+  - `ALLOW_INSECURE_LOCAL_COOKIES=true`        (optional; useful for intentional local HTTP development)
 
 - Server:
-  - APP_ADDR=127.0.0.1:3000                  (optional; bind address, default 127.0.0.1:3000)
+  - `APP_ADDR=127.0.0.1:3000`                  (optional; bind address, default `127.0.0.1:3000`)
+
+If you leave all `JWT_ES384_*` variables unset, the example falls back to `JsonWebTokenOptions::generate_for_testing()` and generates a fresh in-memory ES384 key pair on startup. That is convenient for local development, but JWTs issued before a restart will no longer verify after the process restarts.
+
+If you configure JWT keys, provide a complete pair: either both `_PATH` variables or both inline `_PEM` variables. When both forms are present, the `_PATH` variables take precedence because the example reads the files first.
 
 Example `.env`:
 
-```
+```dotenv
 GITHUB_CLIENT_ID=iv1.abc123xyz
 GITHUB_CLIENT_SECRET=shhh_its_a_secret
 GITHUB_REDIRECT_URL=http://localhost:3000/auth/callback
-JWT_ES384_PRIVATE_KEY_PATH=examples/oauth2-github/keys/auth-es384-private.pem
-JWT_ES384_PUBLIC_KEY_PATH=examples/oauth2-github/keys/auth-es384-public.pem
 JWT_ISSUER=my-app
 AUTH_COOKIE_NAME=auth-token
 JWT_TTL_SECS=900
 POST_LOGIN_REDIRECT=/
 APP_ADDR=127.0.0.1:3000
+ALLOW_INSECURE_LOCAL_COOKIES=true
+
+# Optional persistent JWT keys (set both, or leave all JWT_ES384_* vars unset)
+# JWT_ES384_PRIVATE_KEY_PATH=examples/oauth2-github/keys/auth-es384-private.pem
+# JWT_ES384_PUBLIC_KEY_PATH=examples/oauth2-github/keys/auth-es384-public.pem
+
+# Optional inline PEM values (omit the _PATH vars if you use these)
+# JWT_ES384_PRIVATE_KEY_PEM="-----BEGIN PRIVATE KEY-----..."
+# JWT_ES384_PUBLIC_KEY_PEM="-----BEGIN PUBLIC KEY-----..."
 ```
 
 ## Run
@@ -82,6 +92,8 @@ From the repository root:
   - Place your .env inside examples/oauth2-github for this command
 
 Then open http://localhost:3000 and click “Login with GitHub”.
+
+For the fastest local setup, you can omit all JWT key variables and let the example generate ephemeral keys automatically. If you want logins to remain valid across restarts, configure a persistent PEM key pair instead.
 
 ## How it works (high level)
 
@@ -131,7 +143,7 @@ You can extend this to look up roles/groups from your database or organization t
   - Confirm `GITHUB_REDIRECT_URL` matches exactly.
 
 - Cookie not present on subsequent requests
-  - If you’re using a non‑localhost domain over HTTP, `Secure` cookies may not stick. For development, defaults are relaxed (SameSite=Lax, Secure=false) for localhost. In production, you must serve HTTPS and set `Secure=true`.
+  - This example keeps secure cookie settings by default. For local HTTP development, set `ALLOW_INSECURE_LOCAL_COOKIES=true`. In production, serve HTTPS and do not enable the insecure override.
 
 - 401 on protected routes
   - The protected route likely uses `CookieGate` with a policy that denies all by default. Ensure login completed and the cookie is set, or adjust the policy (e.g., `.require_login()`).

@@ -44,7 +44,10 @@ use webgates::groups::Group;
 use webgates_codecs::jwt::{JsonWebToken, JwtClaims};
 use webgates_tonic::gate::Gate;
 
-let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+    webgates::codecs::jwt::JsonWebTokenOptions::generate_for_testing()
+        .expect("generating ephemeral ES384 key pair should not fail"),
+));
 let layer = Gate::bearer("my-svc", codec)
     .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));
 

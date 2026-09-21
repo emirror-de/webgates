@@ -19,14 +19,7 @@ impl SecretRepository for SeaOrmRepository {
     type Error = RepoError;
 
     async fn bootstrap(&self) -> RepoResult<()> {
-        SeaOrmRepository::bootstrap(self).await.map_err(|e| {
-            RepoError::Database(DatabaseError::with_context(
-                DatabaseOperation::Insert,
-                format!("Failed to bootstrap secret repository: {}", e),
-                Some(TableName::WebgatesCredentials.to_string()),
-                None,
-            ))
-        })
+        SeaOrmRepository::bootstrap(self).await
     }
 
     async fn store_secret(&self, secret: Secret) -> RepoResult<bool> {
