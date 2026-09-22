@@ -30,22 +30,32 @@ This example is intended to be exercised using an external HTTP client such as I
 
 1) Prerequisites
 - Rust toolchain installed
-- Copy `.env.example` to `.env` in this directory and configure ES384 keys:
+- Copy `.env.example` to `.env` in this directory:
 
 ```bash
 cp examples/distributed/.env.example examples/distributed/.env
-# Then either point *_PATH to PEM files or set inline *_PEM values.
 ```
 
 The `.env` file is listed in the repository's `.gitignore` and must not be committed.
 
-You can generate a local ES384 keypair with OpenSSL:
+No external key-generation command is required for local development. The auth
+node uses `Es384KeyPairLoader` to generate and persist an ES384 key pair when
+neither configured key file exists. It reuses both files on later starts and
+fails if only one file exists. The default locations are
+`./var/keys/jwt-es384-private.pem` and `./var/keys/jwt-es384-public.pem`.
+
+For externally managed or production key material, set both
+`JWT_ES384_PRIVATE_KEY_PATH` and `JWT_ES384_PUBLIC_KEY_PATH` in `.env`. For
+example, an explicit local pair can be generated with OpenSSL:
 
 ```bash
 mkdir -p examples/distributed/keys
 openssl ecparam -name secp384r1 -genkey -noout -out examples/distributed/keys/auth-es384-private.pem
 openssl ec -in examples/distributed/keys/auth-es384-private.pem -pubout -out examples/distributed/keys/auth-es384-public.pem
 ```
+
+Then point the two `JWT_ES384_*_KEY_PATH` variables at those files. Inline
+`JWT_ES384_*_PEM` variables are not supported by the distributed auth node.
 
 2) Start the Auth Node
 

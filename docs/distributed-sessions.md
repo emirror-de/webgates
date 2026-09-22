@@ -28,17 +28,28 @@ file intentionally focuses on the remaining operational guidance.
 - Signing algorithm: **ES384**.
 - Public-key discovery format: JWKS (`GET /.well-known/jwks.json`).
 - Resource-node baseline configuration: `JWKS_URL`.
-- PEM is still used at the authority boundary to load signer keys.
+- The authority loads or generates a persistent ES384 PEM key pair through `Es384KeyPairLoader`; PEM remains the file format at that boundary.
 
 ### Key generation
 
-Generate an ES384 keypair:
+The distributed auth node reads the private and public key locations from
+`JWT_ES384_PRIVATE_KEY_PATH` and `JWT_ES384_PUBLIC_KEY_PATH`. If neither file
+exists, `Es384KeyPairLoader` creates the parent directory, generates an ES384
+pair, and persists both PEM files. If both files exist, it reuses them; if only
+one exists, startup fails rather than silently replacing key material.
+
+For an explicit keypair, generate one with OpenSSL and configure both paths:
 
 ```bash
-mkdir -p keys
-openssl ecparam -name secp384r1 -genkey -noout -out keys/auth-es384-private.pem
-openssl ec -in keys/auth-es384-private.pem -pubout -out keys/auth-es384-public.pem
+mkdir -p examples/distributed/keys
+openssl ecparam -name secp384r1 -genkey -noout -out examples/distributed/keys/auth-es384-private.pem
+openssl ec -in examples/distributed/keys/auth-es384-private.pem -pubout -out examples/distributed/keys/auth-es384-public.pem
 ```
+
+The example defaults to `./var/keys/jwt-es384-private.pem` and
+`./var/keys/jwt-es384-public.pem`; when using the paths above, set both
+`JWT_ES384_PRIVATE_KEY_PATH` and `JWT_ES384_PUBLIC_KEY_PATH` accordingly. Keep the private PEM file only on
+the authority and publish the public key through JWKS.
 
 ### Distribution rules
 
