@@ -388,15 +388,15 @@ match auth_result {
 // Production-safe feature configuration
 [dependencies]
 webgates = {
-    version = "1.1.0",
+    version = "1.2.0",
     features = ["audit-logging", "prometheus"]
 }
-webgates-repositories = { version = "1.1.0", features = ["surrealdb"] }
+webgates-repositories = { version = "1.1.1", features = ["surrealdb"] }
 
 // Development configuration (faster hashing automatically enabled in debug builds)
 [dev-dependencies]
-webgates = { version = "1.1.0" }
-webgates-repositories = { version = "1.1.0", features = ["surrealdb"] }
+webgates = { version = "1.2.0" }
+webgates-repositories = { version = "1.1.1", features = ["surrealdb"] }
 ```
 
 ---

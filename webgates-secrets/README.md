@@ -34,14 +34,14 @@ Use the `webgates` composition crate if you want these types re-exported through
 
 ```toml
 [dependencies]
-webgates = { version = "1.0.0", default-features = false, features = ["secrets"] }
+webgates = { version = "1.2.0", default-features = false, features = ["secrets"] }
 ```
 
 Or depend on the crate directly:
 
 ```toml
 [dependencies]
-webgates-secrets = "1.0.0"
+webgates-secrets = "1.1.1"
 ```
 
 Minimum supported Rust version: `1.94`.

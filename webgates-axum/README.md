@@ -38,8 +38,8 @@ Standard setup:
 ```toml
 [dependencies]
 axum = "0.8"
-webgates = "1.0.0"
-webgates-axum = "1.0.0"
+webgates = "1.2.0"
+webgates-axum = "1.2.1"
 ```
 
 If you want a narrower `webgates` dependency set, disable its defaults and enable only the required features there:
@@ -47,8 +47,8 @@ If you want a narrower `webgates` dependency set, disable its defaults and enabl
 ```toml
 [dependencies]
 axum = "0.8"
-webgates = { version = "1.0.0", default-features = false, features = ["authn", "codecs", "cookies", "oauth2", "repositories", "secrets", "sessions"] }
-webgates-axum = "1.0.0"
+webgates = { version = "1.2.0", default-features = false, features = ["authn", "codecs", "cookies", "oauth2", "repositories", "secrets", "sessions"] }
+webgates-axum = "1.2.1"
 ```
 
 Minimum supported Rust version: `1.94`.
