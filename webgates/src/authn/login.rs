@@ -359,15 +359,6 @@ where
                 }
             };
 
-        if let Some(error) = query_error_opt {
-            return LoginResult::internal_error(
-                "We're experiencing technical difficulties. Please try signing in again.",
-                format!("Account repository query failed: {}", error),
-                Some("repository_query"),
-                true,
-            );
-        }
-
         let creds_to_verify = Credentials::new(&verification_uuid, &credentials.secret);
         let verification_result = credentials_verifier
             .verify_credentials(creds_to_verify)
@@ -398,6 +389,15 @@ where
                 );
             }
         };
+
+        if let Some(error) = query_error_opt {
+            return LoginResult::internal_error(
+                "We're experiencing technical difficulties. Please try signing in again.",
+                format!("Account repository query failed: {}", error),
+                Some("repository_query"),
+                true,
+            );
+        }
 
         let final_success_choice = user_exists_choice & auth_success_choice;
         let login_successful: bool = final_success_choice.into();
@@ -513,15 +513,6 @@ where
                 }
             };
 
-        if let Some(error) = query_error_opt {
-            return SessionLoginResult::internal_error(
-                "We're experiencing technical difficulties. Please try signing in again.",
-                format!("Account repository query failed: {}", error),
-                Some("repository_query"),
-                true,
-            );
-        }
-
         let creds_to_verify = Credentials::new(&verification_uuid, &credentials.secret);
         let verification_result = credentials_verifier
             .verify_credentials(creds_to_verify)
@@ -552,6 +543,15 @@ where
                 );
             }
         };
+
+        if let Some(error) = query_error_opt {
+            return SessionLoginResult::internal_error(
+                "We're experiencing technical difficulties. Please try signing in again.",
+                format!("Account repository query failed: {}", error),
+                Some("repository_query"),
+                true,
+            );
+        }
 
         let final_success_choice = user_exists_choice & auth_success_choice;
         let login_successful: bool = final_success_choice.into();
@@ -648,6 +648,7 @@ mod tests {
     use std::future::Future;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::{Duration, Instant};
+    use webgates_repositories::account_repository::AccountRepository;
     use webgates_repositories::memory::account::MemoryAccountRepository;
     use webgates_repositories::memory::secret::MemorySecretRepository;
     use webgates_repositories::secret_repository::SecretRepository;
@@ -878,6 +879,85 @@ mod tests {
             self.calls.fetch_add(1, Ordering::Relaxed);
             async { Ok(VerificationResult::Unauthorized) }
         }
+    }
+
+    struct FailingAccountRepository;
+
+    impl AccountRepository<Role, Group> for FailingAccountRepository {
+        type Error = std::io::Error;
+
+        async fn bootstrap(&self) -> Result<(), Self::Error> {
+            Err(std::io::Error::other("repository unavailable"))
+        }
+
+        async fn store_account(
+            &self,
+            _account: Account<Role, Group>,
+        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
+            Err(std::io::Error::other("repository unavailable"))
+        }
+
+        async fn delete_account(
+            &self,
+            _account_id: &Uuid,
+        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
+            Err(std::io::Error::other("repository unavailable"))
+        }
+
+        async fn update_account(
+            &self,
+            _account: Account<Role, Group>,
+        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
+            Err(std::io::Error::other("repository unavailable"))
+        }
+
+        async fn query_account_by_user_id(
+            &self,
+            _user_id: &str,
+        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
+            Err(std::io::Error::other("repository unavailable"))
+        }
+
+        async fn query_account_by_id(
+            &self,
+            _account_id: &Uuid,
+        ) -> Result<Option<Account<Role, Group>>, Self::Error> {
+            Err(std::io::Error::other("repository unavailable"))
+        }
+
+        async fn query_all_accounts(&self) -> Result<Vec<Account<Role, Group>>, Self::Error> {
+            Err(std::io::Error::other("repository unavailable"))
+        }
+    }
+
+    #[tokio::test]
+    async fn account_repository_failure_verifies_credentials_before_error() {
+        install_jwt_crypto_provider();
+        let verifier = Arc::new(CountingVerifier::default());
+        let jwt_codec = Arc::new(
+            JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+                crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing().unwrap(),
+            ),
+        );
+        let login_service = LoginService::new();
+        let claims = crate::codecs::jwt::RegisteredClaims::new(
+            "test-issuer",
+            chrono::Utc::now().timestamp() as u64 + 900,
+        );
+
+        let result = login_service
+            .authenticate(
+                Credentials::new(&"unavailable@example.com".to_string(), "pw"),
+                claims,
+                verifier.clone(),
+                Arc::new(FailingAccountRepository),
+                jwt_codec,
+            )
+            .await;
+
+        assert!(matches!(&result, LoginResult::InternalError { .. }));
+        assert_eq!(result.support_code().as_deref(), Some("repository_query"));
+        assert_eq!(verifier.calls.load(Ordering::Relaxed), 1);
     }
 
     #[tokio::test]
