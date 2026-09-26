@@ -19,6 +19,10 @@ const MEASURED_ITERATIONS: usize = 128;
 const MAX_MEDIAN_SKEW: f64 = 0.20;
 const MAX_ABSOLUTE_SKEW: Duration = Duration::from_millis(50);
 
+fn synthetic_credential() -> String {
+    format!("test-credential-{}", uuid::Uuid::now_v7())
+}
+
 fn median(mut values: Vec<Duration>) -> Duration {
     values.sort_unstable();
     values[values.len() / 2]
@@ -79,16 +83,17 @@ async fn timing_memory_repository() -> Result<(), Box<dyn std::error::Error + Se
     let secret_repo = MemorySecretRepository::new_with_argon2_hasher()?;
     let hasher = Argon2Hasher::new_recommended()?;
 
+    let password = synthetic_credential();
     let stored = store_account_and_secret(
         &account_repo,
         &secret_repo,
         hasher,
         "memory-user@example.com",
-        "correct_password",
+        &password,
     )
     .await?;
 
-    run_timing_case(&secret_repo, stored.account_id, "correct_password").await
+    run_timing_case(&secret_repo, stored.account_id, &password).await
 }
 
 #[tokio::test]
@@ -109,16 +114,17 @@ async fn timing_surrealdb_repository() -> Result<(), Box<dyn std::error::Error +
     SecretRepository::bootstrap(&repository).await?;
 
     let hasher = Argon2Hasher::new_recommended()?;
+    let password = synthetic_credential();
     let stored = store_account_and_secret(
         &repository,
         &repository,
         hasher,
         "surrealdb-user@example.com",
-        "correct_password",
+        &password,
     )
     .await?;
 
-    run_timing_case(&repository, stored.account_id, "correct_password").await
+    run_timing_case(&repository, stored.account_id, &password).await
 }
 
 #[tokio::test]
@@ -133,16 +139,17 @@ async fn timing_seaorm_repository() -> Result<(), Box<dyn std::error::Error + Se
     repository.bootstrap().await?;
 
     let hasher = Argon2Hasher::new_recommended()?;
+    let password = synthetic_credential();
     let stored = store_account_and_secret(
         &repository,
         &repository,
         hasher,
         "seaorm-user@example.com",
-        "correct_password",
+        &password,
     )
     .await?;
 
-    run_timing_case(&repository, stored.account_id, "correct_password").await
+    run_timing_case(&repository, stored.account_id, &password).await
 }
 
 async fn store_account_and_secret<A, S>(
@@ -185,17 +192,23 @@ async fn run_timing_case<R>(
 where
     R: CredentialsVerifier + Sync,
 {
+    let wrong_password = synthetic_credential();
+    let nonexistent_password = synthetic_credential();
+
     // Warm each case independently so first-use effects are not included in the
     // measured distributions.
     for _ in 0..WARMUP_ITERATIONS {
         let _ = secret_repo
-            .verify_credentials(Credentials::new(&account_id, "wrong_password"))
+            .verify_credentials(Credentials::new(&account_id, &wrong_password))
             .await?;
         let _ = secret_repo
             .verify_credentials(Credentials::new(&account_id, password))
             .await?;
         let _ = secret_repo
-            .verify_credentials(Credentials::new(&uuid::Uuid::now_v7(), "pw"))
+            .verify_credentials(Credentials::new(
+                &uuid::Uuid::now_v7(),
+                &nonexistent_password,
+            ))
             .await?;
     }
 
@@ -215,14 +228,17 @@ where
             match case {
                 0 => {
                     let result = secret_repo
-                        .verify_credentials(Credentials::new(&uuid::Uuid::now_v7(), "pw"))
+                        .verify_credentials(Credentials::new(
+                            &uuid::Uuid::now_v7(),
+                            &nonexistent_password,
+                        ))
                         .await?;
                     nonexistent.push(start.elapsed());
                     assert_eq!(result, VerificationResult::Unauthorized);
                 }
                 1 => {
                     let result = secret_repo
-                        .verify_credentials(Credentials::new(&account_id, "wrong_password"))
+                        .verify_credentials(Credentials::new(&account_id, &wrong_password))
                         .await?;
                     wrong.push(start.elapsed());
                     assert_eq!(result, VerificationResult::Unauthorized);
