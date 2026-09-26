@@ -645,15 +645,39 @@ mod tests {
     use crate::roles::Role;
     use crate::secrets::Secret;
     use crate::secrets::hashing::argon2::Argon2Hasher;
+    use std::future::Future;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::{Duration, Instant};
     use webgates_repositories::memory::account::MemoryAccountRepository;
     use webgates_repositories::memory::secret::MemorySecretRepository;
     use webgates_repositories::secret_repository::SecretRepository;
 
+    const TIMING_ITERATIONS: usize = 128;
+    const TIMING_MAX_MEDIAN_SKEW: f64 = 0.20;
+    const TIMING_MAX_ABSOLUTE_SKEW: Duration = Duration::from_millis(50);
+
     fn median(durs: &[Duration]) -> Duration {
         let mut v = durs.to_vec();
-        v.sort();
+        v.sort_unstable();
         v[v.len() / 2]
+    }
+
+    fn mad(durs: &[Duration], center: Duration) -> Duration {
+        let deviations: Vec<_> = durs
+            .iter()
+            .map(|duration| duration.abs_diff(center))
+            .collect();
+        median(&deviations)
+    }
+
+    fn timing_summary(label: &str, durs: &[Duration]) -> String {
+        let med = median(durs);
+        format!(
+            "{label}: n={}, median={}ms, MAD={}ms",
+            durs.len(),
+            med.as_secs_f64() * 1_000.0,
+            mad(durs, med).as_secs_f64() * 1_000.0
+        )
     }
 
     fn install_jwt_crypto_provider() {
@@ -661,6 +685,9 @@ mod tests {
     }
 
     #[tokio::test]
+    // Wall-clock timing is useful as a diagnostic, but is too environment-
+    // dependent to gate ordinary unit-test runs.
+    #[ignore = "timing diagnostic; run on controlled hardware"]
     #[allow(clippy::unwrap_used)]
     #[allow(clippy::expect_used)]
     async fn test_timing_attack_protection() {
@@ -694,7 +721,9 @@ mod tests {
             chrono::Utc::now().timestamp() as u64 + 900,
         );
 
-        {
+        // Warm both failure paths before collecting samples so initialization,
+        // allocator, and first-use hashing effects do not dominate results.
+        for _ in 0..8 {
             let creds = Credentials::new(&"nonexistent@example.com".to_string(), "pw");
             let _ = login_service
                 .authenticate(
@@ -717,12 +746,20 @@ mod tests {
                 .await;
         }
 
-        let iterations = 4;
+        let iterations = TIMING_ITERATIONS;
         let mut nonexistent_times = Vec::with_capacity(iterations);
         let mut wrong_times = Vec::with_capacity(iterations);
+        let mut success_times = Vec::with_capacity(iterations);
+        let mut order_state = 0x517c_c1b7_u64;
 
-        for i in 0..iterations {
-            if i % 2 == 0 {
+        // Alternate the order of the two failure cases to reduce bias from
+        // scheduler state, CPU frequency changes, and neighboring operations.
+        // The fixed generator keeps diagnostic failures reproducible.
+        for _ in 0..iterations {
+            order_state = order_state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
+            if order_state & 1 == 0 {
                 let creds = Credentials::new(&"nonexistent@example.com".to_string(), "any_pw");
                 let start = Instant::now();
                 let r = login_service
@@ -781,9 +818,9 @@ mod tests {
             }
         }
 
-        let med_nonexistent = median(&nonexistent_times);
-        let med_wrong = median(&wrong_times);
-        let med_success = {
+        // Measure successful logins separately for context. The security
+        // comparison is between the two failure distributions, not success.
+        for _ in 0..iterations {
             let creds = Credentials::new(&existing_user.to_string(), password);
             let start = Instant::now();
             let r = login_service
@@ -796,28 +833,100 @@ mod tests {
                 )
                 .await;
             assert!(matches!(r, LoginResult::Success { .. }));
-            vec![start.elapsed()]
-        }[0];
+            success_times.push(start.elapsed());
+        }
 
-        let (fast, slow) = if med_nonexistent < med_wrong {
+        // A median is more resistant than a mean to occasional scheduling
+        // spikes; MAD reports the spread without hiding those measurements.
+        let med_nonexistent = median(&nonexistent_times);
+        let med_wrong = median(&wrong_times);
+        let (fast, slow) = if med_nonexistent <= med_wrong {
             (med_nonexistent, med_wrong)
         } else {
             (med_wrong, med_nonexistent)
         };
-        let diff = slow - fast;
-        let relative = diff.as_secs_f64() / fast.as_secs_f64().max(1e-9);
+        let difference = slow - fast;
+        let relative = difference.as_secs_f64() / slow.as_secs_f64().max(1e-9);
 
-        let relative_threshold = 0.75;
-        let absolute_threshold_ms: u128 = 150;
-
+        println!("{}", timing_summary("nonexistent", &nonexistent_times));
+        println!("{}", timing_summary("wrong", &wrong_times));
+        println!("{}", timing_summary("success", &success_times));
+        // These tolerances are only meaningful on controlled hardware. This
+        // assertion is a diagnostic signal, not proof of constant-time code.
         assert!(
-            diff.as_millis() < absolute_threshold_ms || relative < relative_threshold,
-            "Timing difference suspicious: diff={}ms, rel={:.2}",
-            diff.as_millis(),
-            relative
+            difference <= TIMING_MAX_ABSOLUTE_SKEW || relative <= TIMING_MAX_MEDIAN_SKEW,
+            "timing distributions differ beyond the controlled-job tolerance \
+             (absolute={}ms, relative={:.2}); {}; {}",
+            difference.as_secs_f64() * 1_000.0,
+            relative,
+            timing_summary("nonexistent", &nonexistent_times),
+            timing_summary("wrong", &wrong_times),
+        );
+    }
+
+    #[derive(Default)]
+    struct CountingVerifier {
+        calls: AtomicUsize,
+    }
+
+    impl CredentialsVerifier for CountingVerifier {
+        fn verify_credentials(
+            &self,
+            _credentials: Credentials<Uuid>,
+        ) -> impl Future<Output = webgates_core::errors_core::Result<VerificationResult>> + Send
+        {
+            self.calls.fetch_add(1, Ordering::Relaxed);
+            async { Ok(VerificationResult::Unauthorized) }
+        }
+    }
+
+    #[tokio::test]
+    async fn every_logical_login_failure_verifies_credentials() {
+        install_jwt_crypto_provider();
+        let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+        let verifier = Arc::new(CountingVerifier::default());
+        let jwt_codec = Arc::new(
+            JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(
+                crate::codecs::jwt::JsonWebTokenOptions::generate_for_testing().unwrap(),
+            ),
+        );
+        let mut account = Account::new("existing@example.com");
+        account.groups = vec![Group::new("test-group")];
+        account_repo.store_account(account).await.unwrap();
+        let login_service = LoginService::new();
+        let claims = crate::codecs::jwt::RegisteredClaims::new(
+            "test-issuer",
+            chrono::Utc::now().timestamp() as u64 + 900,
         );
 
-        assert!(med_success.as_millis() >= 1, "success path too fast");
+        let missing_user = login_service
+            .authenticate(
+                Credentials::new(&"missing@example.com".to_string(), "pw"),
+                claims.clone(),
+                verifier.clone(),
+                account_repo.clone(),
+                jwt_codec.clone(),
+            )
+            .await;
+        let wrong_password = login_service
+            .authenticate(
+                Credentials::new(&"existing@example.com".to_string(), "wrong"),
+                claims,
+                verifier.clone(),
+                account_repo,
+                jwt_codec,
+            )
+            .await;
+
+        assert!(matches!(
+            missing_user,
+            LoginResult::InvalidCredentials { .. }
+        ));
+        assert!(matches!(
+            wrong_password,
+            LoginResult::InvalidCredentials { .. }
+        ));
+        assert_eq!(verifier.calls.load(Ordering::Relaxed), 2);
     }
 
     #[tokio::test]

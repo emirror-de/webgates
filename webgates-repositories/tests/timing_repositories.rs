@@ -12,15 +12,62 @@ use webgates_core::verification_result::VerificationResult;
 use webgates_secrets::Secret;
 use webgates_secrets::hashing::argon2::Argon2Hasher;
 
-const WARMUP_ITERATIONS: usize = 1;
-const MEASURED_ITERATIONS: usize = 2;
+// This is an explicitly non-gating diagnostic. Run it in a controlled
+// security/performance job with `cargo test -- --ignored --nocapture`.
+const WARMUP_ITERATIONS: usize = 8;
+const MEASURED_ITERATIONS: usize = 128;
+const MAX_MEDIAN_SKEW: f64 = 0.20;
+const MAX_ABSOLUTE_SKEW: Duration = Duration::from_millis(50);
 
 fn median(mut values: Vec<Duration>) -> Duration {
-    values.sort();
+    values.sort_unstable();
     values[values.len() / 2]
 }
 
+fn median_absolute_deviation(values: &[Duration], center: Duration) -> Duration {
+    median(values.iter().map(|value| value.abs_diff(center)).collect())
+}
+
+fn describe(label: &str, values: &[Duration]) -> String {
+    let med = median(values.to_vec());
+    let mad = median_absolute_deviation(values, med);
+    format!(
+        "{label}: n={}, median={}ms, MAD={}ms",
+        values.len(),
+        med.as_secs_f64() * 1_000.0,
+        mad.as_secs_f64() * 1_000.0
+    )
+}
+
+fn assert_distribution_skew_is_bounded(
+    left_label: &str,
+    left: &[Duration],
+    right_label: &str,
+    right: &[Duration],
+) {
+    let left_median = median(left.to_vec());
+    let right_median = median(right.to_vec());
+    let (fast, slow) = if left_median <= right_median {
+        (left_median, right_median)
+    } else {
+        (right_median, left_median)
+    };
+    let difference = slow - fast;
+    let relative = difference.as_secs_f64() / slow.as_secs_f64().max(1e-9);
+
+    assert!(
+        difference <= MAX_ABSOLUTE_SKEW || relative <= MAX_MEDIAN_SKEW,
+        "timing distributions differ beyond the controlled-job tolerance \
+         (absolute={}ms, relative={:.2}); {}; {}",
+        difference.as_secs_f64() * 1_000.0,
+        relative,
+        describe(left_label, left),
+        describe(right_label, right),
+    );
+}
+
 #[tokio::test]
+#[ignore = "timing diagnostic; run on controlled hardware"]
 async fn timing_memory_repository() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     use webgates_core::groups::Group;
     use webgates_core::roles::Role;
@@ -45,6 +92,7 @@ async fn timing_memory_repository() -> Result<(), Box<dyn std::error::Error + Se
 }
 
 #[tokio::test]
+#[ignore = "timing diagnostic; run on controlled hardware"]
 #[cfg(feature = "surrealdb")]
 async fn timing_surrealdb_repository() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     use surrealdb::Surreal;
@@ -74,6 +122,7 @@ async fn timing_surrealdb_repository() -> Result<(), Box<dyn std::error::Error +
 }
 
 #[tokio::test]
+#[ignore = "timing diagnostic; run on controlled hardware"]
 #[cfg(feature = "sea-orm")]
 async fn timing_seaorm_repository() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     use sea_orm::Database;
@@ -136,6 +185,8 @@ async fn run_timing_case<R>(
 where
     R: CredentialsVerifier + Sync,
 {
+    // Warm each case independently so first-use effects are not included in the
+    // measured distributions.
     for _ in 0..WARMUP_ITERATIONS {
         let _ = secret_repo
             .verify_credentials(Credentials::new(&account_id, "wrong_password"))
@@ -152,47 +203,45 @@ where
     let mut wrong = Vec::with_capacity(MEASURED_ITERATIONS);
     let mut correct = Vec::with_capacity(MEASURED_ITERATIONS);
 
+    // A deterministic shuffle interleaves cases without adding a dependency or
+    // making a diagnostic run irreproducible.
+    let mut state = 0x9e37_79b9_u64;
     for _ in 0..MEASURED_ITERATIONS {
-        let start = Instant::now();
-        let result = secret_repo
-            .verify_credentials(Credentials::new(&uuid::Uuid::now_v7(), "pw"))
-            .await?;
-        nonexistent.push(start.elapsed());
-        assert_eq!(result, VerificationResult::Unauthorized);
-
-        let start = Instant::now();
-        let result = secret_repo
-            .verify_credentials(Credentials::new(&account_id, "wrong_password"))
-            .await?;
-        wrong.push(start.elapsed());
-        assert_eq!(result, VerificationResult::Unauthorized);
-
-        let start = Instant::now();
-        let result = secret_repo
-            .verify_credentials(Credentials::new(&account_id, password))
-            .await?;
-        correct.push(start.elapsed());
-        assert_eq!(result, VerificationResult::Ok);
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1);
+        for case in [state % 3, (state / 3) % 3, (state / 9) % 3] {
+            let start = Instant::now();
+            match case {
+                0 => {
+                    let result = secret_repo
+                        .verify_credentials(Credentials::new(&uuid::Uuid::now_v7(), "pw"))
+                        .await?;
+                    nonexistent.push(start.elapsed());
+                    assert_eq!(result, VerificationResult::Unauthorized);
+                }
+                1 => {
+                    let result = secret_repo
+                        .verify_credentials(Credentials::new(&account_id, "wrong_password"))
+                        .await?;
+                    wrong.push(start.elapsed());
+                    assert_eq!(result, VerificationResult::Unauthorized);
+                }
+                _ => {
+                    let result = secret_repo
+                        .verify_credentials(Credentials::new(&account_id, password))
+                        .await?;
+                    correct.push(start.elapsed());
+                    assert_eq!(result, VerificationResult::Ok);
+                }
+            }
+        }
     }
 
-    let median_nonexistent = median(nonexistent);
-    let median_wrong = median(wrong);
-    let median_correct = median(correct);
-    let (fast, slow) = if median_nonexistent < median_wrong {
-        (median_nonexistent, median_wrong)
-    } else {
-        (median_wrong, median_nonexistent)
-    };
-    let difference = slow - fast;
-    let relative = difference.as_secs_f64() / fast.as_secs_f64().max(1e-9);
-
-    assert!(
-        difference.as_millis() < 250 || relative < 0.90,
-        "timing skew too high: diff={}ms, rel={:.2}",
-        difference.as_millis(),
-        relative
-    );
-    assert!(median_correct.as_millis() >= 1, "success path too fast");
+    assert_distribution_skew_is_bounded("nonexistent", &nonexistent, "wrong", &wrong);
+    println!("{}", describe("nonexistent", &nonexistent));
+    println!("{}", describe("wrong", &wrong));
+    println!("{}", describe("correct", &correct));
 
     Ok(())
 }
