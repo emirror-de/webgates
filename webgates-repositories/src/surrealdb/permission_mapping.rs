@@ -80,20 +80,13 @@ where
     type Error = RepoError;
 
     async fn bootstrap(&self) -> RepoResult<()> {
-        let table_name = self.scope_settings.permission_mappings.clone();
-        let repo = self.use_ns_db().await.map_err(|error| {
-            RepoError::Database(DatabaseError::bootstrap(
-                format!("Failed to bootstrap permission-mapping repository scope: {error}"),
-                Some(table_name.clone()),
-            ))
-        })?;
 
-        repo.permission_mapping_schema_initialized
+        self.permission_mapping_schema_initialized
             .get_or_try_init(|| async {
-                let table_name = repo.scope_settings.permission_mappings.clone();
+                let table_name = self.scope_settings.permission_mappings.clone();
 
                 let define_table = "DEFINE TABLE IF NOT EXISTS $table SCHEMALESS;";
-                repo.db
+                self.db
                     .query(define_table)
                     .bind(("table", table_name.clone()))
                     .await
@@ -104,11 +97,12 @@ where
                         ))
                     })?;
 
-                let define_normalized_field = format!(
-                    "DEFINE FIELD IF NOT EXISTS normalized_string ON {} TYPE string ASSERT string::len($value) > 0",
-                    table_name
-                );
-                repo.db.query(define_normalized_field).await.map_err(|e| {
+                let define_normalized_field = "DEFINE FIELD IF NOT EXISTS normalized_string ON TABLE type::table($table) TYPE string ASSERT string::len($value) > 0";
+                self.db
+                    .query(define_normalized_field)
+                    .bind(("table", table_name.clone()))
+                    .await
+                    .map_err(|e| {
                     RepoError::Database(DatabaseError::bootstrap(
                         format!(
                             "Failed to define permission mappings normalized_string field: {}",
@@ -118,12 +112,10 @@ where
                     ))
                 })?;
 
-                let define_permission_id_field = format!(
-                    "DEFINE FIELD IF NOT EXISTS permission_id ON {} TYPE string ASSERT string::len($value) > 0",
-                    table_name
-                );
-                repo.db
+                let define_permission_id_field = "DEFINE FIELD IF NOT EXISTS permission_id ON TABLE type::table($table) TYPE string ASSERT string::len($value) > 0";
+                self.db
                     .query(define_permission_id_field)
+                    .bind(("table", table_name.clone()))
                     .await
                     .map_err(|e| {
                         RepoError::Database(DatabaseError::bootstrap(
@@ -135,11 +127,12 @@ where
                         ))
                     })?;
 
-                let define_normalized_index = format!(
-                    "DEFINE INDEX IF NOT EXISTS permission_mappings_normalized_string_idx ON {} FIELDS normalized_string UNIQUE",
-                    table_name
-                );
-                repo.db.query(define_normalized_index).await.map_err(|e| {
+                let define_normalized_index = "DEFINE INDEX IF NOT EXISTS permission_mappings_normalized_string_idx ON type::table($table) FIELDS normalized_string UNIQUE";
+                self.db
+                    .query(define_normalized_index)
+                    .bind(("table", table_name.clone()))
+                    .await
+                    .map_err(|e| {
                     RepoError::Database(DatabaseError::bootstrap(
                         format!(
                             "Failed to define permission mappings normalized_string index: {}",
@@ -149,12 +142,10 @@ where
                     ))
                 })?;
 
-                let define_permission_id_index = format!(
-                    "DEFINE INDEX IF NOT EXISTS permission_mappings_permission_id_idx ON {} FIELDS permission_id UNIQUE",
-                    table_name
-                );
-                repo.db
+                let define_permission_id_index = "DEFINE INDEX IF NOT EXISTS permission_mappings_permission_id_idx ON type::table($table) FIELDS permission_id UNIQUE";
+                self.db
                     .query(define_permission_id_index)
+                    .bind(("table", table_name.clone()))
                     .await
                     .map_err(|e| {
                         RepoError::Database(DatabaseError::bootstrap(
@@ -187,29 +178,41 @@ where
                 )));
             }
 
-            let repo = self.use_ns_db().await?;
 
             let record_id = RecordId::new(
-                repo.scope_settings.permission_mappings.clone(),
+                self.scope_settings.permission_mappings.clone(),
                 mapping.permission_id().as_u64().to_string(),
             );
 
             let spm = SurrealPermissionMapping::with_record_id(
-                repo.scope_settings.permission_mappings.clone(),
+                self.scope_settings.permission_mappings.clone(),
                 &mapping,
             );
 
-            let upsert_res: Option<SurrealPermissionMapping> =
-                repo.db.upsert(record_id).content(spm).await.map_err(|e| {
+            let mut response = self
+                .db
+                .query("UPSERT $record_id CONTENT $record RETURN AFTER")
+                .bind(("record_id", record_id))
+                .bind(("record", spm))
+                .await
+                .map_err(|e| {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Insert,
                         format!("Failed to store permission mapping: {}", e),
-                        Some(repo.scope_settings.permission_mappings.clone()),
+                        Some(self.scope_settings.permission_mappings.clone()),
                         None,
                     ))
                 })?;
+            let upsert_res: Vec<SurrealPermissionMapping> = response.take(0).map_err(|e| {
+                RepoError::Database(DatabaseError::with_context(
+                    DatabaseOperation::Insert,
+                    format!("Failed to extract stored permission mapping: {}", e),
+                    Some(self.scope_settings.permission_mappings.clone()),
+                    None,
+                ))
+            })?;
 
-            if upsert_res.is_some() {
+            if !upsert_res.is_empty() {
                 Ok(Some(mapping))
             } else {
                 Ok(None)
@@ -223,29 +226,41 @@ where
         id: PermissionId,
     ) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
-            let repo = self.use_ns_db().await?;
 
             let record_id = RecordId::new(
-                repo.scope_settings.permission_mappings.clone(),
+                self.scope_settings.permission_mappings.clone(),
                 id.as_u64().to_string(),
             );
-            let removed_spm: Option<SurrealPermissionMapping> =
-                repo.db.delete(record_id).await.map_err(|e| {
+            let mut response = self
+                .db
+                .query("DELETE $record_id RETURN BEFORE")
+                .bind(("record_id", record_id))
+                .await
+                .map_err(|e| {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Delete,
                         format!("Failed to delete permission mapping by id: {}", e),
-                        Some(repo.scope_settings.permission_mappings.clone()),
+                        Some(self.scope_settings.permission_mappings.clone()),
                         Some(id.as_u64().to_string()),
                     ))
                 })?;
+            let mut removed: Vec<SurrealPermissionMapping> = response.take(0).map_err(|e| {
+                RepoError::Database(DatabaseError::with_context(
+                    DatabaseOperation::Delete,
+                    format!("Failed to extract deleted permission mapping: {}", e),
+                    Some(self.scope_settings.permission_mappings.clone()),
+                    Some(id.as_u64().to_string()),
+                ))
+            })?;
 
-            removed_spm
+            removed
+                .pop()
                 .map(|spm| {
                     PermissionMapping::try_from(spm).map_err(|e| {
                         RepoError::Database(DatabaseError::with_context(
                             DatabaseOperation::Delete,
                             format!("Failed to convert deleted permission mapping: {}", e),
-                            Some(repo.scope_settings.permission_mappings.clone()),
+                            Some(self.scope_settings.permission_mappings.clone()),
                             Some(id.as_u64().to_string()),
                         ))
                     })
@@ -260,17 +275,16 @@ where
         permission: &str,
     ) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
-            let repo = self.use_ns_db().await?;
 
             let normalized = PermissionMapping::from(permission)
                 .normalized_string()
                 .to_string();
 
             let query = "SELECT * FROM type::table($table) WHERE normalized_string = $ns LIMIT 1";
-            let mut db_res = repo
+            let mut db_res = self
                 .db
                 .query(query)
-                .bind(("table", repo.scope_settings.permission_mappings.clone()))
+                .bind(("table", self.scope_settings.permission_mappings.clone()))
                 .bind(("ns", normalized))
                 .await
                 .map_err(|e| {
@@ -280,7 +294,7 @@ where
                             "Failed to query permission mapping by string before delete: {}",
                             e
                         ),
-                        Some(repo.scope_settings.permission_mappings.clone()),
+                        Some(self.scope_settings.permission_mappings.clone()),
                         None,
                     ))
                 })?;
@@ -292,7 +306,7 @@ where
                         "Failed to extract permission mapping by string before delete: {}",
                         e
                     ),
-                    Some(repo.scope_settings.permission_mappings.clone()),
+                    Some(self.scope_settings.permission_mappings.clone()),
                     None,
                 ))
             })?;
@@ -306,33 +320,47 @@ where
                                 "Failed to convert permission mapping by string before delete: {}",
                                 e
                             ),
-                            Some(repo.scope_settings.permission_mappings.clone()),
+                            Some(self.scope_settings.permission_mappings.clone()),
                             None,
                         ))
                     })?;
 
                     let record_id = RecordId::new(
-                        repo.scope_settings.permission_mappings.clone(),
+                        self.scope_settings.permission_mappings.clone(),
                         mapping.permission_id().as_u64().to_string(),
                     );
 
-                    let deleted: Option<SurrealPermissionMapping> =
-                        repo.db.delete(record_id).await.map_err(|e| {
+                    let mut response = self
+                        .db
+                        .query("DELETE $record_id RETURN BEFORE")
+                        .bind(("record_id", record_id))
+                        .await
+                        .map_err(|e| {
                             RepoError::Database(DatabaseError::with_context(
                                 DatabaseOperation::Delete,
                                 format!("Failed to delete permission mapping by string: {}", e),
-                                Some(repo.scope_settings.permission_mappings.clone()),
+                                Some(self.scope_settings.permission_mappings.clone()),
+                                None,
+                            ))
+                        })?;
+                    let mut deleted: Vec<SurrealPermissionMapping> =
+                        response.take(0).map_err(|e| {
+                            RepoError::Database(DatabaseError::with_context(
+                                DatabaseOperation::Delete,
+                                format!("Failed to extract deleted permission mapping: {}", e),
+                                Some(self.scope_settings.permission_mappings.clone()),
                                 None,
                             ))
                         })?;
 
                     deleted
+                        .pop()
                         .map(|spm| {
                             PermissionMapping::try_from(spm).map_err(|e| {
                                 RepoError::Database(DatabaseError::with_context(
                                     DatabaseOperation::Delete,
                                     format!("Failed to convert deleted permission mapping: {}", e),
-                                    Some(repo.scope_settings.permission_mappings.clone()),
+                                    Some(self.scope_settings.permission_mappings.clone()),
                                     None,
                                 ))
                             })
@@ -347,30 +375,42 @@ where
 
     async fn query_mapping_by_id(&self, id: PermissionId) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
-            let repo = self.use_ns_db().await?;
 
             let record_id = RecordId::new(
-                repo.scope_settings.permission_mappings.clone(),
+                self.scope_settings.permission_mappings.clone(),
                 id.as_u64().to_string(),
             );
 
-            let mapping_spm: Option<SurrealPermissionMapping> =
-                repo.db.select(record_id).await.map_err(|e| {
+            let mut response = self
+                .db
+                .query("SELECT * FROM $record_id")
+                .bind(("record_id", record_id))
+                .await
+                .map_err(|e| {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query permission mapping by id: {}", e),
-                        Some(repo.scope_settings.permission_mappings.clone()),
+                        Some(self.scope_settings.permission_mappings.clone()),
                         Some(id.as_u64().to_string()),
                     ))
                 })?;
+            let mut mappings: Vec<SurrealPermissionMapping> = response.take(0).map_err(|e| {
+                RepoError::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to extract permission mapping by id: {}", e),
+                    Some(self.scope_settings.permission_mappings.clone()),
+                    Some(id.as_u64().to_string()),
+                ))
+            })?;
 
-            mapping_spm
+            mappings
+                .pop()
                 .map(|spm| {
                     PermissionMapping::try_from(spm).map_err(|e| {
                         RepoError::Database(DatabaseError::with_context(
                             DatabaseOperation::Query,
                             format!("Failed to convert permission mapping: {}", e),
-                            Some(repo.scope_settings.permission_mappings.clone()),
+                            Some(self.scope_settings.permission_mappings.clone()),
                             Some(id.as_u64().to_string()),
                         ))
                     })
@@ -385,24 +425,23 @@ where
         permission: &str,
     ) -> RepoResult<Option<PermissionMapping>> {
         let res: RepoResult<_> = {
-            let repo = self.use_ns_db().await?;
 
             let normalized = PermissionMapping::from(permission)
                 .normalized_string()
                 .to_string();
 
             let query = "SELECT * FROM type::table($table) WHERE normalized_string = $ns LIMIT 1";
-            let mut db_res = repo
+            let mut db_res = self
                 .db
                 .query(query)
-                .bind(("table", repo.scope_settings.permission_mappings.clone()))
+                .bind(("table", self.scope_settings.permission_mappings.clone()))
                 .bind(("ns", normalized.clone()))
                 .await
                 .map_err(|e| {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query permission mapping by string: {}", e),
-                        Some(repo.scope_settings.permission_mappings.clone()),
+                        Some(self.scope_settings.permission_mappings.clone()),
                         None,
                     ))
                 })?;
@@ -411,7 +450,7 @@ where
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Query,
                     format!("Failed to extract permission mapping by string: {}", e),
-                    Some(repo.scope_settings.permission_mappings.clone()),
+                    Some(self.scope_settings.permission_mappings.clone()),
                     None,
                 ))
             })?;
@@ -424,7 +463,7 @@ where
                         RepoError::Database(DatabaseError::with_context(
                             DatabaseOperation::Query,
                             format!("Failed to convert permission mapping: {}", e),
-                            Some(repo.scope_settings.permission_mappings.clone()),
+                            Some(self.scope_settings.permission_mappings.clone()),
                             None,
                         ))
                     })
@@ -436,20 +475,28 @@ where
 
     async fn list_all_mappings(&self) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {
-            let repo = self.use_ns_db().await?;
 
-            let all_spm: Vec<SurrealPermissionMapping> = repo
+            let mut response = self
                 .db
-                .select(repo.scope_settings.permission_mappings.clone())
+                .query("SELECT * FROM type::table($table)")
+                .bind(("table", self.scope_settings.permission_mappings.clone()))
                 .await
                 .map_err(|e| {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to list permission mappings: {}", e),
-                        Some(repo.scope_settings.permission_mappings.clone()),
+                        Some(self.scope_settings.permission_mappings.clone()),
                         None,
                     ))
                 })?;
+            let all_spm: Vec<SurrealPermissionMapping> = response.take(0).map_err(|e| {
+                RepoError::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to extract permission mappings: {}", e),
+                    Some(self.scope_settings.permission_mappings.clone()),
+                    None,
+                ))
+            })?;
 
             let mut out = Vec::with_capacity(all_spm.len());
             for spm in all_spm {
@@ -457,7 +504,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to convert permission mapping: {}", e),
-                        Some(repo.scope_settings.permission_mappings.clone()),
+                        Some(self.scope_settings.permission_mappings.clone()),
                         None,
                     ))
                 })?;
@@ -478,7 +525,6 @@ where
         mappings: Vec<PermissionMapping>,
     ) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {
-            let repo = self.use_ns_db().await?;
 
             if mappings.is_empty() {
                 return Ok(Vec::new());
@@ -489,7 +535,7 @@ where
                     return Err(RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Insert,
                         "Invalid permission mapping in bulk insert".to_string(),
-                        Some(repo.scope_settings.permission_mappings.clone()),
+                        Some(self.scope_settings.permission_mappings.clone()),
                         None,
                     )));
                 }
@@ -497,35 +543,44 @@ where
 
             for spm in mappings.iter() {
                 let record_id = RecordId::new(
-                    repo.scope_settings.permission_mappings.clone(),
+                    self.scope_settings.permission_mappings.clone(),
                     spm.permission_id().as_u64().to_string(),
                 );
 
                 let spm_record = SurrealPermissionMapping::with_record_id(
-                    repo.scope_settings.permission_mappings.clone(),
+                    self.scope_settings.permission_mappings.clone(),
                     spm,
                 );
 
-                let upsert_res: Option<SurrealPermissionMapping> = repo
+                let mut response = self
                     .db
-                    .upsert(record_id)
-                    .content(spm_record)
+                    .query("UPSERT $record_id CONTENT $record RETURN AFTER")
+                    .bind(("record_id", record_id))
+                    .bind(("record", spm_record))
                     .await
                     .map_err(|e| {
                         RepoError::Database(DatabaseError::with_context(
                             DatabaseOperation::Insert,
                             format!("Failed to store permission mapping in bulk: {}", e),
-                            Some(repo.scope_settings.permission_mappings.clone()),
+                            Some(self.scope_settings.permission_mappings.clone()),
                             None,
                         ))
                     })?;
+                let upsert_res: Vec<SurrealPermissionMapping> = response.take(0).map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Insert,
+                        format!("Failed to extract stored permission mapping in bulk: {}", e),
+                        Some(self.scope_settings.permission_mappings.clone()),
+                        None,
+                    ))
+                })?;
 
-                if upsert_res.is_none() {
+                if upsert_res.is_empty() {
                     return Err(RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Insert,
                         "Failed to store permission mapping in bulk: no record returned"
                             .to_string(),
-                        Some(repo.scope_settings.permission_mappings.clone()),
+                        Some(self.scope_settings.permission_mappings.clone()),
                         None,
                     )));
                 }
@@ -541,7 +596,6 @@ where
         ids: Vec<PermissionId>,
     ) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {
-            let repo = self.use_ns_db().await?;
 
             if ids.is_empty() {
                 return Ok(Vec::new());
@@ -550,10 +604,10 @@ where
             let pid_strs: Vec<String> = ids.iter().map(|id| id.as_u64().to_string()).collect();
 
             let query = "SELECT * FROM type::table($table) WHERE permission_id IN $pids";
-            let mut db_res = repo
+            let mut db_res = self
                 .db
                 .query(query)
-                .bind(("table", repo.scope_settings.permission_mappings.clone()))
+                .bind(("table", self.scope_settings.permission_mappings.clone()))
                 .bind(("pids", pid_strs))
                 .await
                 .map_err(|e| {
@@ -563,7 +617,7 @@ where
                             "Failed to query permission mappings before bulk delete: {}",
                             e
                         ),
-                        Some(repo.scope_settings.permission_mappings.clone()),
+                        Some(self.scope_settings.permission_mappings.clone()),
                         None,
                     ))
                 })?;
@@ -575,7 +629,7 @@ where
                         "Failed to extract permission mappings before bulk delete: {}",
                         e
                     ),
-                    Some(repo.scope_settings.permission_mappings.clone()),
+                    Some(self.scope_settings.permission_mappings.clone()),
                     None,
                 ))
             })?;
@@ -589,27 +643,42 @@ where
                             "Failed to convert permission mapping before bulk delete: {}",
                             e
                         ),
-                        Some(repo.scope_settings.permission_mappings.clone()),
+                        Some(self.scope_settings.permission_mappings.clone()),
                         None,
                     ))
                 })?;
 
                 let record_id = RecordId::new(
-                    repo.scope_settings.permission_mappings.clone(),
+                    self.scope_settings.permission_mappings.clone(),
                     mapping.permission_id().as_u64().to_string(),
                 );
 
-                let deleted: Option<SurrealPermissionMapping> =
-                    repo.db.delete(record_id).await.map_err(|e| {
+                let mut response = self
+                    .db
+                    .query("DELETE $record_id RETURN BEFORE")
+                    .bind(("record_id", record_id))
+                    .await
+                    .map_err(|e| {
                         RepoError::Database(DatabaseError::with_context(
                             DatabaseOperation::Delete,
                             format!("Failed to delete permission mapping in bulk: {}", e),
-                            Some(repo.scope_settings.permission_mappings.clone()),
+                            Some(self.scope_settings.permission_mappings.clone()),
                             None,
                         ))
                     })?;
+                let mut deleted: Vec<SurrealPermissionMapping> = response.take(0).map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Delete,
+                        format!(
+                            "Failed to extract deleted permission mapping in bulk: {}",
+                            e
+                        ),
+                        Some(self.scope_settings.permission_mappings.clone()),
+                        None,
+                    ))
+                })?;
 
-                if let Some(spm) = deleted {
+                if let Some(spm) = deleted.pop() {
                     let dom = PermissionMapping::try_from(spm).map_err(|e| {
                         RepoError::Database(DatabaseError::with_context(
                             DatabaseOperation::Delete,
@@ -617,7 +686,7 @@ where
                                 "Failed to convert deleted permission mapping in bulk: {}",
                                 e
                             ),
-                            Some(repo.scope_settings.permission_mappings.clone()),
+                            Some(self.scope_settings.permission_mappings.clone()),
                             None,
                         ))
                     })?;
@@ -635,7 +704,6 @@ where
         ids: Vec<PermissionId>,
     ) -> RepoResult<Vec<PermissionMapping>> {
         let res: RepoResult<_> = {
-            let repo = self.use_ns_db().await?;
 
             if ids.is_empty() {
                 return Ok(Vec::new());
@@ -643,17 +711,17 @@ where
 
             let pid_strs: Vec<String> = ids.iter().map(|id| id.as_u64().to_string()).collect();
             let query = "SELECT * FROM type::table($table) WHERE permission_id IN $pids";
-            let mut db_res = repo
+            let mut db_res = self
                 .db
                 .query(query)
-                .bind(("table", repo.scope_settings.permission_mappings.clone()))
+                .bind(("table", self.scope_settings.permission_mappings.clone()))
                 .bind(("pids", pid_strs.clone()))
                 .await
                 .map_err(|e| {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query permission mappings in bulk: {}", e),
-                        Some(repo.scope_settings.permission_mappings.clone()),
+                        Some(self.scope_settings.permission_mappings.clone()),
                         None,
                     ))
                 })?;
@@ -662,7 +730,7 @@ where
                 RepoError::Database(DatabaseError::with_context(
                     DatabaseOperation::Query,
                     format!("Failed to extract permission mappings in bulk: {}", e),
-                    Some(repo.scope_settings.permission_mappings.clone()),
+                    Some(self.scope_settings.permission_mappings.clone()),
                     None,
                 ))
             })?;
@@ -673,7 +741,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to convert permission mapping in bulk query: {}", e),
-                        Some(repo.scope_settings.permission_mappings.clone()),
+                        Some(self.scope_settings.permission_mappings.clone()),
                         None,
                     ))
                 })?;

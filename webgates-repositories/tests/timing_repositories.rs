@@ -109,7 +109,7 @@ async fn timing_surrealdb_repository() -> Result<(), Box<dyn std::error::Error +
     use webgates_repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 
     let db = Surreal::new::<Mem>(()).await?;
-    let repository = SurrealDbRepository::new(db, DatabaseScope::default())?;
+    let repository = SurrealDbRepository::new(db, DatabaseScope::default()).await?;
     AccountRepository::<Role, Group>::bootstrap(&repository).await?;
     SecretRepository::bootstrap(&repository).await?;
 

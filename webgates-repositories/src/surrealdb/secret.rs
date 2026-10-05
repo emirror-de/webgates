@@ -62,20 +62,14 @@ where
     type Error = crate::errors::Error;
 
     async fn bootstrap(&self) -> RepoResult<()> {
-        let table_name = self.scope_settings.credentials.clone();
-        let repo = self.use_ns_db().await.map_err(|error| {
-            RepoError::Database(DatabaseError::bootstrap(
-                format!("Failed to bootstrap secret repository scope: {error}"),
-                Some(table_name.clone()),
-            ))
-        })?;
 
-        repo.credential_schema_initialized
+        self.credential_schema_initialized
             .get_or_try_init(|| async {
-                let table_name = repo.scope_settings.credentials.clone();
+                let table_name = self.scope_settings.credentials.clone();
                 let query = "DEFINE TABLE IF NOT EXISTS $table SCHEMALESS;";
 
-                repo.db
+                let response = self
+                    .db
                     .query(query)
                     .bind(("table", table_name.clone()))
                     .await
@@ -85,6 +79,12 @@ where
                             Some(table_name.clone()),
                         ))
                     })?;
+                response.check().map_err(|error| {
+                    RepoError::Database(DatabaseError::bootstrap(
+                        format!("Failed to bootstrap secret repository: {error}"),
+                        Some(table_name.clone()),
+                    ))
+                })?;
 
                 Ok::<(), crate::errors::Error>(())
             })
@@ -94,57 +94,88 @@ where
     }
 
     async fn store_secret(&self, secret: Secret) -> RepoResult<bool> {
-        let repo = self.use_ns_db().await?;
+        self.bootstrap().await?;
 
-        let table_name = repo.scope_settings.credentials.clone();
+        let table_name = self.scope_settings.credentials.clone();
         let account_id = secret.account_id;
         let record_id = secret_record_id(&table_name, account_id);
 
-        let existing: Option<SecretRecord> = match repo.db.select(record_id.clone()).await {
-            Ok(existing) => existing,
-            Err(error) if error.to_string().contains("does not exist") => None,
-            Err(error) => {
-                return Err(repo.scoped_database_error(
+        let mut existing_response = self
+            .db
+            .query("SELECT * FROM $record_id")
+            .bind(("record_id", record_id.clone()))
+            .await
+            .map_err(|error| {
+                self.scoped_database_error(
                     DatabaseOperation::Query,
                     &table_name,
                     format!("Failed to query secret existence: {error}"),
                     Some(account_id.to_string()),
-                ));
-            }
-        };
+                )
+            })?;
+        let existing: Option<SecretRecord> = existing_response.take(0).map_err(|error| {
+            self.scoped_database_error(
+                DatabaseOperation::Query,
+                &table_name,
+                format!("Failed to extract secret existence: {error}"),
+                Some(account_id.to_string()),
+            )
+        })?;
 
         if existing.is_some() {
             return Ok(false);
         }
 
-        let inserted: Option<SecretRecord> = repo
+        let mut insert_response = self
             .db
-            .insert(record_id)
-            .content(SecretRecord::from(secret))
+            .query("CREATE $record_id CONTENT $record RETURN AFTER")
+            .bind(("record_id", record_id))
+            .bind(("record", SecretRecord::from(secret)))
             .await
             .map_err(|error| {
-                repo.scoped_database_error(
+                self.scoped_database_error(
                     DatabaseOperation::Insert,
                     &table_name,
                     format!("Failed to store secret: {error}"),
                     Some(account_id.to_string()),
                 )
             })?;
+        let inserted: Option<SecretRecord> = insert_response.take(0).map_err(|error| {
+            self.scoped_database_error(
+                DatabaseOperation::Insert,
+                &table_name,
+                format!("Failed to extract stored secret: {error}"),
+                Some(account_id.to_string()),
+            )
+        })?;
 
         Ok(inserted.is_some())
     }
 
     async fn delete_secret(&self, id: &Uuid) -> RepoResult<Option<Secret>> {
-        let repo = self.use_ns_db().await?;
+        self.bootstrap().await?;
 
-        let table_name = repo.scope_settings.credentials.clone();
+        let table_name = self.scope_settings.credentials.clone();
         let record_id = secret_record_id(&table_name, *id);
 
-        let deleted: Option<SecretRecord> = repo.db.delete(record_id).await.map_err(|error| {
-            repo.scoped_database_error(
+        let mut response = self
+            .db
+            .query("DELETE $record_id RETURN BEFORE")
+            .bind(("record_id", record_id))
+            .await
+            .map_err(|error| {
+                self.scoped_database_error(
+                    DatabaseOperation::Delete,
+                    &table_name,
+                    format!("Failed to delete secret: {error}"),
+                    Some(id.to_string()),
+                )
+            })?;
+        let deleted: Option<SecretRecord> = response.take(0).map_err(|error| {
+            self.scoped_database_error(
                 DatabaseOperation::Delete,
                 &table_name,
-                format!("Failed to delete secret: {error}"),
+                format!("Failed to extract deleted secret: {error}"),
                 Some(id.to_string()),
             )
         })?;
@@ -153,25 +184,34 @@ where
     }
 
     async fn update_secret(&self, secret: Secret) -> RepoResult<()> {
-        let repo = self.use_ns_db().await?;
+        self.bootstrap().await?;
 
-        let table_name = repo.scope_settings.credentials.clone();
+        let table_name = self.scope_settings.credentials.clone();
         let account_id = secret.account_id;
         let record_id = secret_record_id(&table_name, account_id);
 
-        let _: Option<SecretRecord> = repo
+        let mut response = self
             .db
-            .update(record_id)
-            .content(SecretRecord::from(secret))
+            .query("UPDATE $record_id CONTENT $record RETURN AFTER")
+            .bind(("record_id", record_id))
+            .bind(("record", SecretRecord::from(secret)))
             .await
             .map_err(|error| {
-                repo.scoped_database_error(
+                self.scoped_database_error(
                     DatabaseOperation::Update,
                     &table_name,
                     format!("Failed to update secret: {error}"),
                     Some(account_id.to_string()),
                 )
             })?;
+        let _: Option<SecretRecord> = response.take(0).map_err(|error| {
+            self.scoped_database_error(
+                DatabaseOperation::Update,
+                &table_name,
+                format!("Failed to extract updated secret: {error}"),
+                Some(account_id.to_string()),
+            )
+        })?;
 
         Ok(())
     }
@@ -188,21 +228,21 @@ where
         use subtle::Choice;
 
         let Credentials { id, secret } = credentials;
+        self.bootstrap().await?;
 
         let result: RepoResult<_> = {
             let table_name = self.scope_settings.credentials.clone();
             let record_id = secret_record_id(&table_name, id);
 
-            let repo = self.use_ns_db().await?;
 
             let query = "SELECT VALUE secret FROM ONLY $record_id";
-            let mut response = repo
+            let mut response = self
                 .db
                 .query(query)
                 .bind(("record_id", record_id))
                 .await
                 .map_err(|error| {
-                    repo.scoped_database_error(
+                    self.scoped_database_error(
                         DatabaseOperation::Query,
                         &table_name,
                         format!("Failed to query stored secret: {error}"),
@@ -211,7 +251,7 @@ where
                 })?;
 
             let stored_secret: Option<String> = response.take(0).map_err(|error| {
-                repo.scoped_database_error(
+                self.scoped_database_error(
                     DatabaseOperation::Query,
                     &table_name,
                     format!("Failed to extract stored secret: {error}"),
@@ -221,18 +261,18 @@ where
 
             let (hash_for_verification, user_exists_choice) = match stored_secret {
                 Some(secret) => (secret, Choice::from(1u8)),
-                None => (repo.dummy_hash.clone(), Choice::from(0u8)),
+                None => (self.dummy_hash.clone(), Choice::from(0u8)),
             };
 
             let verify_query = "RETURN crypto::argon2::compare(type::string($stored_hash), type::string($request_secret))";
-            let mut verify_response = repo
+            let mut verify_response = self
                 .db
                 .query(verify_query)
                 .bind(("stored_hash", hash_for_verification))
                 .bind(("request_secret", secret))
                 .await
                 .map_err(|error| {
-                    repo.scoped_database_error(
+                    self.scoped_database_error(
                         DatabaseOperation::Query,
                         &table_name,
                         format!("Failed to verify credentials: {error}"),
@@ -241,7 +281,7 @@ where
                 })?;
 
             let hash_matches: Option<bool> = verify_response.take(0).map_err(|error| {
-                repo.scoped_database_error(
+                self.scoped_database_error(
                     DatabaseOperation::Query,
                     &table_name,
                     format!("Failed to extract verification result: {error}"),
@@ -294,7 +334,7 @@ mod tests {
             Ok(db) => db,
             Err(error) => panic!("in-memory SurrealDB setup should succeed: {}", error),
         };
-        let repository = match SurrealDbRepository::new(db, DatabaseScope::default()) {
+        let repository = match SurrealDbRepository::new(db, DatabaseScope::default()).await {
             Ok(repository) => repository,
             Err(error) => panic!("repository construction should succeed: {}", error),
         };
@@ -342,7 +382,7 @@ mod tests {
             Ok(db) => db,
             Err(error) => panic!("in-memory SurrealDB setup should succeed: {}", error),
         };
-        let repository = match SurrealDbRepository::new(db, DatabaseScope::default()) {
+        let repository = match SurrealDbRepository::new(db, DatabaseScope::default()).await {
             Ok(repository) => repository,
             Err(error) => panic!("repository construction should succeed: {}", error),
         };
@@ -392,7 +432,7 @@ mod tests {
             Ok(db) => db,
             Err(error) => panic!("in-memory SurrealDB setup should succeed: {}", error),
         };
-        let repository = match SurrealDbRepository::new(db, DatabaseScope::default()) {
+        let repository = match SurrealDbRepository::new(db, DatabaseScope::default()).await {
             Ok(repository) => repository,
             Err(error) => panic!("repository construction should succeed: {}", error),
         };

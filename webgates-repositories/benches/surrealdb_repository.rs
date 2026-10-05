@@ -16,6 +16,7 @@ async fn main() {
         .await
         .expect("in-memory SurrealDB setup should succeed");
     let repository = SurrealDbRepository::new(db, DatabaseScope::default())
+        .await
         .expect("repository construction should succeed");
 
     AccountRepository::<Role, Group>::bootstrap(&repository)

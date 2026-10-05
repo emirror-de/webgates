@@ -194,7 +194,7 @@ use webgates_repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 
 # tokio_test::block_on(async {
 let db = Surreal::new::<Mem>(()).await.unwrap();
-let repo = SurrealDbRepository::new(db, DatabaseScope::default()).unwrap();
+let repo = SurrealDbRepository::new(db, DatabaseScope::default()).await.unwrap();
 # let _ = repo;
 # });
 ```

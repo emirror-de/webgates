@@ -218,20 +218,12 @@ where
     type Error = RepoError;
 
     async fn bootstrap(&self) -> Result<()> {
-        let table_name = self.scope_settings.accounts.clone();
-        let repo = self.use_ns_db().await.map_err(|error| {
-            RepoError::Database(DatabaseError::bootstrap(
-                format!("Failed to bootstrap account repository scope: {error}"),
-                Some(table_name.clone()),
-            ))
-        })?;
-
-        repo.account_schema_initialized
+        self.account_schema_initialized
             .get_or_try_init(|| async {
-                let table_name = repo.scope_settings.accounts.clone();
+                let table_name = self.scope_settings.accounts.clone();
                 let query = "DEFINE TABLE IF NOT EXISTS $table SCHEMALESS;";
 
-                repo.db
+                self.db
                     .query(query)
                     .bind(("table", table_name.clone()))
                     .await
@@ -242,12 +234,11 @@ where
                         ))
                     })?;
 
-                let define_user_id_index = format!(
-                    "DEFINE INDEX IF NOT EXISTS webgates_accounts_user_id_idx ON {} FIELDS user_id UNIQUE",
-                    table_name
-                );
-                repo.db
-                    .query(define_user_id_index)
+                self.db
+                    .query(
+                        "DEFINE INDEX IF NOT EXISTS webgates_accounts_user_id_idx ON type::table($table) FIELDS user_id UNIQUE",
+                    )
+                    .bind(("table", table_name.clone()))
                     .await
                     .map_err(|error| {
                         RepoError::Database(DatabaseError::bootstrap(
@@ -265,20 +256,19 @@ where
 
     async fn query_account_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
         let res: Result<_> = {
-            let repo = self.use_ns_db().await?;
 
             let query = "SELECT * FROM type::table($table) WHERE user_id = $uid LIMIT 1";
-            let mut db_res = repo
+            let mut db_res = self
                 .db
                 .query(query)
-                .bind(("table", repo.scope_settings.accounts.clone()))
+                .bind(("table", self.scope_settings.accounts.clone()))
                 .bind(("uid", user_id.to_string()))
                 .await
                 .map_err(|e| {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query account by user_id: {}", e),
-                        Some(repo.scope_settings.accounts.clone()),
+                        Some(self.scope_settings.accounts.clone()),
                         Some(user_id.to_string()),
                     ))
                 })?;
@@ -289,7 +279,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to extract account by user_id: {}", e),
-                        Some(repo.scope_settings.accounts.clone()),
+                        Some(self.scope_settings.accounts.clone()),
                         Some(user_id.to_string()),
                     ))
                 })?;
@@ -301,15 +291,28 @@ where
 
     async fn query_account_by_id(&self, account_id: &Uuid) -> Result<Option<Account<R, G>>> {
         let res: Result<_> = {
-            let repo = self.use_ns_db().await?;
 
-            let record_id = account_record_id(&repo.scope_settings.accounts, *account_id);
-            let db_account: Option<SurrealAccountRecord> =
-                repo.db.select(record_id).await.map_err(|e| {
+            let record_id = account_record_id(&self.scope_settings.accounts, *account_id);
+            let mut response = self
+                .db
+                .query("SELECT * FROM $record_id")
+                .bind(("record_id", record_id))
+                .await
+                .map_err(|e| {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query account by account_id: {}", e),
-                        Some(repo.scope_settings.accounts.clone()),
+                        Some(self.scope_settings.accounts.clone()),
+                        Some(account_id.to_string()),
+                    ))
+                })?;
+            let db_account = response
+                .take::<Option<SurrealAccountRecord>>(0)
+                .map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Query,
+                        format!("Failed to extract account by account_id: {}", e),
+                        Some(self.scope_settings.accounts.clone()),
                         Some(account_id.to_string()),
                     ))
                 })?;
@@ -321,19 +324,35 @@ where
 
     async fn store_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
         let res: Result<_> = {
-            let repo = self.use_ns_db().await?;
 
             let record = SurrealAccountRecord::try_from(account)?;
             let account_id = record.account_id;
             let user_id = record.user_id.clone();
 
-            let existing_by_id = account_record_id(&repo.scope_settings.accounts, account_id);
-            let existing_account_by_id: Option<SurrealAccountRecord> =
-                repo.db.select(existing_by_id).await.map_err(|e| {
+            let existing_by_id = account_record_id(&self.scope_settings.accounts, account_id);
+            let mut existing_by_id_response = self
+                .db
+                .query("SELECT * FROM $record_id")
+                .bind(("record_id", existing_by_id))
+                .await
+                .map_err(|e| {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query account by account_id before insert: {}", e),
-                        Some(repo.scope_settings.accounts.clone()),
+                        Some(self.scope_settings.accounts.clone()),
+                        Some(account_id.to_string()),
+                    ))
+                })?;
+            let existing_account_by_id = existing_by_id_response
+                .take::<Option<SurrealAccountRecord>>(0)
+                .map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Query,
+                        format!(
+                            "Failed to extract account by account_id before insert: {}",
+                            e
+                        ),
+                        Some(self.scope_settings.accounts.clone()),
                         Some(account_id.to_string()),
                     ))
                 })?;
@@ -344,17 +363,17 @@ where
 
             let user_lookup_query =
                 "SELECT * FROM type::table($table) WHERE user_id = $uid LIMIT 1";
-            let mut existing_by_user_response = repo
+            let mut existing_by_user_response = self
                 .db
                 .query(user_lookup_query)
-                .bind(("table", repo.scope_settings.accounts.clone()))
+                .bind(("table", self.scope_settings.accounts.clone()))
                 .bind(("uid", user_id.clone()))
                 .await
                 .map_err(|e| {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query account by user_id before insert: {}", e),
-                        Some(repo.scope_settings.accounts.clone()),
+                        Some(self.scope_settings.accounts.clone()),
                         Some(user_id.clone()),
                     ))
                 })?;
@@ -365,7 +384,7 @@ where
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to extract account by user_id before insert: {}", e),
-                        Some(repo.scope_settings.accounts.clone()),
+                        Some(self.scope_settings.accounts.clone()),
                         Some(user_id.clone()),
                     ))
                 })?;
@@ -374,18 +393,29 @@ where
                 return Ok(None);
             }
 
-            let record_id = account_record_id(&repo.scope_settings.accounts, account_id);
-            let db_account: Option<SurrealAccountRecord> = repo
+            let record_id = account_record_id(&self.scope_settings.accounts, account_id);
+            let mut insert_response = self
                 .db
-                .insert(record_id)
-                .content(record)
+                .query("CREATE $record_id CONTENT $record")
+                .bind(("record_id", record_id))
+                .bind(("record", record))
                 .await
                 .map_err(|e| {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Insert,
                         format!("Could not insert account: {}", e),
-                        Some(repo.scope_settings.accounts.clone()),
+                        Some(self.scope_settings.accounts.clone()),
                         Some(user_id),
+                    ))
+                })?;
+            let db_account = insert_response
+                .take::<Option<SurrealAccountRecord>>(0)
+                .map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Insert,
+                        format!("Failed to extract inserted account: {}", e),
+                        Some(self.scope_settings.accounts.clone()),
+                        Some(account_id.to_string()),
                     ))
                 })?;
 
@@ -396,15 +426,28 @@ where
 
     async fn delete_account(&self, account_id: &Uuid) -> Result<Option<Account<R, G>>> {
         let res: Result<_> = {
-            let repo = self.use_ns_db().await?;
 
-            let record_id = account_record_id(&repo.scope_settings.accounts, *account_id);
-            let db_account: Option<SurrealAccountRecord> =
-                repo.db.delete(record_id).await.map_err(|e| {
+            let record_id = account_record_id(&self.scope_settings.accounts, *account_id);
+            let mut response = self
+                .db
+                .query("DELETE $record_id RETURN BEFORE")
+                .bind(("record_id", record_id))
+                .await
+                .map_err(|e| {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Delete,
                         format!("Failed to delete account: {}", e),
-                        Some(repo.scope_settings.accounts.clone()),
+                        Some(self.scope_settings.accounts.clone()),
+                        Some(account_id.to_string()),
+                    ))
+                })?;
+            let db_account = response
+                .take::<Option<SurrealAccountRecord>>(0)
+                .map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Delete,
+                        format!("Failed to extract deleted account: {}", e),
+                        Some(self.scope_settings.accounts.clone()),
                         Some(account_id.to_string()),
                     ))
                 })?;
@@ -416,21 +459,31 @@ where
 
     async fn update_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
         let res: Result<_> = {
-            let repo = self.use_ns_db().await?;
 
             let record = SurrealAccountRecord::try_from(account)?;
             let record_account_id = record.account_id;
-            let record_id = account_record_id(&repo.scope_settings.accounts, record_account_id);
-            let db_account: Option<SurrealAccountRecord> = repo
+            let record_id = account_record_id(&self.scope_settings.accounts, record_account_id);
+            let mut response = self
                 .db
-                .update(&record_id)
-                .content(record)
+                .query("UPDATE $record_id CONTENT $record")
+                .bind(("record_id", record_id))
+                .bind(("record", record))
                 .await
                 .map_err(|e| {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Update,
                         format!("Failed to update account: {}", e),
-                        Some(repo.scope_settings.accounts.clone()),
+                        Some(self.scope_settings.accounts.clone()),
+                        Some(record_account_id.to_string()),
+                    ))
+                })?;
+            let db_account = response
+                .take::<Option<SurrealAccountRecord>>(0)
+                .map_err(|e| {
+                    RepoError::Database(DatabaseError::with_context(
+                        DatabaseOperation::Update,
+                        format!("Failed to extract updated account: {}", e),
+                        Some(self.scope_settings.accounts.clone()),
                         Some(record_account_id.to_string()),
                     ))
                 })?;
@@ -442,20 +495,28 @@ where
 
     async fn query_all_accounts(&self) -> Result<Vec<Account<R, G>>> {
         let res: Result<_> = {
-            let repo = self.use_ns_db().await?;
 
-            let db_accounts: Vec<SurrealAccountRecord> = repo
+            let mut response = self
                 .db
-                .select(repo.scope_settings.accounts.clone())
+                .query("SELECT * FROM type::table($table)")
+                .bind(("table", self.scope_settings.accounts.clone()))
                 .await
                 .map_err(|e| {
                     RepoError::Database(DatabaseError::with_context(
                         DatabaseOperation::Query,
                         format!("Failed to query all accounts: {}", e),
-                        Some(repo.scope_settings.accounts.clone()),
+                        Some(self.scope_settings.accounts.clone()),
                         None,
                     ))
                 })?;
+            let db_accounts = response.take::<Vec<SurrealAccountRecord>>(0).map_err(|e| {
+                RepoError::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to extract accounts: {}", e),
+                    Some(self.scope_settings.accounts.clone()),
+                    None,
+                ))
+            })?;
 
             db_accounts.into_iter().map(Account::try_from).collect()
         };

@@ -80,8 +80,11 @@ async fn main() {
         .await
         .expect("Could not connect to surrealdb memory database.");
 
-    let account_repository =
-        Arc::new(SurrealDbRepository::new(db, DatabaseScope::default()).unwrap());
+    let account_repository = Arc::new(
+        SurrealDbRepository::new(db, DatabaseScope::default())
+            .await
+            .unwrap(),
+    );
     debug!("Account repository initialized.");
     let secrets_repository = Arc::clone(&account_repository);
     debug!("Secrets repository initialized.");

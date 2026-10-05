@@ -19,7 +19,7 @@ async fn surrealdb_permission_mapping_crud_and_queries() {
     };
 
     let scope = DatabaseScope::default();
-    let repo = match SurrealDbRepository::new(db, scope.clone()) {
+    let repo = match SurrealDbRepository::new(db, scope.clone()).await {
         Ok(r) => r,
         Err(e) => panic!("Failed to create SurrealDbRepository: {:?}", e),
     };
@@ -139,7 +139,7 @@ async fn surrealdb_permission_mapping_uniqueness() {
         Err(e) => panic!("Failed to create SurrealDB Mem engine: {:?}", e),
     };
     let scope = DatabaseScope::default();
-    let repo = match SurrealDbRepository::new(db, scope) {
+    let repo = match SurrealDbRepository::new(db, scope).await {
         Ok(r) => r,
         Err(e) => panic!("Failed to create SurrealDbRepository: {:?}", e),
     };
